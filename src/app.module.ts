@@ -12,7 +12,6 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // load:[config],
       envFilePath: [
         `.env`,
         `.env${process.env.NODE_ENV || ''}`, // Load environment-specific variables

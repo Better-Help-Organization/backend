@@ -1,17 +1,7 @@
 import { SwaggerDoc } from "src/common/decorators/swagger-docs.decorator";
 
 export const ApiUploadImage = SwaggerDoc({
-    operationSummary:`Upload an image to the specified folder
-        of which are
-        '/profile',
-        '/vehicle-type',
-        '/order',
-        '/license',
-        '/librae',
-        '/vehicle',
-        '/national-id',
-        '/letter',
-        `,
+    operationSummary:`Upload an image to the specified folder of which are '/profile', ... `,
     responses:[
         {
         status: 201,
@@ -48,15 +38,7 @@ export const ApiUploadImage = SwaggerDoc({
 })
 
 export const ApiDeleteImage = SwaggerDoc({
-    operationSummary:`Delete an image from the specified folder of which are
-        '/profile',
-        '/vehicle-type',
-        '/order',
-        '/license',
-        '/librae',
-        '/vehicle',
-        '/national-id',
-        '/letter',
+    operationSummary:`Delete an image from the specified folder of which are '/profile', ...
         `,
     responses:[
         { status: 200, description: 'File successfully deleted' },

@@ -1,14 +1,13 @@
 (global as any).crypto = require('crypto');
 
 
-import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import * as cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { SwaggerDocs } from './docs/SwaggerDocs';
-import { ApiProperty, DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import * as glob from 'glob';
 import * as path from 'path';

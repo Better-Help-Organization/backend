@@ -12,7 +12,7 @@ ENV_PROD = .env
 ENV_TEST = .env.test
 ENV_DEV = .env.dev
 
-PROJECT_NAME = ebp
+PROJECT_NAME = app
 # Project names
 PROD_PROJECT_NAME = $(PROJECT_NAME)_prod
 DEV_PROJECT_NAME = $(PROJECT_NAME)_dev
