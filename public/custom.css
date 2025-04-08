@@ -1,0 +1,29 @@
+/* 
+div.wrapper:nth-of-type(4) > section > div {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 20px;
+  padding: 10px; 
+}
+.swagger-ui .wrapper {
+  max-width: none;
+}
+
+h4 + .no-margin {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 20px;
+  padding: 10px; 
+} */
+
+button  svg {
+  /* fill :rgb(0 223 152) */
+  fill : #18df85
+}
+
+/* .authorization__btn > svg {
+  
+  fill :rgb(0 223 152)
+} */
