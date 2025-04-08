@@ -1,0 +1,7 @@
+node_modules/*
+docker-data/*
+dist
+Dockerfile
+docker-compose.yml
+*.log
+.env

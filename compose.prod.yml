@@ -1,0 +1,19 @@
+services:
+  app:
+    extends:
+      file: ./compose.base.yml
+      service: app
+      
+  db:
+    extends:
+      file: ./compose.base.yml
+      service: db
+
+volumes:
+  prod_db_data:
+  prod_node_modules:
+
+
+networks:
+  prod_default:
+    external: true

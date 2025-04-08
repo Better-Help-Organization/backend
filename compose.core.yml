@@ -1,0 +1,146 @@
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: proxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    networks:
+    # DONOT CHANGE THESE VALUES
+      - dev_default
+      - prod_default
+      - test_default
+    restart: unless-stopped
+    command:
+      - "--log.level=DEBUG"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # cert
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--ping.manualrouting=true"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - traefik-data:/data
+      # cert
+      - letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+  
+  # # logging services
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+  #   container_name: elasticsearch
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   ports:
+  #     - "9200:9200"
+  #   networks:
+  #     - staging_default
+  #     - prod_default
+  #     - test_default
+  #   labels:
+  #     - "traefik.enable=false"
+  #   # volumes:
+  #   #   - /home/docker:/usr/share/elasticsearch/data
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+  #     interval: 30s
+  #     retries: 3
+  #   attach: false
+
+  # enrollment:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+  #   container_name: enrollment
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   ports:
+  #     - "9205:9205"
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+  #   entrypoint: ["/bin/bash", "/usr/local/bin/create-enrollment-token.sh"]
+  #   volumes:
+  #     - ./create-enrollment-token.sh:/usr/local/bin/create-enrollment-token.sh
+  #   labels:
+  #     - "traefik.enable=false"
+  
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.12.0
+  #   container_name: logstash
+  #   volumes:
+  #     - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+  #     - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
+  #   ports:
+  #     - "5000:5000"
+  #     - "5001:5001"
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #   # DONOT CHANGE THESE VALUES
+  #     - staging_default
+  #     - prod_default
+  #     - test_default
+  #   attach: false
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.12.0
+  #   container_name: kibana 
+  #   ports:
+  #     - "5601:5601"
+  #   networks:
+  #   # DONOT CHANGE THESE VALUES
+  #     - staging_default
+  #     - prod_default
+  #     - test_default
+  #   labels:
+  #     - "traefik.enable=true"
+  #     # - "traefik.http.routers.kibana.rule=PathPrefix(`/kibana`)"
+  #     # - "traefik.http.routers.kibana.entrypoints=web"
+  #     # - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+  #     # - "traefik.http.routers.kibana.rule=PathPrefix(`/kb`)"
+  #     # - "traefik.http.routers.kibana.entrypoints=web"
+  #     # - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+  #     # - "traefik.http.routers.kibana.middlewares=strip-kb"
+  #     # - "traefik.http.middlewares.strip-kb.stripPrefix.prefixes=kb"
+  #   attach: false
+
+  # filebeat:
+  #   build:
+  #     context: filebeat/
+  #   environment:
+  #     - strict.perms=false
+  #   container_name: filebeat
+  #   volumes:
+  #     - ./microservice-logs:/var/log/microservice:ro
+  #     - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+  #     - ./filebeat/logs:/usr/share/filebeat/dockerlogs
+  #   depends_on:
+  #     - logstash
+
+networks:
+# DONOT CHANGE THESE VALUES
+  dev_default:
+    external: true
+    name: dev_default
+  prod_default:
+    external: true
+    name: prod_default
+  test_default:
+    external: true
+    name: test_default
+
+volumes:
+  traefik-data:
+    driver: local
+  # cert
+  letsencrypt:
+    driver: local

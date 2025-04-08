@@ -1,0 +1,67 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE}
+    image: ebp-${NODE_ENV}
+    volumes:
+      - .:/app
+      - ${NODE_ENV}_node_modules:/app/node_modules
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: ${NODE_ENV}
+    networks:
+      - ${NODE_ENV}_default
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Route
+      - "traefik.http.routers.${NODE_ENV}-app-secure.rule=${HOST}"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.middlewares=strip-${TAG}"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.tls.certresolver=myresolver"
+      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
+ #     - "traefik.http.routers.${NODE_ENV}-app.middlewares=auth"
+#      - "traefik.http.middlewares.auth.basicauth.users=user:$$apr1$$sdARNjrF$$o5oY9am2uedUdHztBJUOn1"
+
+      # HTTP Route
+      - "traefik.http.routers.${NODE_ENV}-app.rule=${HOST}"
+      - "traefik.http.routers.${NODE_ENV}-app.entrypoints=web"
+      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${NODE_ENV}-app.middlewares=strip-${TAG}"
+      - "traefik.http.middlewares.strip-${TAG}.stripPrefix.prefixes=/${TAG}"
+    
+  db:
+    image: mysql:8.0
+    restart: always
+    networks:
+      - ${NODE_ENV}_default
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DB}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_PASSWORD}
+      MYSQL_PORT: ${MYSQL_DB_PORT}
+      MYSQL_HOST: ${MYSQL_DB_HOST}
+    labels:
+      - "traefik.enable=false"
+    volumes:
+      - ${NODE_ENV}_db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_PASSWORD}
+    ports:
+      - "8091:80"
+    networks:
+      - ${NODE_ENV}_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpmyadmin.rule=PathPrefix(`/db`)"
+      - "traefik.http.routers.phpmyadmin.entrypoints=web"
+      - "traefik.http.services.phpmyadmin.loadbalancer.server.port=80"
+      - "traefik.http.routers.phpmyadmin.middlewares=strip-db"
+      - "traefik.http.middlewares.strip-db.stripprefix.prefixes=/db"

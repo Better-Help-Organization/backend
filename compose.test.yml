@@ -1,0 +1,25 @@
+services:
+  app:
+    extends:
+      file: ./compose.base.yml
+      service: app
+      
+  db:
+    extends:
+      file: ./compose.base.yml
+      service: db
+
+
+  phpmyadmin:
+    extends:
+      file: ./compose.base.yml
+      service: phpmyadmin
+
+volumes:
+  test_db_data:
+  test_node_modules:
+
+
+networks:
+  test_default:
+    external: true
