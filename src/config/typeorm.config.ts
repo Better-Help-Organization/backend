@@ -12,7 +12,7 @@ const AppDataSource = new DataSource({
     password: configService.get<string>('MYSQL_DB_PASSWORD'),
     database: configService.get<string>('MYSQL_DB'),
     logging: true,
-    synchronize: false,
+    synchronize: true,
     migrationsRun: false,
     entities: ['**/*.entity.ts'],
     migrations: ['src/database/migrations/*-migration.ts'],
