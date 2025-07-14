@@ -6,6 +6,9 @@ import { LoggerModule } from './logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuthModule } from './auth/auth.module';
+import { ClientModule } from './client/client.module';
+import { EmailModule } from './email/email.module';
 
 
 @Module({
@@ -19,6 +22,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
+    AuthModule, ClientModule, EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {

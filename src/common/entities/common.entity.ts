@@ -2,8 +2,8 @@ import { Column, DeleteDateColumn, PrimaryGeneratedColumn } from "typeorm";
 
 export class CommonEntity {
   
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
   @Column({ select:false, type: 'timestamp', nullable: true, onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
