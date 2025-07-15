@@ -4,18 +4,22 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ClientService } from 'src/client/client.service';
 import { Client } from 'src/common/entities/client.entity';
+import { Therapist } from 'src/common/entities/therapist.entity';
 import { getInclusiveColumns } from 'src/common/utils/getInclusiveColumns';
 import { AdminService } from 'src/admin/admin.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
-import { SignupDto } from './dto/SignupDto';
 import * as speakeasy from 'speakeasy';
 import { compare, hash } from 'bcryptjs';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { EmailService } from 'src/email/email.service';
 import { Admin } from 'src/common/entities/admin.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-
+import { TherapistService } from 'src/therapist/therapist.service';
+import { ClientSignupDto } from './dto/ client-signup.dto';
+import { TherapistSignupDto } from './dto/therapist-signup.dto';
+import { AdminSignupDto } from './dto/admin-signup.dto';
+import { User } from 'src/common/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -24,17 +28,20 @@ export class AuthService {
     private readonly logger: LoggerService,
     private readonly jwtService: JwtService,
     private readonly clientService: ClientService,
+    private readonly therapistService: TherapistService,
     private readonly adminService: AdminService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     @InjectRepository(Client) private clientRepo: Repository<Client>,
+    @InjectRepository(Therapist) private therapistRepo: Repository<Therapist>,
   ){}
-
 
   private _getAccessTokenSecret(type: string) {
     switch (type) {
       case UserTypes.CLIENT:
-        return this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_SECRET_USER');
+        return this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_SECRET_CLIENT');
+      case UserTypes.THERAPIST:
+        return this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_SECRET_THERAPIST');
       case UserTypes.ADMIN:
         return this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_SECRET_ADMIN');
       default:
@@ -42,18 +49,18 @@ export class AuthService {
     }
   }
 
-
   private _getRefreshTokenSecret(type: string): string {
     switch (type) {
       case UserTypes.CLIENT:
-        return this.configService.getOrThrow<string>('JWT_REFRESH_TOKEN_SECRET_USER');
+        return this.configService.getOrThrow<string>('JWT_REFRESH_TOKEN_SECRET_CLIENT');
+      case UserTypes.THERAPIST:
+        return this.configService.getOrThrow<string>('JWT_REFRESH_TOKEN_SECRET_THERAPIST');
       case UserTypes.ADMIN:
         return this.configService.getOrThrow<string>('JWT_REFRESH_TOKEN_SECRET_ADMIN');
       default:
         throw new BadRequestException('Unknown type: ' + type);
     }
   }
-
 
   private _generateTokens({ id, type, status }: TokenPayload): [string, string, Date, Date] {
     
@@ -101,7 +108,6 @@ export class AuthService {
     return [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken];
   }
 
-
   private _verifyOTPExpiry(otpExpires: Date): void {
     if (!otpExpires)
         throw new BadRequestException('OTP is malformed. Please request a new OTP.');
@@ -128,11 +134,12 @@ export class AuthService {
     return [OTP, OTPExpires];
   }
 
-
-async getRepo(type:UserTypes): Promise<Repository<any>> {
+  async getRepo(type:UserTypes): Promise<Repository<any>> {
     switch (type) {
       case UserTypes.CLIENT:
         return this.clientService.getRepository();
+      case UserTypes.THERAPIST:
+        return this.therapistService.getRepository();
       case UserTypes.ADMIN:
         return this.adminService.getRepository();
       default:
@@ -140,9 +147,9 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
     }
   }
 
-  getRepository(): Repository<Client> {
-    return this.clientRepo;
-  }
+  // getRepository(): Repository<Client> {
+  //   return this.clientRepo;
+  // }
 
   async emailOtp(type:UserTypes, admin: Admin){
     
@@ -170,7 +177,7 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
         select: selectColumns
       });
 
-      if (!user) throw new NotFoundException(`User not found`);
+      if (!user) throw new NotFoundException(`${type}\` not found`);
 
       if (user.isPhoneNumberAuthenticated){
           user.OTP = null
@@ -197,31 +204,30 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
   async verifyByEmail(email: string, otp: string, type: UserTypes) {  
     try {
       const repo = await this.getRepo(type);
-
-      const inclusiveOf: (keyof typeof admin)[] = ['refreshToken', "isEmailAuthenticated","password"];
+      const inclusiveOf: (keyof typeof user)[] = ['refreshToken', "isEmailAuthenticated","password"];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
   
-      const admin = await repo.findOne({
+      const user = await repo.findOne({
         where: { email },
         select: selectColumns
       });
 
-      if (!admin) throw new NotFoundException(`Admin not found`);
+      if (!user) throw new NotFoundException(`${type}\` not found`);
 
-      if (admin.isEmailAuthenticated){
-          admin.OTP = null
+      if (user.isEmailAuthenticated){
+          user.OTP = null
           return "This email is already authenticated"
       }
 
-      this._verifyOTPExpiry(admin.OTPExpires);
+      this._verifyOTPExpiry(user.OTPExpires);
 
-      if (admin.OTP !== otp) throw new UnauthorizedException('Invalid OTP.');
+      if (user.OTP !== otp) throw new UnauthorizedException('Invalid OTP.');
 
-      admin.OTP = null; admin.isEmailAuthenticated = true; 
+      user.OTP = null; user.isEmailAuthenticated = true; 
       
-      await repo.save(admin);
+      await repo.save(user);
 
-      return admin;
+      return user;
   
     } catch (err) {
      
@@ -232,18 +238,39 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
     }
   }
 
-  async signupUser(userSignupDto:SignupDto){
-
+  async signupClient(clientSignupDto: ClientSignupDto) {
     const [OTP, OTPExpires] = this._generateOTP();
+    
+    const hashedPassword = await hash(clientSignupDto.password, 10);
+    
+    clientSignupDto["OTP"] = OTP;
+    clientSignupDto["OTPExpires"] = OTPExpires;
+    clientSignupDto["password"] = hashedPassword;
 
-    userSignupDto["OTP"] = OTP;
-    userSignupDto["OTPExpires"] = OTPExpires;
-
-    const user = await this.clientService.create(userSignupDto);
-    if(user !== null) return "An otp has been sent to your phone number, use it to verify your Phone Number" 
+    const client = await this.clientService.create(clientSignupDto);
+    
+    if (client !== null) {
+      return "An otp has been sent to your email, use it to verify your email.";
+    }
   }
  
-  async signupAdmin(adminSignupDto:SignupDto){
+  async signupTherapist(therapistSignupDto: TherapistSignupDto) {
+    const [OTP, OTPExpires] = this._generateOTP();
+    
+    const hashedPassword = await hash(therapistSignupDto.password, 10);
+    
+    therapistSignupDto["OTP"] = OTP;
+    therapistSignupDto["OTPExpires"] = OTPExpires;
+    therapistSignupDto["password"] = hashedPassword;
+
+    const therapist = await this.therapistService.create(therapistSignupDto);
+    
+    if (therapist !== null) {
+      return "An otp has been sent to your email, use it to verify your email.";
+    }
+  }
+
+  async signupAdmin(adminSignupDto:AdminSignupDto){
   
   const [OTP, OTPExpires] = this._generateOTP();
   
@@ -257,98 +284,45 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
   if(admin !== null) return "An otp has been sent to your email, use it to verify your email" 
   }
 
-  async loginUser(phoneNumber:string, otp:string, firebaseToken:string) {
-
-    try{
-      const type: UserTypes = UserTypes.CLIENT;
-
-      const repo = await this.getRepo(type);
-
-      const inclusiveOf: (keyof Client)[] = ['OTP', 'OTPExpires'];
-      const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
-
-      const user = await repo.findOne({
-        where: { phoneNumber },
-        select: selectColumns,
-        relations: {
-          shops: true,
-        }
-      });
-      if (!user) throw new NotFoundException('User not found');
-
-      this._verifyOTPExpiry(user.OTPExpires);
-
-      if (user.OTP !== otp) throw new UnauthorizedException("Invalid OTP, Try requesting another one");
-
-      const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
-      this._generateTokens({
-        id: user.id,
-        type,
-        status: user.status,
-      });
-
-      user.refreshToken = refreshToken;
-      user.OTP = null;
-      user.firebaseToken = firebaseToken;
-    
-      await repo.save(user);
-
-      return { accessToken, refreshToken, user };
-
-    } catch (error) {
-      this.logger.error(error);
-      throw error;
-    }
-  }
-
-
-  async loginAdmin(email: string, password: string , firebaseToken: string) {
+  async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes) {
 
     try{
 
-      const type: UserTypes = UserTypes.ADMIN;
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  Admin | keyof typeof Admin)[] = ['password'];
+      const inclusiveOf: (keyof  User)[] = ['password'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
-      const admin = await repo.findOne({
-        where: { email },
-        select: selectColumns,
-      });
-  
-      if (!admin) throw new NotFoundException('Admin not found');
-  
-      const authenticated = await compare(password, admin['password']);
+      const user = await repo.findOne({ where: { email }, select: selectColumns });
+      if (!user) throw new NotFoundException(`${type} not found`);
+
+      const authenticated = await compare(password, user['password']);
       if (!authenticated) {
         throw new UnauthorizedException();
       }
 
       const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
-      
-      this._generateTokens({
-        id: admin.id,
-        type,
-        status: admin.status,
+        this._generateTokens({
+          id: user.id,
+          type,
+          status: user.status,
       });
 
-      admin.refreshToken = refreshToken;
-      admin.firebaseToken = firebaseToken;
-      
-      await repo.save(admin);
-  
-      return { user:admin, accessToken, refreshToken };
+      user.refreshToken = refreshToken;
+      user.firebaseToken = firebaseToken;
+      await repo.save(user);
 
+      return { user, accessToken, refreshToken };
     } catch (error) {
       this.logger.error(error);
       throw error;
     }
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string, type: UserTypes) {
 
   try {
-      const repo = await this.getRepo(UserTypes.ADMIN);
+      const repo = await this.getRepo(type);
       const user = await repo.findOne({ where: { email } });
   
       if (!user) throw new NotFoundException('User not found');
@@ -358,8 +332,9 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
       user.OTPExpires = OTPExpires;
   
       await repo.save(user);
-  
-      this.emailService.sendOtpEmail({email, name:user.name , otp:OTP});
+
+      const name = user.firstName + " " + user.lastName
+      this.emailService.sendOtpEmail({email, name: name , otp:OTP});
   
       return "An OTP has been sent to your Email, use it to reset your password.";
   
@@ -369,13 +344,15 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
     } 
   }  
 
-  async resetPassword(resetDto: ResetPwdDto) {
+  async resetPassword(resetDto: ResetPwdDto, type: UserTypes) {
 
   try {
 
     const { email, otp, password, passwordConfirm } = resetDto
+
+    if (password !== passwordConfirm) throw new BadRequestException('Password doesnot match with the confirm password');
     
-    const repo = await this.getRepo(UserTypes.ADMIN);
+    const repo = await this.getRepo(type);
 
     const user = await repo.findOne({ where: { email } });
 
@@ -420,7 +397,7 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
     return 'You have successfully logged out';
   }
 
-      async refresh(userToken: TokenPayload, firebaseToken:string) {
+  async refresh(userToken: TokenPayload, firebaseToken:string) {
 
     try{
       const type = userToken.type;
@@ -459,6 +436,8 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
       switch (user) {
         case UserTypes.CLIENT:
           return this.clientService
+        case UserTypes.THERAPIST:
+          return this.therapistService
         case UserTypes.ADMIN:
             return this.adminService
         default:
@@ -470,28 +449,26 @@ async getRepo(type:UserTypes): Promise<Repository<any>> {
     }
   }
 
-  async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
-    try {
+  // async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
+  //   try {
       
-      let userToken: TokenPayload = null;
+  //     let userToken: TokenPayload = null;
       
-      if (user.type === UserTypes.ADMIN) {
-        const service = this._getServiceByKind(accessTo);
-          const { id, status  } = await service.findOne(userId );
-          userToken = {
-          id: id,
-          status: status,
-          type: accessTo,
-        }
-      }
-      else userToken = user;
+  //     if (user.type === UserTypes.ADMIN) {
+  //       const service = this._getServiceByKind(accessTo);
+  //         const { id, status  } = await service.findOne(id );
+  //         userToken = {
+  //         id: id,
+  //         status: status,
+  //         type: accessTo,
+  //       }
+  //     }
+  //     else userToken = user;
       
-      return userToken;
-    } catch (error) {
-      this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
-      throw error;
-    }
-  }
-
-
+  //     return userToken;
+  //   } catch (error) {
+  //     this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
   }

@@ -1,60 +1,89 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-// import { CreateClientDto } from './dto/create-client.dto';
-// import { UpdateClientDto } from './dto/update-client.dto';
-import { Repository } from 'typeorm';
-import { Client } from 'src/common/entities/client.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { Client } from 'src/common/entities/client.entity';
+import { LoggerService } from 'src/logger/logger.service';
+import { UpdateClientDto } from './dto/update-client.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class ClientService {
-  
-  @InjectRepository(Client) private clientRepo: Repository<Client>
-  private readonly logger: LoggerService
+  constructor(
+    private readonly logger: LoggerService,
+    @InjectRepository(Client)
+    private readonly clientRepo: Repository<Client>,
+  ) {}
 
-  create(createClientDto) {
-    return 'This action adds a new client';
+  async create(data: Partial<Client>): Promise<Client> {
+    try {
+      this.logger.log(`Creating client with data: ${JSON.stringify(data)}`);
+      const client = this.clientRepo.create({
+        ...data,
+      });
+      const saved = await this.clientRepo.save(client);
+      this.logger.log(`Client created with ID: ${saved.id}`);
+      return saved;
+    } catch (error) {
+      this.logger.error(`Error creating client: ${error.message}`);
+      throw error;
+    }
   }
 
   async findOne(id: string, queryParams?: FindOneQueryParams<Client>): Promise<Client> {
     try {
-      this.logger.log(`Finding user with ID: ${id}`);
-      const user = await new APIFeatures(this.clientRepo, queryParams).getOne(id);
+      this.logger.log(`Finding client with ID: ${id}`);
+      const client = await new APIFeatures(this.clientRepo, queryParams).getOne(id);
 
-      if (!user) {
-        this.logger.warn(`User not found with ID: ${id}`);
-        throw new NotFoundException('User not found');
+      if (!client) {
+        this.logger.warn(`Client not found with ID: ${id}`);
+        throw new NotFoundException('Client not found');
       }
-      this.logger.log(`User found with ID: ${id}`);
-      return user;
+
+      this.logger.log(`Client found with ID: ${id}`);
+      return client;
     } catch (error) {
-      this.logger.error(`Error finding user with ID: ${id} - ${error.message}`);
+      this.logger.error(`Error finding client: ${error.message}`);
       throw error;
     }
   }
 
-  async findAll(queryParams?: FindAllQueryParams<Client>) {
+  async findAll(queryParams?: FindAllQueryParams<Client>): Promise<Client[]> {
     try {
-      this.logger.log(`Finding all users with query params: ${JSON.stringify(queryParams)}`);
-      const users = await new APIFeatures(this.clientRepo, queryParams).getMany();
-      this.logger.log(`Found users`);
-      return users;
+      this.logger.log(`Fetching all clients`);
+      const result = await new APIFeatures(this.clientRepo, queryParams).getMany();
+      this.logger.log(`Found ${result.data.length} clients`);
+      return result.data;
     } catch (error) {
-      this.logger.error(`Error finding all users: ${error.message}`);
+      this.logger.error(`Error fetching clients: ${error.message}`);
       throw error;
     }
   }
 
+  async update(id: string, updateDto: UpdateClientDto): Promise<Client> {
+    const client = await this.findOne(id);
+    Object.assign(client, updateDto);
+    try {
+      const updated = await this.clientRepo.save(client);
+      this.logger.log(`Updated client with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating client: ${error.message}`);
+      throw error;
+    }
+  }
 
-  // update(id: number, updateClientDto: UpdateClientDto) {
-  //   return `This action updates a #${id} client`;
-  // }
-
-  // remove(id: number) {
-  //   return `This action removes a #${id} client`;
-  // }
+  async remove(id: string): Promise<void> {
+    const client = await this.findOne(id);
+    try {
+      await this.clientRepo.remove(client);
+      this.logger.log(`Removed client with ID: ${id}`);
+    } catch (error) {
+      this.logger.error(`Error removing client: ${error.message}`);
+      throw error;
+    }
+  }
 
   getRepository(): Repository<Client> {
     return this.clientRepo;
