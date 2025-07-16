@@ -2,11 +2,11 @@
 
 
 import { AppModule } from './app.module';
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { SwaggerDocs } from './docs/SwaggerDocs';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import * as glob from 'glob';
@@ -23,6 +23,10 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform:true
   }))
+
+  const reflector = app.get(Reflector); // Reflector is needed for guards that use metadata
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+
 
 
   if (process.env.NODE_ENV !== "prod") {
