@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 
 @Controller('admin')
 export class AdminController {
@@ -13,21 +14,33 @@ export class AdminController {
   // }
 
   @Get()
+  @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   findAll() {
     return this.adminService.findAll();
   }
 
   @Get(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   findOne(@Param('id') id: string) {
     return this.adminService.findOne(id);
   }
 
   @Patch(':id')
+    @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   update(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
     return this.adminService.update(id, updateAdminDto);
   }
 
   @Delete(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   remove(@Param('id') id: string) {
     return this.adminService.remove(id);
   }
