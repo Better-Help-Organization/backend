@@ -158,7 +158,6 @@ export class AuthService {
 
     user.OTP = OTP;
     user.OTPExpires = OTPExpires;
-
     await repo.save(user);
 
     const { email, firstName, lastName } = user;
@@ -167,42 +166,6 @@ export class AuthService {
     this.logger.debug(`Sending OTP to ${user.email} (role: ${type})`);
     this.emailService.sendOtpEmail({ email, name, otp: OTP });
   }
-
-  // async verifyByPhoneNumber(phoneNumber: string, otp: string, type: UserTypes) {  
-  //   try {
-  //     const repo = await this.getRepo(type);
-
-  //     const inclusiveOf: (keyof typeof user)[] = ['refreshToken', "OTP", "OTPExpires","isPhoneNumberAuthenticated"];
-  //     const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
-  
-  //     const user = await repo.findOne({
-  //       where: { phoneNumber },
-  //       select: selectColumns
-  //     });
-
-  //     if (!user) throw new NotFoundException(`${type}\` not found`);
-
-  //     if (user.isPhoneNumberAuthenticated){
-  //         user.OTP = null
-  //         return "This Phone Number is already authenticated"
-  //     }
-
-  //     this._verifyOTPExpiry(user.OTPExpires);
-
-  //     if (user.OTP !== otp) throw new UnauthorizedException('Invalid OTP.');
-
-  //     user.OTP = null; user.isPhoneNumberAuthenticated = true; 
-      
-  //     await repo.save(user);
-
-  //     return user;
-  
-  //   } catch (err) {
-  //     this.logger.error(err);
-  //     throw new UnauthorizedException('Credentials are not valid.');
-  //   }
-
-  // }
 
   async verifyByEmail(email: string, otp: string, type: UserTypes) {  
     try {

@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsOptional, IsString } from "class-validator";
 import { BaseSignupDto } from "./base-signup.dto";
+import { IsValidPhoneNumber } from "src/common/decorators/IsValidPhoneNumber";
 
 export class ClientSignupDto extends BaseSignupDto {
   @ApiProperty({ description: 'Username', example: 'abebe123' })
@@ -8,8 +9,7 @@ export class ClientSignupDto extends BaseSignupDto {
   @IsOptional()
   username?: string;
 
-  @ApiProperty({ description: 'Emergency Contact', example: '+251911123456' })
-  @IsString()
-  @IsOptional()
+  @ApiProperty({ description: 'Emergency Contact', example: '911123456' })
+  @IsValidPhoneNumber()
   emergencyContact?: string;
 }
