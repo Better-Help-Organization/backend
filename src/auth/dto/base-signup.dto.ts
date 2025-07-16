@@ -25,14 +25,14 @@ export class BaseSignupDto {
   password: string;
 
   @ApiProperty({ enum: Gender, example: Gender.MALE })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEnum(Gender)
   gender?: Gender;
 
-  @ApiProperty({ enum: LANG, example: LANG.EN })
-  @IsOptional()
-  @IsEnum(LANG)
-  lang?: LANG;
+  // @ApiProperty({ enum: LANG, example: LANG.EN })
+  // @IsOptional()
+  // @IsEnum(LANG)
+  // lang?: LANG;
 
   @ApiProperty({ description: 'Date of Birth', example: '2000-01-01' })
   @IsDateString()
