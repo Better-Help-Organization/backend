@@ -11,12 +11,26 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import * as glob from 'glob';
 import * as path from 'path';
+
+import cookieParser from 'cookie-parser';
+
 import { DynamicGuard } from './common/guard/dynamic.guard';
+import { LoggerService } from './logger/logger.service';
+
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+import { BadRequestExceptionFilter } from './common/exception-filters/bad-request.exceptipon';
+import { HttpExceptionFilter } from './common/exception-filters/http.exception-filter';
+import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-exception.filter';
+
+import 'reflect-metadata';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix(`/api/v1`);
+
+  app.use(cookieParser())
 
   // Pipes
   app.useGlobalPipes(new ValidationPipe({
@@ -29,9 +43,17 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
 
+  // Interceptors
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
   // Use global guards  
   app.useGlobalGuards(new DynamicGuard(reflector));
 
+  const logger = new LoggerService()
+  // Filters
+  app.useGlobalFilters(new BadRequestExceptionFilter(logger));
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
+  app.useGlobalFilters(new TypeOrmExceptionFilter(logger));
 
   if (process.env.NODE_ENV !== "prod") {
 
