@@ -2,7 +2,7 @@
 
 
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { SwaggerDocs } from './docs/SwaggerDocs';
@@ -12,7 +12,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as glob from 'glob';
 import * as path from 'path';
 
-import cors from 'cors';
 import {static as expose} from 'express'
 import cookieParser from 'cookie-parser';
 
@@ -26,11 +25,19 @@ import { HttpExceptionFilter } from './common/exception-filters/http.exception-f
 import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-exception.filter';
 
 import 'reflect-metadata';
+import { VERSION } from './common/constants';
+// import cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.setGlobalPrefix(`/api/v1`);
+  app.setGlobalPrefix(`/api`);
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: VERSION.ONE
+  });
+
 
   app.use(cookieParser())
 
@@ -95,11 +102,22 @@ async function bootstrap() {
   }
   
   // serve images as static assets
-  app.use('/static', cors(),expose('uploads'))
-  app.use('/public', cors(),expose('public'))
+  app.use(
+    '/static', 
+    // cors(),
+    expose('uploads')
+  )
+
+  app.use(
+    '/public', 
+    // cors(),
+    expose('public')
+  )
+
 
   app.enableCors();
 
   await app.listen(process.env.PORT ?? 3000);
 }
+
 bootstrap();
