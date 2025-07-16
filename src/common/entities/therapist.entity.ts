@@ -4,13 +4,19 @@ import { UserTypes } from '../constants';
 
 @Entity()
 export class Therapist extends User {
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   bio: string;
 
   @Column({ default: false })
   verified: boolean;
 
-  @Column({ type: 'float', default: 0.0 })
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 1,
+    default: null,
+    nullable: true,
+  })
   rating: number;
 
   @Column({ type: 'enum', enum: UserTypes, default: UserTypes.THERAPIST })

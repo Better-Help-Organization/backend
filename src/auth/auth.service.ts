@@ -151,60 +151,63 @@ export class AuthService {
   //   return this.clientRepo;
   // }
 
-  async emailOtp(type:UserTypes, admin: Admin){
-    
-    const repo = await this.getRepo(type)
-    
+  async emailOtp<T extends User>(type: UserTypes, user: T) {
+    this.logger.debug(`[emailOtp] Sending OTP to ${user.email} (type: ${type})`);
+    const repo = await this.getRepo(type);
     const [OTP, OTPExpires] = this._generateOTP();
-    
-    admin.OTP = OTP;
-    admin.OTPExpires = OTPExpires;
 
-    await repo.save(admin);
-    const { email, firstName } = admin
-    this.emailService.sendOtpEmail({ email, name: firstName, otp:OTP });
+    user.OTP = OTP;
+    user.OTPExpires = OTPExpires;
+
+    await repo.save(user);
+
+    const { email, firstName, lastName } = user;
+    const name = firstName + " " + lastName;
+
+    this.logger.debug(`Sending OTP to ${user.email} (role: ${type})`);
+    this.emailService.sendOtpEmail({ email, name, otp: OTP });
   }
 
-  async verifyByPhoneNumber(phoneNumber: string, otp: string, type: UserTypes) {  
-    try {
-      const repo = await this.getRepo(type);
+  // async verifyByPhoneNumber(phoneNumber: string, otp: string, type: UserTypes) {  
+  //   try {
+  //     const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof typeof user)[] = ['refreshToken', "OTP", "OTPExpires","isPhoneNumberAuthenticated"];
-      const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
+  //     const inclusiveOf: (keyof typeof user)[] = ['refreshToken', "OTP", "OTPExpires","isPhoneNumberAuthenticated"];
+  //     const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
   
-      const user = await repo.findOne({
-        where: { phoneNumber },
-        select: selectColumns
-      });
+  //     const user = await repo.findOne({
+  //       where: { phoneNumber },
+  //       select: selectColumns
+  //     });
 
-      if (!user) throw new NotFoundException(`${type}\` not found`);
+  //     if (!user) throw new NotFoundException(`${type}\` not found`);
 
-      if (user.isPhoneNumberAuthenticated){
-          user.OTP = null
-          return "This Phone Number is already authenticated"
-      }
+  //     if (user.isPhoneNumberAuthenticated){
+  //         user.OTP = null
+  //         return "This Phone Number is already authenticated"
+  //     }
 
-      this._verifyOTPExpiry(user.OTPExpires);
+  //     this._verifyOTPExpiry(user.OTPExpires);
 
-      if (user.OTP !== otp) throw new UnauthorizedException('Invalid OTP.');
+  //     if (user.OTP !== otp) throw new UnauthorizedException('Invalid OTP.');
 
-      user.OTP = null; user.isPhoneNumberAuthenticated = true; 
+  //     user.OTP = null; user.isPhoneNumberAuthenticated = true; 
       
-      await repo.save(user);
+  //     await repo.save(user);
 
-      return user;
+  //     return user;
   
-    } catch (err) {
-      this.logger.error(err);
-      throw new UnauthorizedException('Credentials are not valid.');
-    }
+  //   } catch (err) {
+  //     this.logger.error(err);
+  //     throw new UnauthorizedException('Credentials are not valid.');
+  //   }
 
-  }
+  // }
 
   async verifyByEmail(email: string, otp: string, type: UserTypes) {  
     try {
       const repo = await this.getRepo(type);
-      const inclusiveOf: (keyof typeof user)[] = ['refreshToken', "isEmailAuthenticated","password"];
+      const inclusiveOf: (keyof User)[] = ['refreshToken', 'isEmailAuthenticated', 'password'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
   
       const user = await repo.findOne({
@@ -250,6 +253,7 @@ export class AuthService {
     const client = await this.clientService.create(clientSignupDto);
     
     if (client !== null) {
+      await this.emailOtp(UserTypes.CLIENT, client);
       return "An otp has been sent to your email, use it to verify your email.";
     }
   }
@@ -266,22 +270,25 @@ export class AuthService {
     const therapist = await this.therapistService.create(therapistSignupDto);
     
     if (therapist !== null) {
+      await this.emailOtp(UserTypes.THERAPIST, therapist);
       return "An otp has been sent to your email, use it to verify your email.";
     }
   }
 
   async signupAdmin(adminSignupDto:AdminSignupDto){
-  
-  const [OTP, OTPExpires] = this._generateOTP();
-  
-  const hashedPassword = await hash(adminSignupDto.password, 10);
+    const [OTP, OTPExpires] = this._generateOTP();
+    
+    const hashedPassword = await hash(adminSignupDto.password, 10);
 
-  adminSignupDto["OTP"] = OTP;
-  adminSignupDto["OTPExpires"] = OTPExpires;
-  adminSignupDto["password"] = hashedPassword;
+    adminSignupDto["OTP"] = OTP;
+    adminSignupDto["OTPExpires"] = OTPExpires;
+    adminSignupDto["password"] = hashedPassword;
 
-  const admin = await this.adminService.create(adminSignupDto);
-  if(admin !== null) return "An otp has been sent to your email, use it to verify your email" 
+    const admin = await this.adminService.create(adminSignupDto);
+    if(admin !== null) {
+      await this.emailOtp(UserTypes.ADMIN, admin);
+      return "An otp has been sent to your email, use it to verify your email."
+    }
   }
 
   async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes) {
@@ -296,9 +303,13 @@ export class AuthService {
       const user = await repo.findOne({ where: { email }, select: selectColumns });
       if (!user) throw new NotFoundException(`${type} not found`);
 
+      if (type !== UserTypes.ADMIN && !user.isEmailAuthenticated) {
+        throw new UnauthorizedException('Email is not verified.');
+      }
+
       const authenticated = await compare(password, user['password']);
       if (!authenticated) {
-        throw new UnauthorizedException();
+        throw new UnauthorizedException('Invalid credentials');
       }
 
       const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
@@ -345,38 +356,42 @@ export class AuthService {
   }  
 
   async resetPassword(resetDto: ResetPwdDto, type: UserTypes) {
+    try {
+      const { email, otp, password, passwordConfirm } = resetDto;
 
-  try {
+      if (password !== passwordConfirm) {
+        throw new BadRequestException('Password does not match confirm password');
+      }
 
-    const { email, otp, password, passwordConfirm } = resetDto
+      const repo = await this.getRepo(type);
+      const user = await repo.findOne({ where: { email } });
 
-    if (password !== passwordConfirm) throw new BadRequestException('Password doesnot match with the confirm password');
-    
-    const repo = await this.getRepo(type);
+      if (!user) throw new NotFoundException('User not found');
 
-    const user = await repo.findOne({ where: { email } });
+      this._verifyOTPExpiry(user.OTPExpires);
 
-    if (!user) throw new NotFoundException('User not found');
+      if (user.OTP !== otp) {
+        throw new UnauthorizedException("OTP doesn't match. Try resending.");
+      }
 
-    this._verifyOTPExpiry(user.OTPExpires);
+      const isSameAsCurrent = await compare(password, user.password);
+      if (isSameAsCurrent) {
+        throw new BadRequestException('New password must be different from current password.');
+      }
 
-    if (user.OTP !== otp) {
-      throw new UnauthorizedException(
-        "OTP doesn't match the one registered for the user. Try resending an OTP"
-      );
-    }
+      const hashedPassword = await hash(password, 10);
 
-    const hashedPassword = await hash(password, 10);
-    user.password = hashedPassword;
-    user.OTP = null;
-    user.OTPExpires = null;
+      user.password = hashedPassword;
+      user.OTP = null;
+      user.OTPExpires = null;
 
-    await repo.save(user);
-    return user;
-  }
-    catch (error) {
-    this.logger.error(error);
-    throw error;
+      await repo.save(user);
+
+      return { message: 'Password successfully reset.' };
+
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
     }
   }
 

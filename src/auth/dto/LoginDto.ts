@@ -7,7 +7,7 @@ export class LoginDto {
 
   @ApiProperty({
     description: 'email',
-    example: 'user@mh.com',
+    example: 'user@gmail.com',
   })
   @IsEmail()
   @IsNotEmpty()
@@ -15,7 +15,7 @@ export class LoginDto {
 
   @ApiProperty({
     description: 'password',
-    example: 'MH12345678',
+    example: 'SecurePassword123',
   })      
   @IsNotEmpty()
   @MinLength(8, { message: 'Password must be at least 8 characters long' })

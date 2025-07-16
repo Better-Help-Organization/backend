@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsNotEmpty, IsString, IsDateString } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsString, IsDateString, IsOptional } from "class-validator";
 import { Gender, LANG } from "src/common/constants";
 import { ValidPassword } from "src/common/decorators/valid-password";
 
@@ -25,17 +25,16 @@ export class BaseSignupDto {
   password: string;
 
   @ApiProperty({ enum: Gender, example: Gender.MALE })
+  @IsOptional()
   @IsEnum(Gender)
-  @IsNotEmpty()
-  gender: Gender;
+  gender?: Gender;
 
   @ApiProperty({ enum: LANG, example: LANG.EN })
+  @IsOptional()
   @IsEnum(LANG)
-  @IsNotEmpty()
-  lang: LANG;
+  lang?: LANG;
 
   @ApiProperty({ description: 'Date of Birth', example: '2000-01-01' })
   @IsDateString()
-  @IsNotEmpty()
   dob: Date;
 }
