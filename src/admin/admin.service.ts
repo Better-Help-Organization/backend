@@ -1,21 +1,30 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Admin } from 'src/common/entities/admin.entity';
+import { LoggerService } from 'src/logger/logger.service';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class AdminService {
+  constructor(
+    private readonly logger: LoggerService,
+    @InjectRepository(Admin) private readonly adminRepo: Repository<Admin>,
+  ) {}
 
-  private readonly logger: LoggerService
-  @InjectRepository(Admin) private adminRepo: Repository<Admin>
-  
-  create(createAdminDto: CreateAdminDto) {
-    return 'This action adds a new admin';
+  async create(data: Partial<Admin>): Promise<Admin> {
+    try {
+      this.logger.log(`Creating admin with data: ${JSON.stringify(data)}`);
+      const user = this.adminRepo.create(data);
+      const savedAdmin = await this.adminRepo.save(user);
+      this.logger.log(`Admin created with ID: ${savedAdmin.id}`);
+      return savedAdmin;
+    } catch (error) {
+      this.logger.error(`Error creating admin: ${error.message}`);
+      throw error;
+    }
   }
 
   async findOne(id: string, queryParams?: FindOneQueryParams<Admin>): Promise<Admin> {
@@ -27,6 +36,7 @@ export class AdminService {
         this.logger.warn(`User not found with ID: ${id}`);
         throw new NotFoundException('Admin not found');
       }
+
       this.logger.log(`User found with ID: ${id}`);
       return user;
     } catch (error) {
@@ -46,15 +56,28 @@ export class AdminService {
       throw error;
     }
   }
-  update(id: number, updateAdminDto: UpdateAdminDto) {
+
+  update(id: string, updateAdminDto: UpdateAdminDto) {
+    // TODO: implement update logic with validation
     return `This action updates a #${id} admin`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} admin`;
+  async remove(id: string) {
+    try {
+      this.logger.log(`Removing admin with ID: ${id}`);
+      const result = await this.adminRepo.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`Admin with ID ${id} not found`);
+      }
+      this.logger.log(`Admin with ID ${id} removed`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error removing admin: ${error.message}`);
+      throw error;
+    }
   }
 
-    getRepository(): Repository<Admin> {
-      return this.adminRepo;
-    }
+  getRepository(): Repository<Admin> {
+    return this.adminRepo;
+  }
 }

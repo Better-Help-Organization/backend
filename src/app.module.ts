@@ -9,6 +9,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ClientModule } from './client/client.module';
 import { EmailModule } from './email/email.module';
+import { TherapistModule } from './therapist/therapist.module';
 
 
 @Module({
@@ -22,7 +23,7 @@ import { EmailModule } from './email/email.module';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
-    AuthModule, ClientModule, EmailModule,
+    AuthModule, ClientModule, TherapistModule, EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {

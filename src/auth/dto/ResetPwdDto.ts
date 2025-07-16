@@ -31,7 +31,7 @@ export class ResetPwdDto {
   
     @ApiProperty({
       description: 'The OTP sent to the user\'s email.',
-      example: '426189',
+      example: '192092',
     })
     @IsNotEmpty()
     @IsString()

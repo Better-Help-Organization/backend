@@ -32,6 +32,10 @@ export interface TokenPayload {
 export enum ValidFolders {
 }
 
+export enum VERSION {
+    ONE = '1'
+} 
+
 export const FILE_UPLOAD_KEY = 'image';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;

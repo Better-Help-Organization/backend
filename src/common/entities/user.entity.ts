@@ -1,11 +1,11 @@
-import { Column, Entity } from 'typeorm';
+import { Column } from 'typeorm';
 import { CommonEntity } from './common.entity';
 import 'reflect-metadata';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { BaseStatus, Gender, LANG } from '../constants';
 
-export class User extends CommonEntity {
+export abstract class User extends CommonEntity {
 
     @ApiProperty()
     @Column()
@@ -16,12 +16,12 @@ export class User extends CommonEntity {
     lastName: string;
 
     @Exclude()
-    @ApiProperty({ nullable: true })
+    @ApiHideProperty()
     @Column({nullable:true})
     OTP: string
 
     @Exclude()
-    @ApiProperty({ nullable: true })
+    @ApiHideProperty()
     @Column({ type: 'timestamp', nullable: true })
     OTPExpires: Date
 
@@ -29,24 +29,24 @@ export class User extends CommonEntity {
     @Column({ unique: true })
     email: string;
 
-        @ApiProperty({ default: false })
+    @ApiProperty({ default: false })
     @Column({default: false })
     isEmailAuthenticated: boolean;
 
     @Exclude()
-    @ApiProperty({ nullable: true })
+    @ApiHideProperty()
     @Column({
         nullable: true
     })
     firebaseToken: string;
 
     @Exclude()
-    @ApiProperty({ nullable: true })
+    @ApiHideProperty()
     @Column({ nullable: true })
     refreshToken: string;
 
     @Exclude()
-    @ApiProperty()
+    @ApiHideProperty()
     @Column()
     password: string;
 
@@ -67,14 +67,15 @@ export class User extends CommonEntity {
     })
     gender: Gender;
 
-    @ApiProperty({
-    enum: LANG,
-    })
-    @Column({
-        type: "enum",
-        enum: LANG,
-    })
-    lang: LANG;
+    // @ApiProperty({
+    //     type: "enum",
+    //     enum: Gender,
+    // })
+    // @Column({
+    //     type: "enum",
+    //     enum: LANG,
+    // })
+    // lang: LANG;
 
     @ApiProperty({ nullable: false })
     @Column({ type: 'timestamp', nullable: false })

@@ -2,20 +2,44 @@
 
 
 import { AppModule } from './app.module';
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { SwaggerDocs } from './docs/SwaggerDocs';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import * as glob from 'glob';
 import * as path from 'path';
 
+import {static as expose} from 'express'
+import cookieParser from 'cookie-parser';
+
+import { DynamicGuard } from './common/guard/dynamic.guard';
+import { LoggerService } from './logger/logger.service';
+
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+import { BadRequestExceptionFilter } from './common/exception-filters/bad-request.exceptipon';
+import { HttpExceptionFilter } from './common/exception-filters/http.exception-filter';
+import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-exception.filter';
+
+import 'reflect-metadata';
+import { VERSION } from './common/constants';
+// import cors from 'cors';
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.setGlobalPrefix(`/api/v1`);
+  app.setGlobalPrefix(`/api`);
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: VERSION.ONE
+  });
+
+
+  app.use(cookieParser())
 
   // Pipes
   app.useGlobalPipes(new ValidationPipe({
@@ -24,6 +48,21 @@ async function bootstrap() {
     transform:true
   }))
 
+  const reflector = app.get(Reflector); // Reflector is needed for guards that use metadata
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+
+
+  // Interceptors
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  // Use global guards  
+  app.useGlobalGuards(new DynamicGuard(reflector));
+
+  const logger = new LoggerService()
+  // Filters
+  app.useGlobalFilters(new BadRequestExceptionFilter(logger));
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
+  app.useGlobalFilters(new TypeOrmExceptionFilter(logger));
 
   if (process.env.NODE_ENV !== "prod") {
 
@@ -62,7 +101,23 @@ async function bootstrap() {
       });
   }
   
+  // serve images as static assets
+  app.use(
+    '/static', 
+    // cors(),
+    expose('uploads')
+  )
+
+  app.use(
+    '/public', 
+    // cors(),
+    expose('public')
+  )
+
+
+  app.enableCors();
 
   await app.listen(process.env.PORT ?? 3000);
 }
+
 bootstrap();
