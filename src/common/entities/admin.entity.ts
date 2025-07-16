@@ -5,6 +5,6 @@ import { UserTypes } from '../constants';
 
 @Entity()
 export class Admin extends User {
-  @Column({ type: 'enum', enum: UserTypes, default: UserTypes.ADMIN })
-  type: UserTypes;
+  // @Column({ type: 'enum', enum: UserTypes, default: UserTypes.ADMIN })
+  // type: UserTypes;
 }

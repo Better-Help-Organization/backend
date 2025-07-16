@@ -13,6 +13,7 @@ export class Client extends User {
   @Column({ default: false })
   isVisible: boolean;
 
-  @Column({ type: 'enum', enum: UserTypes, default: UserTypes.CLIENT })
-  type: UserTypes;
+  // @Column({ default: false })
+  // therapyTypes: boolean;
+
 }
