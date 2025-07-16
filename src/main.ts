@@ -12,6 +12,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as glob from 'glob';
 import * as path from 'path';
 
+import cors from 'cors';
+import {static as expose} from 'express'
 import cookieParser from 'cookie-parser';
 
 import { DynamicGuard } from './common/guard/dynamic.guard';
@@ -92,6 +94,11 @@ async function bootstrap() {
       });
   }
   
+  // serve images as static assets
+  app.use('/static', cors(),expose('uploads'))
+  app.use('/public', cors(),expose('public'))
+
+  app.enableCors();
 
   await app.listen(process.env.PORT ?? 3000);
 }
