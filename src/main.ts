@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import * as glob from 'glob';
 import * as path from 'path';
+import { DynamicGuard } from './common/guard/dynamic.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -27,6 +28,9 @@ async function bootstrap() {
   const reflector = app.get(Reflector); // Reflector is needed for guards that use metadata
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
+
+  // Use global guards  
+  app.useGlobalGuards(new DynamicGuard(reflector));
 
 
   if (process.env.NODE_ENV !== "prod") {
