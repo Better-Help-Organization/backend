@@ -13,6 +13,6 @@ export class Therapist extends User {
   @Column({ type: 'float', default: 0.0 })
   rating: number;
 
-  @Column({ type: 'enum', enum: UserTypes, default: UserTypes.THERAPIST })
-  type: UserTypes;
+  // @Column({ type: 'enum', enum: UserTypes, default: UserTypes.THERAPIST })
+  // type: UserTypes;
 }
