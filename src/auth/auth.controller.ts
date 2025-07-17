@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, HttpCode,
-  UseGuards, Res, NotFoundException
+  UseGuards, Res, NotFoundException,
+  Req
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -28,6 +29,9 @@ import { Client } from 'src/common/entities/client.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import passport from 'passport';
 
 class FirebaseTokenDto {
   @ApiProperty()
@@ -39,7 +43,8 @@ class FirebaseTokenDto {
 export class AuthController {
   constructor(
     private readonly logger: LoggerService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
   ) {}
 
   @HttpCode(200)
@@ -181,6 +186,67 @@ export class AuthController {
     return this.authService.refresh(user, firebaseToken);
   }
 
+  @Get('google/client')
+  async googleClientAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'client',
+    })(req, res);
+  }
+
+  @Get('google/therapist')
+  async googleTherapistAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'therapist',
+    })(req, res);
+  }
+
+  @Get('google/admin')
+  async googleAdminAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'admin',
+    })(req, res);
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
+    const role = req.query.state;
+    const result = await this.oAuthLogin(user, role);
+    res.json(result);
+    // const redirectUrl = `${this.configService.get('FRONTEND_REDIRECT_URL')}?token=${result.accessToken}`;
+    // res.redirect(redirectUrl);
+  }
+
+    @Get('github/client')
+  async githubClientAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'client',
+    })(req, res);
+  }
+
+  @Get('github/therapist')
+  async githubTherapistAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'therapist',
+    })(req, res);
+  }
+
+  @Get('github/admin')
+  async githubAdminAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'admin',
+    })(req, res);
+  }
+
+  @Get('github/callback')
+  @UseGuards(AuthGuard('github'))
+  async githubAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
+    const role = req.query.state;
+    const result = await this.oAuthLogin(user, role);
+    res.json(result);
+    // res.redirect(`${this.configService.get('FRONTEND_REDIRECT_URL')}?token=${result.accessToken}`);
+  }
+
   // Helper Methods
   private async sendOtpForUserType(type: UserTypes, email: string, notFoundMessage: string) {
     try {
@@ -225,6 +291,24 @@ export class AuthController {
   private async forgotPassword(type: UserTypes, email: string) {
     try {
       return this.authService.forgotPassword(email, type);
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
+  private async oAuthLogin(user, type: UserTypes) {
+    try {
+      switch (type) {
+        case UserTypes.CLIENT:
+          return this.authService.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.CLIENT)
+        case UserTypes.THERAPIST:
+          return await this.authService.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.THERAPIST);
+        case UserTypes.ADMIN:
+          return await this.authService.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.ADMIN);
+        default:
+          throw new Error("Invalid user type for oAuth login.");
+      }
     } catch (error) {
       this.logger.error(error);
       throw error;

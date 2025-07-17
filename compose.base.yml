@@ -6,7 +6,7 @@ services:
     image: ebp-${NODE_ENV}
     volumes:
       - .:/app
-      - ${NODE_ENV}_node_modules:/app/node_modules
+      # - ${NODE_ENV}_node_modules:/app/node_modules
     depends_on:
       - db
     environment:

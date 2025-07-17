@@ -4,7 +4,6 @@ import { AuthController } from './auth.controller';
 
 import { JwtModule } from '@nestjs/jwt';
 
-
 import * as jwtRereshStrategies from 'src/common/strategy/jwt-refresh.strategy';
 import * as jwtStrategies from 'src/common/strategy/jwt.strategy';
 import {AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy} from 'src/common/strategy/jwt.strategy';
@@ -18,7 +17,8 @@ import { Client } from 'src/common/entities/client.entity';
 import { TherapistModule } from 'src/therapist/therapist.module';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { Admin } from 'src/common/entities/admin.entity';
-
+import { GithubStrategy } from 'src/common/strategy/github.strategy';
+import { GoogleStrategy } from 'src/common/strategy/google.strategy';
 
 @Module({
   imports: [
@@ -27,7 +27,6 @@ import { Admin } from 'src/common/entities/admin.entity';
     ,ClientModule
     ,TherapistModule
     ,AdminModule
-    ,AuthModule
     ,EmailModule
     ,TypeOrmModule.forFeature([Admin, Client, Therapist])
   ],
@@ -37,6 +36,7 @@ import { Admin } from 'src/common/entities/admin.entity';
     EmailStrategy,
     EmailPwdStrategy,
     AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy,
+    GoogleStrategy, GithubStrategy,
     ...Object.values(jwtStrategies),
     ...Object.values(jwtRereshStrategies), 
   ],

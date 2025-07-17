@@ -8,11 +8,11 @@ import { BaseStatus, Gender, LANG } from '../constants';
 export abstract class User extends CommonEntity {
 
     @ApiProperty()
-    @Column()
+    @Column({ nullable: true })
     firstName: string;
 
     @ApiProperty()
-    @Column()
+    @Column({ nullable: true })
     lastName: string;
 
     @Exclude()
@@ -47,7 +47,7 @@ export abstract class User extends CommonEntity {
 
     @Exclude()
     @ApiHideProperty()
-    @Column()
+    @Column({ nullable: true })
     password: string;
 
     @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
@@ -77,8 +77,8 @@ export abstract class User extends CommonEntity {
     // })
     // lang: LANG;
 
-    @ApiProperty({ nullable: false })
-    @Column({ type: 'timestamp', nullable: false })
+    @ApiProperty({ nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
     dob: Date;
 
 }
