@@ -192,6 +192,67 @@ export class AuthController {
     return this.authService.refresh(user, firebaseToken);
   }
 
+  @Get('google/client')
+  async googleClientAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'client',
+    })(req, res);
+  }
+
+  @Get('google/therapist')
+  async googleTherapistAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'therapist',
+    })(req, res);
+  }
+
+  @Get('google/admin')
+  async googleAdminAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('google', {
+      state: 'admin',
+    })(req, res);
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
+    const role = req.query.state;
+    const result = await this.oAuthLogin(user, role);
+    res.json(result);
+    // const redirectUrl = `${this.configService.get('FRONTEND_REDIRECT_URL')}?token=${result.accessToken}`;
+    // res.redirect(redirectUrl);
+  }
+
+    @Get('github/client')
+  async githubClientAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'client',
+    })(req, res);
+  }
+
+  @Get('github/therapist')
+  async githubTherapistAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'therapist',
+    })(req, res);
+  }
+
+  @Get('github/admin')
+  async githubAdminAuth(@Req() req: Request, @Res() res: Response) {
+    return passport.authenticate('github', {
+      state: 'admin',
+    })(req, res);
+  }
+
+  @Get('github/callback')
+  @UseGuards(AuthGuard('github'))
+  async githubAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
+    const role = req.query.state;
+    const result = await this.oAuthLogin(user, role);
+    res.json(result);
+    // res.redirect(`${this.configService.get('FRONTEND_REDIRECT_URL')}?token=${result.accessToken}`);
+  }
+
   @Post(`google/${UserTypes.CLIENT}`)
   async googleClientAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
     const clientType = req.query.client
