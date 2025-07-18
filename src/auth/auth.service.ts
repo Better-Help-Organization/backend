@@ -266,6 +266,12 @@ export class AuthService {
       const user = await repo.findOne({ where: { email }, select: selectColumns });
       if (!user) throw new NotFoundException(`${type} not found`);
 
+      if (user.isLinked && !user.password) {
+        throw new UnauthorizedException(
+          'You previously signed in using Google. Please use Google Sign-In again, or use "Forgot Password" to set a password and sign in with email next time.'
+        );
+      }
+
       if (type !== UserTypes.ADMIN && !user.isEmailAuthenticated) {
         throw new UnauthorizedException('Email is not verified.');
       }
@@ -353,9 +359,11 @@ export class AuthService {
         throw new UnauthorizedException("OTP doesn't match. Try resending.");
       }
 
-      const isSameAsCurrent = await compare(password, user.password);
-      if (isSameAsCurrent) {
-        throw new BadRequestException('New password must be different from current password.');
+      if (user.password) {
+        const isSameAsCurrent = await compare(password, user.password);
+        if (isSameAsCurrent) {
+          throw new BadRequestException('New password must be different from current password.');
+        }
       }
 
       const hashedPassword = await hash(password, 10);
@@ -466,7 +474,7 @@ export class AuthService {
   //   }
   // }
 
-  async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes) {
+  async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
     const repo = await this.getRepo(type);
     let user = await repo.findOne({ where: { email } });
     if (!user) {
@@ -481,13 +489,14 @@ export class AuthService {
         OTPExpires,
         isEmailAuthenticated: true,
         status: BaseStatus.ACTIVE,
-        firebaseToken: 'default-firebase-token',
+        firebaseToken,
+        isLinked: true,
       } as any);
 
-      return this.loginOAuthUser(newUser, 'default-firebase-token', type);
+      return this.loginOAuthUser(newUser, firebaseToken, type);
     }
 
     // If user exists, just log them in
-    return this.loginOAuthUser(user, user.firebaseToken || 'default-firebase-token', type);
+    return this.loginOAuthUser(user, user.firebaseToken || firebaseToken, type);
   }
 }

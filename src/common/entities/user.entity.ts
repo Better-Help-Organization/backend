@@ -67,18 +67,11 @@ export abstract class User extends CommonEntity {
     })
     gender: Gender;
 
-    // @ApiProperty({
-    //     type: "enum",
-    //     enum: Gender,
-    // })
-    // @Column({
-    //     type: "enum",
-    //     enum: LANG,
-    // })
-    // lang: LANG;
-
     @ApiProperty({ nullable: true })
     @Column({ type: 'timestamp', nullable: true })
     dob: Date;
 
+    @ApiProperty({ default: false })
+    @Column({ default: false })
+    isLinked: boolean;
 }

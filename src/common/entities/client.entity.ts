@@ -12,8 +12,4 @@ export class Client extends User {
 
   @Column({ default: false })
   isVisible: boolean;
-
-  // @Column({ default: false })
-  // therapyTypes: boolean;
-
 }

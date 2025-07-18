@@ -9,16 +9,4 @@ export class Therapist extends User {
 
   @Column({ default: false })
   verified: boolean;
-
-  @Column({
-    type: 'decimal',
-    precision: 3,
-    scale: 1,
-    default: null,
-    nullable: true,
-  })
-  rating: number;
-
-  // @Column({ type: 'enum', enum: UserTypes, default: UserTypes.THERAPIST })
-  // type: UserTypes;
 }

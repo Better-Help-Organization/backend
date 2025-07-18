@@ -1,0 +1,12 @@
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsString } from "class-validator";
+
+export class oAuthDto {
+  @ApiProperty({
+    description: 'firebase generated token',
+    example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMjEwMDJmYjM4ZTE1YjJjNmM2NjJjNzFjYjM4NjZjNzEwNjM4ZTgifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdGhlcmlmaS1mMjM4ZiIsImF1ZCI6InRoZXJpZi1mMjM4ZiIsInV1aWQiOiI0NjU0NjU0NjU0NjUiLCJ1c2VybmFtZSI6InRlc3R1c2VyIiwic3ViIjoiNDY1NDY1NDY1NDY1IiwiYXV0aF90aW1lIjoxNjAwNjUzMjQzLCJ1c2VyX2lkIjoiNDY1NDY1NDY1NDY1IiwiZW1haWwiOiJ0ZXN0dXNlcjE5OUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlhdCI6MTYwMDY1MzI0Mywib3JpZ0lhdCI6MTYwMDY1MzI0MywiZXhwIjoxNjAwNjU2ODQzLCJzaWduX2luX3Byb3ZpZGVyIjoiYXV0aGxlZiIsInJlYWxtIjoiL3JlYWxtcy8xMjMifQ.YkFjZTEyMjMtNjFjZi00YzRmLWFmMjMtMjFjZTEyMjNjZjE2N2YzOWMxMjM0NTY3ODkw'
+  })
+  @IsString()
+  @IsNotEmpty()
+  firebaseToken: string
+}

@@ -17,7 +17,6 @@ import { Client } from 'src/common/entities/client.entity';
 import { TherapistModule } from 'src/therapist/therapist.module';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { Admin } from 'src/common/entities/admin.entity';
-import { GithubStrategy } from 'src/common/strategy/github.strategy';
 import { GoogleStrategy } from 'src/common/strategy/google.strategy';
 
 @Module({
@@ -36,7 +35,7 @@ import { GoogleStrategy } from 'src/common/strategy/google.strategy';
     EmailStrategy,
     EmailPwdStrategy,
     AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy,
-    GoogleStrategy, GithubStrategy,
+    GoogleStrategy,
     ...Object.values(jwtStrategies),
     ...Object.values(jwtRereshStrategies), 
   ],
