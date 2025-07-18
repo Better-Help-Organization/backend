@@ -538,7 +538,7 @@ export class AuthService {
   //   }
   // }
 
-  async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes) {
+  async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
     const repo = await this.getRepo(type);
     let user = await repo.findOne({ where: { email } });
     if (!user) {
@@ -553,13 +553,14 @@ export class AuthService {
         OTPExpires,
         isEmailAuthenticated: true,
         status: BaseStatus.ACTIVE,
-        firebaseToken: 'default-firebase-token',
+        firebaseToken,
+        isLinked: true,
       } as any);
 
-      return this.loginOAuthUser(newUser, 'default-firebase-token', type);
+      return this.loginOAuthUser(newUser, firebaseToken, type);
     }
 
     // If user exists, just log them in
-    return this.loginOAuthUser(user, user.firebaseToken || 'default-firebase-token', type);
+    return this.loginOAuthUser(user, user.firebaseToken || firebaseToken, type);
   }
 }
