@@ -57,9 +57,17 @@ export class AdminService {
     }
   }
 
-  update(id: string, updateAdminDto: UpdateAdminDto) {
-    // TODO: implement update logic with validation
-    return `This action updates a #${id} admin`;
+  async update(id: string, updateDto: UpdateAdminDto): Promise<Admin> {
+    const admin = await this.findOne(id);
+    Object.assign(admin, updateDto);
+    try {
+      const updated = await this.adminRepo.save(admin);
+      this.logger.log(`Updated admin with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating admin: ${error.message}`);
+      throw error;
+    }
   }
 
   async remove(id: string) {
