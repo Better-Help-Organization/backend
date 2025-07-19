@@ -192,39 +192,6 @@ export class AuthController {
     return this.authService.refresh(user, firebaseToken);
   }
 
-  @Post('google/client')
-  async googleClientAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
-    return passport.authenticate('google', {
-      state: `${dto.firebaseToken}_client`,
-    })(req, res);
-  }
-
-  @Post('google/therapist')
-  async googleTherapistAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
-    return passport.authenticate('google', {
-      state: `${dto.firebaseToken}_therapist`,
-    })(req, res);
-  }
-
-  @Post('google/admin')
-  async googleAdminAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
-    return passport.authenticate('google', {
-      state: `${dto.firebaseToken}_admin`,
-    })(req, res);
-  }
-
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
-    const role = req.query.state;
-
-    const [firebaseToken, userRole] = role?.split('_');
-    const result = await this.oAuthLogin(user, userRole, firebaseToken);
-    res.json(result);
-    // const redirectUrl = `${this.configService.get('FRONTEND_REDIRECT_URL')}?token=${result.accessToken}`;
-    // res.redirect(redirectUrl);
-  }
-
   @Post(`google/${UserTypes.CLIENT}`)
   async googleClientAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
     const clientType = req.query.client

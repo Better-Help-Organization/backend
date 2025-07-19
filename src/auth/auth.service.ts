@@ -1,6 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
-import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ClientService } from 'src/client/client.service';
@@ -300,7 +299,23 @@ export class AuthService {
     }
   }
 
-  async forgotPassword(email: string, type: UserTypes) {
+  async loginOAuthUser(user: User, firebaseToken: string, type: UserTypes) {
+    const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
+      this._generateTokens({
+        id: user.id,
+        type,
+        status: user.status,
+      });
+
+    user.refreshToken = refreshToken;
+    user.firebaseToken = firebaseToken;
+
+    await (await this.getRepo(type)).save(user);
+
+    return { user, accessToken, refreshToken };
+  }
+
+  async forgotPassword(type: UserTypes, email: string) {
 
   try {
       const repo = await this.getRepo(type);
@@ -537,30 +552,4 @@ export class AuthService {
   //     throw error;
   //   }
   // }
-
-  async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
-    const repo = await this.getRepo(type);
-    let user = await repo.findOne({ where: { email } });
-    if (!user) {
-      const [OTP, OTPExpires] = this._generateOTP();
-
-      const newUser = await repo.save({
-        email,
-        firstName,
-        lastName,
-        password: null,
-        OTP,
-        OTPExpires,
-        isEmailAuthenticated: true,
-        status: BaseStatus.ACTIVE,
-        firebaseToken,
-        isLinked: true,
-      } as any);
-
-      return this.loginOAuthUser(newUser, firebaseToken, type);
-    }
-
-    // If user exists, just log them in
-    return this.loginOAuthUser(user, user.firebaseToken || firebaseToken, type);
-  }
 }
