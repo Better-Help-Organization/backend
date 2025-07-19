@@ -315,7 +315,7 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  async forgotPassword(email: string, type: UserTypes) {
+  async forgotPassword(type: UserTypes, email: string) {
 
   try {
       const repo = await this.getRepo(type);
@@ -340,7 +340,7 @@ export class AuthService {
     } 
   }  
 
-  async resetPassword(resetDto: ResetPwdDto, type: UserTypes) {
+  async resetPassword(type: UserTypes, resetDto: ResetPwdDto) {
     try {
       const { email, otp, password, passwordConfirm } = resetDto;
 
@@ -451,28 +451,24 @@ export class AuthService {
     }
   }
 
-  // async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
-  //   try {
-      
-  //     let userToken: TokenPayload = null;
-      
-  //     if (user.type === UserTypes.ADMIN) {
-  //       const service = this._getServiceByKind(accessTo);
-  //         const { id, status  } = await service.findOne(id );
-  //         userToken = {
-  //         id: id,
-  //         status: status,
-  //         type: accessTo,
-  //       }
-  //     }
-  //     else userToken = user;
-      
-  //     return userToken;
-  //   } catch (error) {
-  //     this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
-  //     throw error;
-  //   }
-  // }
+  async oAuthLogin(user, type: UserTypes, firebaseToken: string) {
+    try {
+      switch (type) {
+        case UserTypes.CLIENT:
+          return this.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.CLIENT, firebaseToken)
+        case UserTypes.THERAPIST:
+          return await this.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.THERAPIST, firebaseToken);
+        case UserTypes.ADMIN:
+          return await this.handleOAuthLogin(user.email, user.firstName, user.lastName, UserTypes.ADMIN, firebaseToken);
+        default:
+          throw new Error("Invalid user type for oAuth login.");
+      }
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
 
   async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
     const repo = await this.getRepo(type);
@@ -499,4 +495,61 @@ export class AuthService {
     // If user exists, just log them in
     return this.loginOAuthUser(user, user.firebaseToken || firebaseToken, type);
   }
+
+
+  // Helper Methods
+  async sendOtpForUserType(type: UserTypes, email: string) {
+    try {
+      const repo = await this.getRepo(type);
+      const user = await repo.findOne({ where: { email } });
+      if (!user) throw new NotFoundException(`${type} not found`);
+      await this.emailOtp(type, user);
+      return "An OTP has been sent to your Email.";
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
+  async signupUser(type: UserTypes, dto: any) {
+    try {
+      switch (type) {
+        case UserTypes.CLIENT:
+          return this.signupClient(dto);
+        case UserTypes.THERAPIST:
+          return this.signupTherapist(dto);
+        case UserTypes.ADMIN:
+          return this.signupAdmin(dto);
+        default:
+          throw new Error("Invalid user type for signup.");
+      }
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
+
+  // async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
+  //   try {
+      
+  //     let userToken: TokenPayload = null;
+      
+  //     if (user.type === UserTypes.ADMIN) {
+  //       const service = this._getServiceByKind(accessTo);
+  //         const { id, status  } = await service.findOne(id );
+  //         userToken = {
+  //         id: id,
+  //         status: status,
+  //         type: accessTo,
+  //       }
+  //     }
+  //     else userToken = user;
+      
+  //     return userToken;
+  //   } catch (error) {
+  //     this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
 }
