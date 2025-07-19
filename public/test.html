@@ -18,32 +18,40 @@
 <body>
 
   <h2>Test Google OAuth Login with therapist</h2>
-
-  <form action="/dev/api/v1/auth/google/therapist?client=web" method="POST">
-    <label for="firebaseToken">Firebase Token:</label><br>
-    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+  <form id="therapistForm" method="POST">
+    <label for="firebaseToken1">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken1" name="firebaseToken" value="abc123" required />
     <br>
     <button type="submit">Login with Google</button>
   </form>
 
-    <h2>Test Google OAuth Login with client</h2>
-
-  <form action="/dev/api/v1/auth/google/client?client=web" method="POST">
-    <label for="firebaseToken">Firebase Token:</label><br>
-    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+  <h2>Test Google OAuth Login with client</h2>
+  <form id="clientForm" method="POST">
+    <label for="firebaseToken2">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken2" name="firebaseToken" value="abc123" required />
     <br>
     <button type="submit">Login with Google</button>
   </form>
 
-
-    <h2>Test Google OAuth Login with admin</h2>
-
-  <form action="/dev/api/v1/auth/google/admin?client=web" method="POST">
-    <label for="firebaseToken">Firebase Token:</label><br>
-    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+  <h2>Test Google OAuth Login with admin</h2>
+  <form id="adminForm" method="POST">
+    <label for="firebaseToken3">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken3" name="firebaseToken" value="abc123" required />
     <br>
     <button type="submit">Login with Google</button>
   </form>
+
+  <script>
+    (function() {
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      const basePath = pathSegments[0]; // "dev" or "prod" or "staging", etc.
+
+      // Dynamically set action attributes
+      document.getElementById('therapistForm').action = `/${basePath}/api/v1/auth/google/therapist?client=web`;
+      document.getElementById('clientForm').action = `/${basePath}/api/v1/auth/google/client?client=web`;
+      document.getElementById('adminForm').action = `/${basePath}/api/v1/auth/google/admin?client=web`;
+    })();
+  </script>
 
 </body>
 </html>
