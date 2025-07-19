@@ -1,10 +1,9 @@
 import { Entity, Column } from 'typeorm';
 import { User } from './user.entity';
-import { UserTypes } from '../constants';
 
 @Entity()
 export class Client extends User {
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique:true })
   username: string;
 
   @Column({ nullable: true })

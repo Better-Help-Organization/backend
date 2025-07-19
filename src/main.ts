@@ -26,7 +26,7 @@ import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-excep
 
 import 'reflect-metadata';
 import { VERSION } from './common/constants';
-// import cors from 'cors';
+import cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
