@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, HttpCode,
-  UseGuards, Res, NotFoundException
+  UseGuards, Res, NotFoundException,
+  Req
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -27,7 +28,11 @@ import { Therapist } from 'src/common/entities/therapist.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
-import { Response } from 'express';
+import { Response, Request } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import passport from 'passport';
+import { oAuthDto } from './dto/oauth.dto';
 
 class FirebaseTokenDto {
   @ApiProperty()
@@ -35,47 +40,53 @@ class FirebaseTokenDto {
   firebaseToken: string;
 }
 
+enum CLIENTTYPE {
+  MOBILE = "mobile",
+  WEB = "web"
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly logger: LoggerService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
   ) {}
 
   @HttpCode(200)
   @Post('otp/client')
   async clientOTP(@Body() { email }: EmailDto) {
-    return this.sendOtpForUserType(UserTypes.CLIENT, email, 'Client not found');
+    return this.authService.sendOtpForUserType(UserTypes.CLIENT, email);
   }
 
   @HttpCode(200)
   @Post('otp/therapist')
   async therapistOTP(@Body() { email }: EmailDto) {
-    return this.sendOtpForUserType(UserTypes.THERAPIST, email, 'Therapist not found');
+    return this.authService.sendOtpForUserType(UserTypes.THERAPIST, email);
   }
 
   @HttpCode(200)
   @Post('otp/admin')
   async adminOTP(@Body() { email }: EmailDto) {
-    return this.sendOtpForUserType(UserTypes.ADMIN, email, 'Admin not found');
+    return this.authService.sendOtpForUserType(UserTypes.ADMIN, email);
   }
 
   @HttpCode(200)
   @Post('signup/client')
   async clientSignup(@Body() dto: ClientSignupDto) {
-    return this.signupUser(UserTypes.CLIENT, dto);
+    return this.authService.signupUser(UserTypes.CLIENT, dto);
   }
 
   @HttpCode(200)
   @Post('signup/therapist')
   async therapistSignup(@Body() dto: TherapistSignupDto) {
-    return this.signupUser(UserTypes.THERAPIST, dto);
+    return this.authService.signupUser(UserTypes.THERAPIST, dto);
   }
 
   @HttpCode(200)
   @Post('signup/admin')
   async adminSignup(@Body() dto: AdminSignupDto) {
-    return this.signupUser(UserTypes.ADMIN, dto);
+    return this.authService.signupUser(UserTypes.ADMIN, dto);
   }
 
   @HttpCode(200)
@@ -123,37 +134,37 @@ export class AuthController {
   @HttpCode(200)
   @Post('resetPwd/client')
   async clientResetPwd(@Body() dto: ResetPwdDto) {
-    return this.resetPassword(UserTypes.CLIENT, dto);
+    return this.authService.resetPassword(UserTypes.CLIENT, dto);
   }
 
   @HttpCode(200)
   @Post('resetPwd/therapist')
   async therapistResetPwd(@Body() dto: ResetPwdDto) {
-    return this.resetPassword(UserTypes.THERAPIST, dto);
+    return this.authService.resetPassword(UserTypes.THERAPIST, dto);
   }
 
   @HttpCode(200)
   @Post('resetPwd/admin')
   async adminResetPwd(@Body() dto: ResetPwdDto) {
-    return this.resetPassword(UserTypes.ADMIN, dto);
+    return this.authService.resetPassword(UserTypes.ADMIN, dto);
   }
 
   @HttpCode(200)
   @Post('forgotPwd/client')
   async clientForgotPwd(@Body() { email }: EmailDto) {
-    return this.forgotPassword(UserTypes.CLIENT, email);
+    return this.authService.forgotPassword(UserTypes.CLIENT, email);
   }
 
   @HttpCode(200)
   @Post('forgotPwd/therapist')
   async therapistForgotPwd(@Body() { email }: EmailDto) {
-    return this.forgotPassword(UserTypes.THERAPIST, email);
+    return this.authService.forgotPassword(UserTypes.THERAPIST, email);
   }
 
   @HttpCode(200)
   @Post('forgotPwd/admin')
   async adminForgotPwd(@Body() { email }: EmailDto) {
-    return this.forgotPassword(UserTypes.ADMIN, email);
+    return this.authService.forgotPassword(UserTypes.ADMIN, email);
   }
 
   @HttpCode(200)
@@ -181,53 +192,38 @@ export class AuthController {
     return this.authService.refresh(user, firebaseToken);
   }
 
-  // Helper Methods
-  private async sendOtpForUserType(type: UserTypes, email: string, notFoundMessage: string) {
-    try {
-      const repo = await this.authService.getRepo(type);
-      const user = await repo.findOne({ where: { email } });
-      if (!user) throw new NotFoundException(notFoundMessage);
-      await this.authService.emailOtp(type, user);
-      return "An OTP has been sent to your Email.";
-    } catch (error) {
-      this.logger.error(error);
-      throw error;
-    }
+  @Post(`google/${UserTypes.CLIENT}`)
+  async googleClientAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
+    const clientType = req.query.client
+    return passport.authenticate('google', {
+      state: `${dto.firebaseToken}_${UserTypes.CLIENT}_${clientType}`,
+    })(req, res);
   }
 
-  private async signupUser(type: UserTypes, dto: any) {
-    try {
-      switch (type) {
-        case UserTypes.CLIENT:
-          return this.authService.signupClient(dto);
-        case UserTypes.THERAPIST:
-          return this.authService.signupTherapist(dto);
-        case UserTypes.ADMIN:
-          return this.authService.signupAdmin(dto);
-        default:
-          throw new Error("Invalid user type for signup.");
-      }
-    } catch (error) {
-      this.logger.error(error);
-      throw error;
-    }
+  @Post(`google/${UserTypes.THERAPIST}`)
+  async googleTherapistAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
+    const clientType = req.query.client
+    return passport.authenticate('google', {
+      state: `${dto.firebaseToken}_${UserTypes.THERAPIST}_${clientType}`,
+    })(req, res);
   }
 
-  private async resetPassword(type: UserTypes, dto: ResetPwdDto) {
-    try {
-      return this.authService.resetPassword(dto, type);
-    } catch (error) {
-      this.logger.error(error);
-      throw error;
-    }
+  @Post(`google/${UserTypes.ADMIN}`)
+  async googleAdminAuth(@Body() dto: oAuthDto, @Req() req: Request, @Res() res: Response) {
+    const clientType = req.query.client
+    return passport.authenticate('google', {
+      state: `${dto.firebaseToken}_${UserTypes.ADMIN}_${clientType}`,
+    })(req, res);
   }
 
-  private async forgotPassword(type: UserTypes, email: string) {
-    try {
-      return this.authService.forgotPassword(email, type);
-    } catch (error) {
-      this.logger.error(error);
-      throw error;
-    }
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@CurrentUser() user: any, @Req() req) {
+    const role = req.query.state;
+
+    const [firebaseToken, userRole, _] = role?.split('_');
+    const result = await this.authService.oAuthLogin(user, userRole, firebaseToken);
+    return result;
   }
+
 }

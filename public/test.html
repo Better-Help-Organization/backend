@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google OAuth Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+    }
+    input, button {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Test Google OAuth Login with therapist</h2>
+
+  <form action="/dev/api/v1/auth/google/therapist?client=web" method="POST">
+    <label for="firebaseToken">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+    <br>
+    <button type="submit">Login with Google</button>
+  </form>
+
+    <h2>Test Google OAuth Login with client</h2>
+
+  <form action="/dev/api/v1/auth/google/client?client=web" method="POST">
+    <label for="firebaseToken">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+    <br>
+    <button type="submit">Login with Google</button>
+  </form>
+
+
+    <h2>Test Google OAuth Login with admin</h2>
+
+  <form action="/dev/api/v1/auth/google/admin?client=web" method="POST">
+    <label for="firebaseToken">Firebase Token:</label><br>
+    <input type="text" id="firebaseToken" name="firebaseToken" value="abc123" required />
+    <br>
+    <button type="submit">Login with Google</button>
+  </form>
+
+</body>
+</html>
