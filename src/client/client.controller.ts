@@ -11,6 +11,17 @@ import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindO
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
 
+  @Get('me')
+  @UseGuards(ClientJwtAuthGuard)
+  @ApiFindOneQueryParams()
+  async getMe(
+  @Query() queryParams,
+  @CurrentUser() user: TokenPayload,
+  ) {
+    console.log("user", user);
+    return await this.clientService.findOne(user.id,queryParams);
+  }
+
   @Get()
   @ApiFindAllQueryParams()
   @DynamicGuards(
@@ -34,14 +45,12 @@ export class ClientController {
     return this.clientService.findOne(id, queryParams);
   }
 
-  @Get('me')
-  @UseGuards(ClientJwtAuthGuard)
-  @ApiFindOneQueryParams()
-  async getMe(
-  @Query() queryParams,
-  @CurrentUser() user: TokenPayload,
-  ) {
-    return await this.clientService.findOne(user.id,queryParams);
+  @Patch('me')
+  @DynamicGuards(
+    new ClientJwtAuthGuard()
+  )
+  updateMe( @CurrentUser() user: TokenPayload, @Body() updateClientDto: UpdateClientDto ) {
+    return this.clientService.update(user.id, updateClientDto);
   }
 
   @Patch(':id')
@@ -50,14 +59,6 @@ export class ClientController {
   )
   update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
     return this.clientService.update(id, updateClientDto);
-  }
-
-  @Patch('me')
-    @DynamicGuards(
-      new ClientJwtAuthGuard()
-  )
-  updateMe( @CurrentUser() user: TokenPayload, @Body() updateClientDto: UpdateClientDto ) {
-    return this.clientService.update(user.id, updateClientDto);
   }
 
   @DynamicGuards(
