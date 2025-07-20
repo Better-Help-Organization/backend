@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
@@ -10,11 +11,15 @@ import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Repository } from 'typeorm';
 import { AddToSessionDto } from './dto/add-session.dto';
+=======
+import { Injectable } from '@nestjs/common';
+>>>>>>> 08c0711 (feat: add sessions modules and entityies)
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 
 @Injectable()
 export class SessionService {
+<<<<<<< HEAD
 
   constructor (
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
@@ -175,5 +180,25 @@ async addToSession(sessionId: string, dto: AddToSessionDto) {
       this.logger.error(`Failed to remove session: ${error.message}`, error.stack);
       throw error;
     }
+=======
+  create(createSessionDto: CreateSessionDto) {
+    return 'This action adds a new session';
+  }
+
+  findAll() {
+    return `This action returns all session`;
+  }
+
+  findOne(id: number) {
+    return `This action returns a #${id} session`;
+  }
+
+  update(id: number, updateSessionDto: UpdateSessionDto) {
+    return `This action updates a #${id} session`;
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} session`;
+>>>>>>> 08c0711 (feat: add sessions modules and entityies)
   }
 }
