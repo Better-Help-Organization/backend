@@ -36,6 +36,23 @@ export enum VERSION {
     ONE = '1'
 } 
 
+export enum SessionStatus {
+  SCHEDULED = "scheduled",
+  STARTED = "started",
+  ONGOING = "ongoing",
+  DISRUPTED = "disrupted",
+  COMPLETED = "completed",
+  CANCELED = "canceled",
+  OTHER = "other"
+}
+
+export enum SessionType {
+  VIDEO = "video",
+  CHAT = "chat",
+  AUDIO = "audio",
+}
+
+
 export const FILE_UPLOAD_KEY = 'image';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;

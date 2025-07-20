@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { ClientModule } from './client/client.module';
 import { EmailModule } from './email/email.module';
 import { TherapistModule } from './therapist/therapist.module';
+import { SessionModule } from './session/session.module';
 
 
 @Module({
@@ -23,7 +24,7 @@ import { TherapistModule } from './therapist/therapist.module';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
-    AuthModule, ClientModule, TherapistModule, EmailModule,
+    AuthModule, ClientModule, TherapistModule, EmailModule, SessionModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {
