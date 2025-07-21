@@ -18,11 +18,6 @@ export enum Gender {
     FEMALE = "female"
 } 
 
-export enum LANG {
-    EN = "english",
-    AM = "amharic"
-} 
-
 export interface TokenPayload {
     id: string
     status: BaseStatus,

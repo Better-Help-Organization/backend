@@ -6,7 +6,7 @@ export class BaseOtpDto {
 
   @ApiProperty({
     description: 'OTP',
-    example: '192092',
+    example: '426189',
   })
   @IsString()
   otp: string;

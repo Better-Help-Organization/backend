@@ -3,7 +3,7 @@ import { CommonEntity } from './common.entity';
 import 'reflect-metadata';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { BaseStatus, Gender, LANG } from '../constants';
+import { BaseStatus, Gender } from '../constants';
 
 export abstract class User extends CommonEntity {
 

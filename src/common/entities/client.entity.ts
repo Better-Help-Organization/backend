@@ -1,5 +1,7 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { User } from './user.entity';
+import { Preference } from './preference.entity';
+import { Answer } from './answer.entity';
 
 @Entity()
 export class Client extends User {
@@ -11,4 +13,10 @@ export class Client extends User {
 
   @Column({ default: false })
   isVisible: boolean;
+
+  @OneToMany(() => Preference, preference => preference.client)
+  preferences: Preference[];
+
+  @OneToMany(() => Answer, answer => answer.client)
+  answers: Answer[];
 }

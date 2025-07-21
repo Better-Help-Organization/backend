@@ -10,7 +10,12 @@ import { AuthModule } from './auth/auth.module';
 import { ClientModule } from './client/client.module';
 import { EmailModule } from './email/email.module';
 import { TherapistModule } from './therapist/therapist.module';
-
+import { PreferenceModule } from './preference/preference.module';
+import { LanguageModule } from './language/language.module';
+import { AnswerModule } from './answer/answer.module';
+import { OptionModule } from './option/option.module';
+import { QuestionModule } from './question/question.module';
+import { ModalModule } from './modal/modal.module';
 
 @Module({
   imports: [
@@ -23,7 +28,7 @@ import { TherapistModule } from './therapist/therapist.module';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
-    AuthModule, ClientModule, TherapistModule, EmailModule,
+    AuthModule, ClientModule, TherapistModule, EmailModule, PreferenceModule, ModalModule, QuestionModule, OptionModule, AnswerModule, LanguageModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {
