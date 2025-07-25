@@ -1,11 +1,10 @@
-import 'reflect-metadata';
-import { Reflector } from '@nestjs/core';
 import { applyDecorators } from '@nestjs/common';
-import { ExamplesObject, OpenAPIObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
-import { ApiOperation, ApiResponse, ApiBody, ApiParam, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
+import { Reflector } from '@nestjs/core';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ExamplesObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { getMetadataStorage } from 'class-validator';
+import 'reflect-metadata';
 import { SwaggerConfig } from 'src/common/decorators/swagger-docs.decorator';
-import { ProtectedEndpoint } from './swagger-docs.shortcuts';
 
 
 export class SwaggerDocs {
@@ -196,7 +195,7 @@ export class SwaggerDocs {
           }
         }
       } catch (error) {
-        console.error(`Error processing controller ${controllerPath}:`, error);
+        console.error(`Error processing controller ${controllerPath}: - SwaggerDocs.ts:198`, error);
       }
     }
   }

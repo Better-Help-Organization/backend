@@ -1,22 +1,24 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AnswerModule } from './answer/answer.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DatabaseModule } from './db/db.module';
-import { LoggerModule } from './logger/logger.module';
-import { ConfigModule } from '@nestjs/config';
-import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ClientModule } from './client/client.module';
+import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
+import { DatabaseModule } from './db/db.module';
 import { EmailModule } from './email/email.module';
-import { TherapistModule } from './therapist/therapist.module';
-import { PreferenceModule } from './preference/preference.module';
+import { FirebaseModule } from './firebase/firebase.module';
 import { LanguageModule } from './language/language.module';
-import { AnswerModule } from './answer/answer.module';
-import { OptionModule } from './option/option.module';
-import { QuestionModule } from './question/question.module';
-import { ModalModule } from './modal/modal.module';
 import { LevelModule } from './level/level.module';
+import { LoggerModule } from './logger/logger.module';
+import { ModalModule } from './modal/modal.module';
+import { OptionModule } from './option/option.module';
+import { PreferenceModule } from './preference/preference.module';
+import { QuestionModule } from './question/question.module';
+import { SessionModule } from './session/session.module';
+import { TherapistModule } from './therapist/therapist.module';
 
 @Module({
   imports: [
@@ -29,7 +31,11 @@ import { LevelModule } from './level/level.module';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
-    AuthModule, ClientModule, TherapistModule, EmailModule, PreferenceModule, ModalModule, QuestionModule, OptionModule, AnswerModule, LanguageModule, LevelModule,
+    AuthModule, ClientModule, TherapistModule, 
+    EmailModule, PreferenceModule, ModalModule, 
+    QuestionModule, OptionModule, AnswerModule, 
+    LanguageModule, LevelModule,
+    SessionModule, FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {

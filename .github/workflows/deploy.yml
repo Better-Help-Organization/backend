@@ -1,0 +1,35 @@
+name: Sync remote
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - test
+
+jobs:
+  deploy:
+    if: github.repository == 'Better-Help-Organization/backend'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2 
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up SSH key for Git operations
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+        echo "SSH key and known hosts configured."
+
+    - name: Deploy Environment
+      env:
+        SSH_USER: ${{ secrets.SSH_USER }}
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        GITHUB_REF: ${{ github.ref }}
+      run: chmod +x ./scripts/deploy.sh && ./scripts/deploy.sh $GITHUB_REF
+
