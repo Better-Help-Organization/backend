@@ -1,14 +1,19 @@
 import {
-  Entity,
   Column,
+  Entity,
+  ManyToOne,
 } from 'typeorm';
-import { CommonEntity } from './common.entity';
 import { SessionStatus } from '../constants';
+import { CommonEntity } from './common.entity';
+import { Session } from './session.entity';
 
 
 
 @Entity('status')
 export class Status extends CommonEntity {
+
+  @ManyToOne(() => Session, { nullable: false, onDelete: 'CASCADE' })
+  session: Session;
 
   @Column({
     type: 'enum',

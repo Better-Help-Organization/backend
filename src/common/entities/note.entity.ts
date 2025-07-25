@@ -1,12 +1,11 @@
 import {
-  Entity,
   Column,
-  ManyToOne,
-  JoinColumn,
+  Entity,
+  ManyToOne
 } from 'typeorm';
+import { CommonEntity } from './common.entity';
 import { Session } from './session.entity';
 import { Therapist } from './therapist.entity';
-import { CommonEntity } from './common.entity';
 
 @Entity('note')
 export class Note extends CommonEntity {

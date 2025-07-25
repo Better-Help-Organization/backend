@@ -1,27 +1,33 @@
 import {
-  Entity,
   Column,
-  ManyToOne,
-  JoinColumn,
-  Unique,
-  ManyToMany,
+  Entity,
   JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  Repository,
+  Unique
 } from 'typeorm';
-import { Client } from './client.entity';
-import { Therapist } from './therapist.entity';
-import { Status } from './status.entity';
-import { CommonEntity } from './common.entity';
 import { SessionType } from '../constants';
+import { Client } from './client.entity';
+import { CommonEntity } from './common.entity';
 import { Note } from './note.entity';
+import { Status } from './status.entity';
+import { Therapist } from './therapist.entity';
 
-import { ViewEntity, ViewColumn } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { ViewColumn, ViewEntity } from 'typeorm';
+import { Message } from './message.entity';
 
 @Unique('UQ_therapist_schedule', ['therapist','schedule'])
 @Unique('UQ_client_schedule', ['client', 'schedule'])
 @Entity('session')
 export class Session extends CommonEntity {
 
-  @ManyToOne(() => Client, { nullable: true })
+  @ManyToOne(() => Client, { 
+    nullable: true,
+    cascade: true
+  })
   client: Client;
 
   @ManyToMany(() => Client)
@@ -30,10 +36,13 @@ export class Session extends CommonEntity {
     joinColumn: { name: 'session_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'client_id', referencedColumnName: 'id' },
   })
-  groupClients: Client[];
+  group: Client[];
 
 
-  @ManyToOne(() => Therapist, { nullable: true })
+  @ManyToOne(() => Therapist, { 
+    nullable: true,
+    cascade: true
+  })
   therapist: Therapist;
 
   @Column({ type: 'timestamp' })
@@ -45,11 +54,55 @@ export class Session extends CommonEntity {
   @Column({ type: 'enum', enum: SessionType })
   type: SessionType;
 
-  @ManyToOne(() => Status, { nullable: true })
+  @OneToMany(() => Note, note => note.session, {
+    cascade: true,
+    nullable: true, // optional
+  })
+  note: Note[];
+
+  @OneToMany(() => Status, status => status.session, {
+    cascade: true,
+    nullable: true, // optional
+  })
   status: Status;
 
-  @ManyToOne(() => Note, { nullable: true })
-  note: Note;
+  @ApiProperty({ type: () => Message, isArray: true })
+  @OneToMany(() => Message, (message) => message.session, {onDelete: 'CASCADE'})
+  message: Message[];
+
+    async addMessage(
+    msgRepo: Repository<Message>,
+    messageText: string,
+    therapist ?: Therapist,
+    client?: Client
+  ) {
+    const message = msgRepo.create({
+      content: messageText,
+      therapist,
+      client,
+      session: this,
+    });
+    
+    return await msgRepo.save(message);
+  }
+
+  async editMessage(
+    msgRepo: Repository<Message>,
+    messageId: string,
+    newMessageText: string
+  ) {
+    const message = await msgRepo.findOne({
+      where: { id: messageId, session: this },
+    });
+  
+    if (!message) {
+      throw new Error('Message not found or does not belong to this chat');
+    }
+  
+    message.content = newMessageText;
+    return await msgRepo.save(message);
+  }
+
 }
 
 @ViewEntity({

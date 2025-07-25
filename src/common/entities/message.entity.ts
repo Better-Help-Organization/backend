@@ -1,13 +1,12 @@
 import {
-  Entity,
   Column,
-  ManyToOne,
-  JoinColumn,
+  Entity,
+  ManyToOne
 } from 'typeorm';
-import { Session } from './session.entity';
-import { Therapist } from './therapist.entity';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
+import { Session } from './session.entity';
+import { Therapist } from './therapist.entity';
 
 @Entity('message')
 export class Message extends CommonEntity {
@@ -15,10 +14,10 @@ export class Message extends CommonEntity {
   @ManyToOne(() => Session, { nullable: false, onDelete: 'CASCADE' })
   session: Session;
 
-  @ManyToOne(() => Therapist, { nullable: false })
+  @ManyToOne(() => Therapist, { nullable: true, eager: true })
   therapist: Therapist;
 
-  @ManyToOne(() => Client, { nullable: false })
+  @ManyToOne(() => Client, { nullable: true, eager: true })
   client: Client;
 
   @Column({ type: 'text' })

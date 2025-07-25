@@ -11,6 +11,6 @@ export const getTypeOrmConfig = (configService: ConfigService): DataSourceOption
   entities: [__dirname + '../../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../**/*-migration{.ts,.js}'],
   synchronize: true,
-  subscribers: [__dirname + '/../**/*.subscriber{.ts,.js}'],
+  subscribers: [__dirname + '../../**/*.subscriber{.ts,.js}'],
   migrationsRun: false,
 });
