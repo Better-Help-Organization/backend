@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { QuestionService } from './question.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { QuestionService } from './question.service';
 
 @Controller('question')
 export class QuestionController {
@@ -17,13 +18,22 @@ export class QuestionController {
 
   @ApiFindAllQueryParams()
   @Get()
-  @UseGuards(AdminJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   findAll(@Query() query: FindAllQueryParams) {
     return this.questionService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   @UseGuards(AdminJwtAuthGuard)
   findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.questionService.findOne(id, query);

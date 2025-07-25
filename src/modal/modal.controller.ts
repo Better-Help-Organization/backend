@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { ModalService } from './modal.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateModalDto } from './dto/create-modal.dto';
 import { UpdateModalDto } from './dto/update-modal.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ModalService } from './modal.service';
 
 @Controller('modal')
 export class ModalController {
@@ -17,15 +18,22 @@ export class ModalController {
 
   @ApiFindAllQueryParams()
   @Get()
-  @UseGuards(AdminJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   findAll(@Query() query: FindAllQueryParams) {
     return this.modalService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  @UseGuards(AdminJwtAuthGuard)
-  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.modalService.findOne(id, query);
   }
 

@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { OptionService } from './option.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateOptionDto } from './dto/create-option.dto';
 import { UpdateOptionDto } from './dto/update-option.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { OptionService } from './option.service';
 
 @Controller('option')
 export class OptionController {
@@ -17,14 +18,22 @@ export class OptionController {
 
   @ApiFindAllQueryParams()
   @Get()
-  @UseGuards(AdminJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   findAll(@Query() query: FindAllQueryParams) {
     return this.optionService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  @UseGuards(AdminJwtAuthGuard)
+    @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.optionService.findOne(id, query);
   }

@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { LanguageService } from './language.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateLanguageDto } from './dto/create-language.dto';
 import { UpdateLanguageDto } from './dto/update-language.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { LanguageService } from './language.service';
 
 @Controller('language')
 export class LanguageController {
@@ -17,14 +18,22 @@ export class LanguageController {
 
   @ApiFindAllQueryParams()
   @Get()
-  @UseGuards(AdminJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )  
   findAll(@Query() query: FindAllQueryParams) {
     return this.languageService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  @UseGuards(AdminJwtAuthGuard)
+    @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.languageService.findOne(id, query);
   }

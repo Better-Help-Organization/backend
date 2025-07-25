@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { TokenPayload } from 'src/common/constants';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AnswerService } from './answer.service';
 import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { TokenPayload } from 'src/common/constants';
-import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 
 @Controller('answer')
 export class AnswerController {
@@ -21,8 +21,9 @@ export class AnswerController {
   @ApiFindAllQueryParams()
   @Get()
   @DynamicGuards(
-    new ClientJwtAuthGuard()
-    ,new AdminJwtAuthGuard()
+    new TherapistJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
   )
   findAll(@Query() query: FindAllQueryParams) {
     return this.answerService.findAll(query);
@@ -30,10 +31,10 @@ export class AnswerController {
 
   @ApiFindOneQueryParams()
   @DynamicGuards(
-    new ClientJwtAuthGuard()
-    ,new AdminJwtAuthGuard()
-  )
-  @Get(':id')
+    new TherapistJwtAuthGuard(),
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )  @Get(':id')
   findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.answerService.findOne(id, query);
   }
