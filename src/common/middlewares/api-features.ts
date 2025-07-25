@@ -1,5 +1,5 @@
-import { getMetadataArgsStorage } from 'typeorm';
-import {  BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
+import { getMetadataArgsStorage, SelectQueryBuilder } from 'typeorm';
 import { FindAllQueryParams, FindOneQueryParams } from './api-features.dto';
 
 export class APIFeatures {
@@ -178,24 +178,47 @@ export class APIFeatures {
     }
     return this;
   }
-  // TODO: might use this to pass through eager relations 
-  applyEagerRelations<T>(query, entityClass: new () => T, alias: string) {
+  // Done
+  applyEagerRelations<T>(
+    query: SelectQueryBuilder<T>,
+    entityClass: Function,
+    alias: string,
+    visited = new Set<string>()
+  ): SelectQueryBuilder<T> {
     const metadata = getMetadataArgsStorage();
+
     const relations = metadata.relations.filter(
       (r) => r.target === entityClass && r.options?.eager
     );
 
-    for (const rel of relations) {
-      query.leftJoinAndSelect(`${alias}.${rel.propertyName}`, rel.propertyName);
+    for (const relation of relations) {
+      const joinPath = `${alias}.${relation.propertyName}`;
+      const joinAlias = `${alias}_${relation.propertyName}`;
+
+      if (visited.has(joinPath)) continue;
+      visited.add(joinPath);
+
+      query = query.leftJoinAndSelect(joinPath, joinAlias);
+
+      // Recursively apply eager relations to the related entity
+      const relatedEntityClass =
+        typeof relation.type === 'function' ? relation.type : relation.type;
+
+      // Skip primitives or plain types
+      if (typeof relatedEntityClass === 'function') {
+        const hasNestedEager = metadata.relations.some(
+          (r) => r.target === relatedEntityClass && r.options?.eager
+        );
+        if (hasNestedEager) {
+          query = this.applyEagerRelations(query, relatedEntityClass, joinAlias, visited);
+        }
+      }
     }
 
     return query;
   }
 
-
   async getMany({useCache = false} = {}) {
-    // console.log(this.queryParams)
-    // if(!this.queryParams.options){
 
     this.sort();
     this.field();
@@ -204,7 +227,9 @@ export class APIFeatures {
 
     // if (useCache) this.query.cache('cache_getMany', 60000); // Cache for 60 seconds
 
-    // this.query = this.applyEagerRelations(this.query, Checkout, 'checkout');
+    if (this.target && this.tableName) {
+      this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
+    }
 
     const data = await this.query.getMany()
     const totalItems = await this.query.getCount()
@@ -219,41 +244,6 @@ export class APIFeatures {
         pageSize: this.parsedLimit,
       },
     }
-  // } else {
-
-  //   const opts = this.queryParams.options;
-  
-  //   // this.query.select(this.queryParams.options.select)
-  //   // this.query.where(this.queryParams.options.where)
-  //   // const selectFields = opts.select?.map(field => `${this.tableName}.${field}`);
-
-  //   // if (opts.select) this.query = this.query.select(opts.select);
-  //   if (opts.where) {
-  //     Object.entries(opts.where).forEach(([key, value]) => {
-  //       this.query = this.query.andWhere(`${this.tableName}.${key} = :${key}`, { [key]: value });
-  //     });
-  //   }
-
-  //   // if (opts.relations) this.query = this.query.relations(opts.relations);
-  //   if (opts.relations) this._applyRelations(opts.relations);
-
-  //   if (opts.select) this.query = this.query.select(opts.select);
-  //   // if (opts.where) this.query = this.query.where(opts.where);
-  //   // if (opts.order) this.query = this.query.orderBy(opts.order);
-  //   // // if (opts.take) this.query = this.query.take(opts.take);
-  //   // // if (opts.skip) this.query = this.query.skip(opts.skip);
-  //   // if (opts.withDeleted) this.query = this.query.withDeleted();
-  //   // if (opts.lock) this.query = this.query.lock(opts.lock);
-  //   // if (opts.loadRelationIds) this.query = this.query.loadRelationIds(opts.loadRelationIds);
-  //   // if (opts.cache || useCache) this.query = this.query.cache(opts.cache ?? 'cache_getMany', 60000);
-
-  //   // const data = await this.query.getMany();
-
-
-  //   const data = await this.query.getMany()
-  //   console.log({data})
-  //   return { data }
-  // }
   }
 
   async getOne(id: string) {
@@ -261,80 +251,8 @@ export class APIFeatures {
       this.field();
       this.filter();
       return await this.query.where(`${this.tableName}.id = :id`, { id }).getOne();  
-    // }
-    //   this.query = this.query.relations(this.queryParams.options.relations)
-    //   this.query = this.query.select(this.queryParams.options.select)
-    //   this.query = this.query.where(this.queryParams.options.where)
-    //   return await this.query.andWhere(`${this.tableName}.id = :id`, { id }).getOne();
    }
 
-  // async getOneBy(where: Record<string, any>) {
-  //   this.field();
-  //   this.filter();
-  
-  //   // Convert key-value pairs into where conditions
-  //   Object.entries(where).forEach(([key, value]) => {
-  //     this.query = this.query.andWhere(`${this.tableName}.${key} = :${key}`, { [key]: value });
-  //   });
-  
-  //   return await this.query.getOne();
-  // }
-  
-  // _applyRelations(relations: any) {
-  //   Object.entries(relations).forEach(([relation, include]) => {
-  //     if (include) {
-  //       const alias = relation.split('.').join('_'); // handles nested relations
-  //       this.query = this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, alias);
-  //     }
-  //   });
-  // }
-  // _applySelect(select: Record<string, boolean>) {
-  //   const selectFields = Object.entries(select)
-  //     .filter(([_, include]) => include)
-  //     .map(([field]) => `${this.tableName}.${field}`);
-  //   this.query = this.query.select(selectFields);
-  // }
-  // _applyWhere(where: Record<string, any>) {
-  //   Object.entries(where).forEach(([key, value]) => {
-  //     this.query = this.query.andWhere(`${this.tableName}.${key} = :${key}`, { [key]: value });
-  //   });
-  // }
-  // _applyOrder(order: Record<string, 'ASC' | 'DESC'>) {
-  //   Object.entries(order).forEach(([key, direction]) => {
-  //     this.query = this.query.addOrderBy(`${this.tableName}.${key}`, direction);
-  //   });
-  // }
-  // _applyTake(take: number) {
-  //   this.query = this.query.take(take);
-  // }
-  // _applySkip(skip: number) {
-  //   this.query = this.query.skip(skip);
-  // }
-  // _applyWithDeleted(withDeleted: boolean) {
-  //   if (withDeleted) {
-  //     this.query = this.query.withDeleted();
-  //   }
-  // }
-  // _applyLock(lock: any) {
-  //   if (lock) {
-  //     this.query = this.query.lock(lock);
-  //   }
-  // }
-  // _applyLoadRelationIds(loadRelationIds: boolean) {
-  //   if (loadRelationIds) {
-  //     this.query = this.query.loadRelationIds();
-  //   }
-  // }
-  // _applyCache(cache: any) {
-  //   if (cache) {
-  //     this.query = this.query.cache(cache);
-  //   }
-  // }
-  // _applyUseCache(useCache: boolean) {
-  //   if (useCache) {
-  //     this.query = this.query.cache('cache_getMany', 60000); // Cache for 60 seconds
-  //   }
-  // }
   
 
 }
