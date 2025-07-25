@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { ModalService } from './modal.service';
 import { CreateModalDto } from './dto/create-modal.dto';
 import { UpdateModalDto } from './dto/update-modal.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 
 @Controller('modal')
@@ -17,14 +17,16 @@ export class ModalController {
 
   @ApiFindAllQueryParams()
   @Get()
-  findAll() {
-    return this.modalService.findAll();
+  @UseGuards(AdminJwtAuthGuard)
+  findAll(@Query() query: FindAllQueryParams) {
+    return this.modalService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.modalService.findOne(id);
+  @UseGuards(AdminJwtAuthGuard)
+  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
+    return this.modalService.findOne(id, query);
   }
 
   @Patch(':id')

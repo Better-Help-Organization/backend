@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateModalDto {
   @ApiProperty({
     description: 'Name of the therapy type (modal)',
-    example: 'Cognitive Behavioral Therapy',
+    example: 'Individual Therapy',
   })
   @IsNotEmpty()
   @IsString()
@@ -13,7 +13,7 @@ export class CreateModalDto {
   @ApiProperty({
     description: 'Description of the therapy type',
     example:
-      'A short-term, goal-oriented psychotherapy treatment that takes a hands-on, practical approach to problem-solving.',
+      'For individuals seeking one-on-one support to manage personal challenges and improve mental well-being.',
   })
   @IsNotEmpty()
   @IsString()

@@ -1,5 +1,6 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { QuestionType } from 'src/common/constants';
 
 export class UpdateQuestionDto {
   @ApiProperty({
@@ -11,20 +12,12 @@ export class UpdateQuestionDto {
   text: string;
 
   @ApiProperty({
-    description: 'Type of question (e.g., multiple_choice, text_input)',
-    example: 'multiple_choice',
+    description: 'Type of question (e.g., multiple, single or open)',
+    example: 'multiple',
   })
   @IsOptional()
-  @IsString()
-  type: string;
-
-  @ApiProperty({
-    description: 'Optional field name for dynamic form processing',
-    example: 'experienceField',
-  })
-  @IsOptional()
-  @IsString()
-  field_name: string;
+  @IsEnum(QuestionType)
+  type: QuestionType;
 
   @ApiProperty({
     description: 'UUID of the therapy type (modal) this question belongs to',

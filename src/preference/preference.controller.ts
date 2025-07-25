@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PreferenceService } from './preference.service';
 import { CreatePreferenceDto } from './dto/create-preference.dto';
 import { UpdatePreferenceDto } from './dto/update-preference.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { TokenPayload } from 'src/common/constants';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 
 @Controller('preference')
 export class PreferenceController {
@@ -19,14 +20,22 @@ export class PreferenceController {
 
   @ApiFindAllQueryParams()
   @Get()
-  findAll() {
-    return this.preferenceService.findAll();
+  @DynamicGuards(
+    new ClientJwtAuthGuard()
+    ,new AdminJwtAuthGuard()
+  )
+  findAll(@Query() query: FindAllQueryParams) {
+    return this.preferenceService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.preferenceService.findOne(id);
+  @DynamicGuards(
+    new ClientJwtAuthGuard()
+    ,new AdminJwtAuthGuard()
+  )
+  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
+    return this.preferenceService.findOne(id, query);
   }
 
   @Patch(':id')

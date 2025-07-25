@@ -18,6 +18,38 @@ export enum Gender {
     FEMALE = "female"
 } 
 
+export enum QuestionType {
+  SINGLE = 'single',
+  MULTIPLE = 'multiple',
+  OPEN = 'open'
+}
+
+export enum SessionFormat {
+  VIDEO = 'video',
+  PHONE = 'phone',
+  TEXT = 'text'
+}
+
+export enum LevelType {
+  ASSOCIATE = 'associate',
+  MODERATE = 'moderate',
+  ADVANCED = 'advanced'
+}
+
+export enum LangCode {
+  EN = 'en',
+  AM = 'am',
+  OR = 'or',
+  TI = 'ti'
+}
+
+export enum ModalName {
+  INDIVIDUAL_THERAPY = 'Individual Therapy',
+  TEEN_THERAPY = 'Teen Therapy',
+  COUPLE_THERAPY = 'Couple Therapy',
+  GROUP_THERAPY = 'Group Therapy',
+}
+
 export interface TokenPayload {
     id: string
     status: BaseStatus,

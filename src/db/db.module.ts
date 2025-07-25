@@ -17,7 +17,10 @@ import { SeedService } from './seed.service';
   exports:[SeedService]
 })
 export class DatabaseModule implements OnModuleInit {
-  constructor() {}
-
-  async onModuleInit() {}
+  constructor(private readonly dbService: DbService) {}
+  
+  async onModuleInit() {
+    await this.dbService.seedAdmin();
+    await this.dbService.seedOnboarding();
+  }
 }

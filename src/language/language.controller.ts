@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { LanguageService } from './language.service';
 import { CreateLanguageDto } from './dto/create-language.dto';
 import { UpdateLanguageDto } from './dto/update-language.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 
 @Controller('language')
@@ -17,14 +17,16 @@ export class LanguageController {
 
   @ApiFindAllQueryParams()
   @Get()
-  findAll() {
-    return this.languageService.findAll();
+  @UseGuards(AdminJwtAuthGuard)
+  findAll(@Query() query: FindAllQueryParams) {
+    return this.languageService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.languageService.findOne(id);
+  @UseGuards(AdminJwtAuthGuard)
+  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
+    return this.languageService.findOne(id, query);
   }
 
   @Patch(':id')

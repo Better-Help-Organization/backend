@@ -1,37 +1,38 @@
-import { Entity, Column, OneToMany, ManyToOne } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, Unique } from 'typeorm';
 import { CommonEntity } from './common.entity';
 import { Option } from './option.entity';
 import { Answer } from './answer.entity';
 import { Modal } from './modal.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { QuestionType } from '../constants';
 
+@Unique(['text', 'modal'])
 @Entity()
 export class Question extends CommonEntity {
   @ApiProperty()
-  @Column('text')
+  @Column({ type: 'varchar', length: 500 })
   text: string;
 
   @ApiProperty()
-  @Column()
-  type: string;
-
-  @ApiProperty()
-  @Column({nullable: true})
-  field_name: string;
+  @Column({    
+    type: 'enum',
+    enum: QuestionType,
+  })
+  type: QuestionType;
 
   @ApiProperty({type: () => Option})
   @OneToMany(() => Option, option => option.question, {
     cascade: true,
     onDelete: 'CASCADE',
   })
-  options: Option[];
+  option: Option[];
 
   @ApiProperty({type: () => Answer})
   @OneToMany(() => Answer, answer => answer.question)
-  answers: Answer[];
+  answer: Answer[];
 
   @ApiProperty({type: () => Modal})
-  @ManyToOne(() => Modal, modal => modal.questions, {
+  @ManyToOne(() => Modal, modal => modal.question, {
     nullable: false,
     onDelete: 'CASCADE',
   })

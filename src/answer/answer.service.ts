@@ -1,69 +1,88 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Answer } from 'src/common/entities/answer.entity';
 import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
 import { LoggerService } from 'src/logger/logger.service';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
-import { TokenPayload } from 'src/common/constants';
+import { QuestionType, TokenPayload } from 'src/common/constants';
 import { Option } from 'src/common/entities/option.entity';
 import { Question } from 'src/common/entities/question.entity';
-import { Client } from 'src/common/entities/client.entity';
 
 @Injectable()
 export class AnswerService {
   constructor(
     @InjectRepository(Answer) private readonly answerRepository: Repository<Answer>,
-    @InjectRepository(Client) private readonly clientRepository: Repository<Client>,
     @InjectRepository(Question) private readonly questionRepository: Repository<Question>,
     @InjectRepository(Option) private readonly optionRepository: Repository<Option>,
+
     private readonly logger: LoggerService
   ) {}
   async create(client: TokenPayload, dto: CreateAnswerDto) {
-    try {
-      if (dto.clientId !== client.id) {
-        throw new UnauthorizedException('You cannot submit answers for other clients.');
+    const { answers } = dto;
+
+    const savedAnswers: Answer[] = [];
+
+    for (const ans of answers) {
+      const { questionId, singleOptionId, multiOptionIds, text } = ans;
+
+      if (!singleOptionId && !text &&   (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0)) {
+        throw new BadRequestException(`Question ${questionId} requires either an option or text.`);
       }
 
-      if (dto.clientId) {
-        const client = await this.clientRepository.findOne({ where: { id: dto.clientId } });
-        if (!client) throw new NotFoundException(`Client ${dto.clientId} not found`);
+      const question = await this.questionRepository.findOne({ where: { id: questionId }, relations: ['option'] });
+      if (!question) throw new NotFoundException(`Question ${questionId} not found`);
+
+      switch (question.type) {
+        case QuestionType.SINGLE:
+          if (!singleOptionId) throw new BadRequestException(`Question ${questionId} requires a single option.`);
+          break;
+        case QuestionType.MULTIPLE:
+          if (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0) {
+            throw new BadRequestException(`Question ${questionId} requires multiple options.`);
+          }
+          break;
+        case QuestionType.OPEN:
+          if (!text || text.trim() === '') throw new BadRequestException(`Question ${questionId} requires a text answer.`);
+          break;
+        default:
+          throw new BadRequestException(`Unsupported question type: ${question.type}`);
       }
 
-      if (dto.questionId) {
-        const question = await this.questionRepository.findOne({ where: { id: dto.questionId } });
-        if (!question) throw new NotFoundException(`Question ${dto.questionId} not found`);
+      if(singleOptionId){
+        const option = await this.optionRepository.findOne({ where: { id: singleOptionId }, relations: ['question'] });
+        if (!option) throw new NotFoundException(`Option ${singleOptionId} not found`);
       }
 
-      if (dto.optionId) {
-        const option = await this.optionRepository.findOne({ where: { id: dto.optionId } });
-        if (!option) throw new NotFoundException(`Option ${dto.optionId} not found`);
-      }
+      if(Array.isArray(multiOptionIds) &&multiOptionIds.length > 0){
+        const options = await this.optionRepository.find({
+          where: { id: In(multiOptionIds) },
+          relations: ['question'],
+        });
 
-        const existing = await this.answerRepository.findOne({
-        where: {
-          client: { id: dto.clientId },
-          question: { id: dto.questionId },
-        },
-      });
-
-      if (existing) {
-        throw new BadRequestException('You have already submitted an answer for this question.');
+        if (options.length !== multiOptionIds.length) {
+          const foundIds = options.map(opt => opt.id);
+          const missingIds = multiOptionIds.filter(id => !foundIds.includes(id));
+          throw new NotFoundException(`Options not found: ${missingIds.join(', ')}`);
+        }
       }
 
       const answer = this.answerRepository.create({
-        client: { id: dto.clientId },
-        question: {id: dto.questionId},
-        option: {id: dto.optionId},
+        client: { id: client.id },
+        question: { id: questionId },
+        ...(singleOptionId ? { singleOption: { id: singleOptionId } } : {}),
+        ...(Array.isArray(multiOptionIds) && multiOptionIds.length > 0
+          ? { multiOption: multiOptionIds.map(id => ({ id })) }
+          : {}),
+        ...(text ? { text } : { text: null }),
       });
 
-      return await this.answerRepository.save(answer);
-    } catch (err) {
-      this.logger.error(`Failed to create answer: ${err.message}`);
-      throw err;
+      savedAnswers.push(await this.answerRepository.save(answer));
     }
+
+    return savedAnswers;
   }
 
   async findAll(queryParams?: FindAllQueryParams) {
@@ -92,39 +111,61 @@ export class AnswerService {
     try {
       const answer = await this.findOne(id);
 
-      if (dto.clientId) {
-        if (dto.clientId !== client.id) {
-          throw new UnauthorizedException('You cannot update this answer.');
+      const updatedAnswers: Answer[] = [];
+
+      for (const ansDto of dto.answers) {
+        const question = await this.questionRepository.findOne({ where: { id: ansDto.questionId } });
+        if (!question) throw new NotFoundException(`Question ${ansDto.questionId} not found`);
+        answer.question = question;
+
+        switch (question.type) {
+          case QuestionType.SINGLE:
+            if (!ansDto.singleOptionId) {
+              throw new BadRequestException(`Question ${question.id} requires a single option.`);
+            }
+            break;
+          case QuestionType.MULTIPLE:
+            if (!Array.isArray(ansDto.multiOptionIds) || ansDto.multiOptionIds.length === 0) {
+              throw new BadRequestException(`Question ${question.id} requires multiple options.`);
+            }
+            break;
+          case QuestionType.OPEN:
+            if (!ansDto.text || ansDto.text.trim() === '') {
+              throw new BadRequestException(`Question ${question.id} requires a text answer.`);
+            }
+            break;
+          default:
+            throw new BadRequestException(`Unsupported question type: ${question.type}`);
         }
-        const clientData = await this.clientRepository.findOne({ where: { id: dto.clientId } });
-        if (!clientData) throw new NotFoundException(`Client ${dto.clientId} not found`);
-      }
 
-      if (dto.questionId) {
-        const question = await this.questionRepository.findOne({ where: { id: dto.questionId } });
-        if (!question) throw new NotFoundException(`Question ${dto.questionId} not found`);
-      }
-
-      if (dto.optionId) {
-        const option = await this.optionRepository.findOne({ where: { id: dto.optionId } });
-        if (!option) throw new NotFoundException(`Option ${dto.optionId} not found`);
-      }
-
-      if (dto.questionId && dto.questionId !== answer.question.id) {
-        const duplicate = await this.answerRepository.findOne({
-          where: {
-            client: { id: dto.clientId },
-            question: { id: dto.questionId },
-          },
-        });
-
-        if (duplicate) {
-          throw new BadRequestException('You have already submitted an answer for that question.');
+        if (ansDto.singleOptionId) {
+          const option = await this.optionRepository.findOne({ where: { id: ansDto.singleOptionId } });
+          if (!option) throw new NotFoundException(`Option ${ansDto.singleOptionId} not found`);
+          answer.singleOption = option;
+        } else {
+          answer.singleOption = null;
         }
+
+        if (Array.isArray(ansDto.multiOptionIds) &&ansDto.multiOptionIds.length > 0) {
+          const options = await this.optionRepository.find({
+            where: { id: In(ansDto.multiOptionIds) },
+            relations: ['question'],
+          });
+
+          if (options.length !== ansDto.multiOptionIds.length) {
+            const foundIds = options.map(opt => opt.id);
+            const missingIds = ansDto.multiOptionIds.filter(id => !foundIds.includes(id));
+            throw new NotFoundException(`Options not found: ${missingIds.join(', ')}`);
+          }
+        } else {
+          answer.singleOption = null;
+        }
+
+        answer.text = ansDto.text || null;
+        updatedAnswers.push(await this.answerRepository.save(answer));
       }
 
-      Object.assign(answer, {client: { id: dto.clientId }, question: {id: dto.questionId}, option: {id: dto.optionId},});
-      return await this.answerRepository.save(answer);
+      return updatedAnswers;
     } catch (err) {
       this.logger.error(`Failed to update answer: ${err.message}`);
       throw err;

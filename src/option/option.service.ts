@@ -26,19 +26,6 @@ export class OptionService {
         throw new BadRequestException(`Question with ID ${dto.questionId} not found`);
       }
 
-      const existing = await this.optionRepository.findOne({
-        where: {
-          text: dto.text,
-          question: { id: dto.questionId },
-        },
-      });
-
-      if (existing) {
-        throw new BadRequestException(
-          'An option with the same text already exists for this question.',
-        );
-      }
-
       const option = this.optionRepository.create({
         ...dto,
         question,
@@ -81,27 +68,6 @@ export class OptionService {
         const question = await this.questionRepository.findOne({ where: { id: dto.questionId } });
         if (!question) {
           throw new BadRequestException(`Question with ID ${dto.questionId} does not exist.`);
-        }
-      }
-
-      if (dto.text && dto.text !== option.text) {
-        const existing = await this.optionRepository.findOne({
-          where: {
-            text: dto.text,
-            question: { id: dto.questionId },
-          },
-        });
-
-        if (existing && existing.id !== id) {
-          if (!dto.questionId) {
-            throw new BadRequestException(
-              'An option with the same text already exists. Provide a question ID to limit the scope of the update to a specific question.',
-            );
-          } else {
-            throw new BadRequestException(
-              'Another option with the same text already exists for the specified question.',
-            );
-          }
         }
       }
 

@@ -16,14 +16,6 @@ export class LanguageService {
   ) {}
   async create(dto: CreateLanguageDto) {
     try {
-      const existing = await this.languageRepository.findOne({
-      where: [{ name: dto.name }, { code: dto.code }],
-      });
-
-      if (existing) {
-        throw new BadRequestException('A language with the same name or code already exists.');
-      }
-
       return await this.languageRepository.save(this.languageRepository.create(dto));
     } catch (err) {
       this.logger.error(`Create language error: ${err.message}`);

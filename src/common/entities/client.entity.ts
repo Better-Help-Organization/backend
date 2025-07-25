@@ -15,8 +15,8 @@ export class Client extends User {
   isVisible: boolean;
 
   @OneToMany(() => Preference, preference => preference.client)
-  preferences: Preference[];
+  preference: Preference[];
 
   @OneToMany(() => Answer, answer => answer.client)
-  answers: Answer[];
+  answer: Answer[];
 }

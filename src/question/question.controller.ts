@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { QuestionService } from './question.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 
 @Controller('question')
@@ -17,14 +17,16 @@ export class QuestionController {
 
   @ApiFindAllQueryParams()
   @Get()
-  findAll() {
-    return this.questionService.findAll();
+  @UseGuards(AdminJwtAuthGuard)
+  findAll(@Query() query: FindAllQueryParams) {
+    return this.questionService.findAll(query);
   }
 
   @ApiFindOneQueryParams()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.questionService.findOne(id);
+  @UseGuards(AdminJwtAuthGuard)
+  findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
+    return this.questionService.findOne(id, query);
   }
 
   @Patch(':id')

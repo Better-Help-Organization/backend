@@ -18,17 +18,9 @@ export class QuestionService {
   ) {}
   async create(dto: CreateQuestionDto) {
     try {
-      const existing = await this.questionRepository.findOne({
-        where: {
-          text: dto.text,
-          modal: { id: dto.modalId },
-        },
-      });
-
-      if (existing) {
-        throw new BadRequestException(
-          'A question with the same text already exists for this therapy type.',
-        );
+      const modal = await this.modalRepository.findOne({ where: { id: dto.modalId } });
+      if (!modal) {
+        throw new BadRequestException(`Modal with ID ${dto.modalId} does not exist.`);
       }
 
       return await this.questionRepository.save(this.questionRepository.create({
@@ -71,27 +63,6 @@ export class QuestionService {
         const modal = await this.modalRepository.findOne({ where: { id: dto.modalId } });
         if (!modal) {
           throw new BadRequestException(`Modal with ID ${dto.modalId} does not exist.`);
-        }
-      }
-
-      if (dto.text && dto.text !== question.text) {
-        const existing = await this.questionRepository.findOne({
-          where: {
-            text: dto.text,
-            modal: { id: dto.modalId},
-          },
-        });
-
-        if (existing && existing.id !== id) {
-          if (!dto.modalId) {
-            throw new BadRequestException(
-              'A question with the same text already exists. Provide a modal ID to limit the scope of the update to a specific therapy type.',
-            );
-          } else {
-            throw new BadRequestException(
-              'Another question with the same text exists under this therapy type.',
-            );
-          }
         }
       }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Modal } from 'src/common/entities/modal.entity';
@@ -16,19 +16,8 @@ export class ModalService {
   ) {}
   async create(dto: CreateModalDto) {
     try {
-      const existing = await this.modalRepository.findOne({
-        where: { name: dto.name },
-      });
-
-      if (existing) {
-        throw new BadRequestException(
-          'A therapy type (modal) with this name already exists.',
-        );
-      }
-
-      return await this.modalRepository.save(this.modalRepository.create({
-        ...dto,
-      }));
+      const modal = this.modalRepository.create(dto);
+      return await this.modalRepository.save(modal);
     } catch (err) {
       this.logger.error(`Create modal error: ${err.message}`);
       throw err;

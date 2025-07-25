@@ -1,6 +1,7 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { User } from './user.entity';
-import { UserTypes } from '../constants';
+import { Availability } from './availability.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
 export class Therapist extends User {
@@ -9,4 +10,8 @@ export class Therapist extends User {
 
   @Column({ default: false })
   verified: boolean;
+
+  @ApiProperty({type: () => Availability})
+  @OneToMany(() => Availability, availability => availability.therapist)
+  availability: Availability[];
 }

@@ -7,19 +7,19 @@ export class CreateOptionDto {
   @IsString()
   text: string;
 
-  @ApiProperty({ description: 'Type of the option', example: 'multiple_choice' })
-  @IsNotEmpty()
-  @IsString()
-  type: string;
+  // @ApiProperty({ description: 'Type of the option', example: 'multiple_choice' })
+  // @IsNotEmpty()
+  // @IsString()
+  // type: string;
 
-  @ApiProperty({
-    description: 'Optional field name used for form processing',
-    example: 'hasExperience',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  field_name: string;
+  // @ApiProperty({
+  //   description: 'Optional field name used for form processing',
+  //   example: 'hasExperience',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsString()
+  // field_name: string;
 
   @ApiProperty({
     description: 'UUID of the question this option belongs to',

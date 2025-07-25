@@ -16,6 +16,7 @@ import { AnswerModule } from './answer/answer.module';
 import { OptionModule } from './option/option.module';
 import { QuestionModule } from './question/question.module';
 import { ModalModule } from './modal/modal.module';
+import { LevelModule } from './level/level.module';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { ModalModule } from './modal/modal.module';
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
-    AuthModule, ClientModule, TherapistModule, EmailModule, PreferenceModule, ModalModule, QuestionModule, OptionModule, AnswerModule, LanguageModule,
+    AuthModule, ClientModule, TherapistModule, EmailModule, PreferenceModule, ModalModule, QuestionModule, OptionModule, AnswerModule, LanguageModule, LevelModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {

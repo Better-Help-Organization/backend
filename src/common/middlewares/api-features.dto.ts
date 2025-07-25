@@ -22,15 +22,6 @@ type DeepKeyOf<T> = T extends Primitive
 
 export class FindAllQueryParams<T=any> {
   @ApiProperty({
-    description: 'guest id if user is not authenticated.',
-    example: '6848872a-79b3-42f9-80d9-718ddd938220',
-    required: false,
-  })
-  @IsOptional()
-  @IsUUID()
-  guest?: string;
-
-  @ApiProperty({
     description: 'Comma-separated list of fields to select. Supports relations.',
     required: false,
   })
@@ -74,15 +65,6 @@ export class FindAllQueryParams<T=any> {
 }
 
 export class FindOneQueryParams<T=any> {
-  @ApiProperty({
-    description: 'guest id if user is not authenticated.',
-    example: '6848872a-79b3-42f9-80d9-718ddd938220',
-    required: false,
-  })
-  @IsOptional()
-  @IsUUID()
-  guest?: string;
-
   @ApiProperty({
     description: 'Comma-separated list of fields to select. Supports relations.',
     example: 'id',

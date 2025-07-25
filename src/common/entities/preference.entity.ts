@@ -1,20 +1,23 @@
-import { Entity, Column, ManyToOne, Unique } from 'typeorm';
+import { Entity, Column, ManyToOne, Unique, OneToMany, OneToOne, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
 import { Client } from './client.entity';
 import { Modal } from './modal.entity';
 import { Language } from './language.entity';
 import { CommonEntity } from './common.entity';
-import { Gender } from '../constants';
+import { Gender, SessionFormat } from '../constants';
 import { ApiProperty } from '@nestjs/swagger';
+import { Level } from './level.entity';
+import { Availability } from './availability.entity';
 
-@Unique(['client', 'modal', 'language'])
+@Unique(['client', 'modal'])
 @Entity()
 export class Preference extends CommonEntity {
-  @ApiProperty({type: () => Client})
-  @ManyToOne(() => Client, client => client.preferences, { onDelete: 'CASCADE' })
+  @ApiProperty({ type: () => Client })
+  @ManyToOne(() => Client, client => client.preference, { onDelete: 'CASCADE' })
   client: Client;
 
-  @ApiProperty({type: () => Modal})
-  @ManyToOne(() => Modal, modal => modal.preferences, { onDelete: 'SET NULL', nullable: true })
+  @ApiProperty({ type: () => Modal })
+  @OneToOne(() => Modal, modal => modal.preference)
+  @JoinColumn()
   modal: Modal;
 
   @ApiProperty()
@@ -25,19 +28,25 @@ export class Preference extends CommonEntity {
   })
   gender: Gender;
 
-  @ApiProperty({type: () => Language})
-  @ManyToOne(() => Language, language => language.preferences, { onDelete: 'SET NULL', nullable: true })
-  language: Language;
+  @ApiProperty({ type: () => [Language] })
+  @ManyToMany(() => Language, language => language.preference)
+  @JoinTable()
+  language: Language[];
 
   @ApiProperty()
-  @Column({ type: 'json', nullable: true })
-  days: any;
-
-  @ApiProperty()
-  @Column({ type: 'json',  nullable: true })
-  times: any;
+  @Column({ type: 'enum', enum: SessionFormat })
+  sessionFormat: SessionFormat;
 
   @ApiProperty()
   @Column('text')
-  goals: string;
+  goal: string;
+
+  @ApiProperty({ type: () => Level })
+  @OneToOne(() => Level, level => level.preference, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn()
+  level: Level;
+
+  @ApiProperty({type: () => Availability})
+  @OneToMany(() => Availability, availability => availability.preference)
+  availability: Availability[];
 }
