@@ -1,4 +1,4 @@
-import { join } from "path"
+import { join } from "path";
 
 export enum UserTypes {
     ADMIN = "admin",
@@ -42,7 +42,7 @@ export enum SessionStatus {
   ONGOING = "ongoing",
   DISRUPTED = "disrupted",
   COMPLETED = "completed",
-  CANCELED = "canceled",
+  CANCELED = "cancelled",
   OTHER = "other"
 }
 
@@ -51,6 +51,14 @@ export enum SessionType {
   CHAT = "chat",
   AUDIO = "audio",
 }
+
+
+export const SessionNotif: Record<string, { code: string; title: string }> = {
+  SCHEDULED: { code: "1", title: 'session_scheduled' },
+  NEW_MESSAGE: { code: "2", title: 'new_message' },
+} as const;
+
+export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
 
 
 export const FILE_UPLOAD_KEY = 'image';
