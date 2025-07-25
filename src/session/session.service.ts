@@ -71,7 +71,7 @@ export class SessionService {
       
       if(createSessionDto.groupClients?.length != 0) {
         groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
-        console.log('Group entities: - session.service.ts:69', groupEntities);
+        console.log('Group entities: - session.service.ts:74', groupEntities);
       }
       const therapistEntity = await this.therapistService.findOne(id);
 
@@ -88,17 +88,17 @@ export class SessionService {
       let clientToken: string[] = []
       if (createSessionDto.client != null) {
         const client = await this.clientService.findOne(createSessionDto.client)
-        console.log('Client token: - session.service.ts:86', client); 
+        console.log('Client token: - session.service.ts:91', client); 
         clientToken.push(client.firebaseToken);     
       }
       else {
         const clients = (await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`}))
         clientToken.push(clients.data.map(c => c.firebaseToken));
-        console.log('Group client tokens: - session.service.ts:92', ...clientToken);
+        console.log('Group client tokens: - session.service.ts:97', ...clientToken);
       }
 
       const therapistToken = await this.therapistService.findOne(id)
-      console.log('Therapist token: - session.service.ts:96', therapistToken.firebaseToken);
+      console.log('Therapist token: - session.service.ts:101', therapistToken.firebaseToken);
       tokens.push(...clientToken, therapistToken.firebaseToken);
 
       this.firebaseService.sendPushNotification(
