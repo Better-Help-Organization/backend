@@ -9,5 +9,4 @@ export class EmailDto {
     @IsNotEmpty()
     @IsEmail()
     email: string;
-
 }

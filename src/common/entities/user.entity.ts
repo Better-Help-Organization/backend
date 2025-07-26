@@ -1,9 +1,9 @@
-import { Column } from 'typeorm';
-import { CommonEntity } from './common.entity';
-import 'reflect-metadata';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
+import 'reflect-metadata';
+import { Column } from 'typeorm';
 import { BaseStatus, Gender } from '../constants';
+import { CommonEntity } from './common.entity';
 
 export abstract class User extends CommonEntity {
 
@@ -29,9 +29,17 @@ export abstract class User extends CommonEntity {
     @Column({ unique: true })
     email: string;
 
+    @ApiProperty()
+    @Column({ unique:true, nullable: true })
+    phoneNumber: string;
+
     @ApiProperty({ default: false })
     @Column({default: false })
     isEmailAuthenticated: boolean;
+
+    @ApiProperty({ default: false })
+    @Column({default: false })
+    isPhoneNumberAuthenticated: boolean;
 
     @Exclude()
     @ApiHideProperty()

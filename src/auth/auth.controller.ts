@@ -1,38 +1,44 @@
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, HttpCode,
-  UseGuards, Res, NotFoundException,
-  Req
+  Body,
+  Controller, Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UseGuards
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { ConfigService } from '@nestjs/config';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
+import { Request, Response } from 'express';
+import passport from 'passport';
+import { TokenPayload, UserTypes } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { Admin } from 'src/common/entities/admin.entity';
+import { Client } from 'src/common/entities/client.entity';
+import { Therapist } from 'src/common/entities/therapist.entity';
+import { EmailAuthGuard } from 'src/common/guard/email.guard';
+import { PhonePwdAuthGuard } from 'src/common/guard/email.pwd.guard';
 import {
   AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard
 } from 'src/common/guard/jwt-auth.guard';
 import {
-  ClientJwtRefreshAuthGuard, AdminJwtRefreshAuthGuard, TherapistJwtRefreshAuthGuard
+  AdminJwtRefreshAuthGuard,
+  ClientJwtRefreshAuthGuard,
+  TherapistJwtRefreshAuthGuard
 } from 'src/common/guard/jwt-refresh.guard';
-import { TokenPayload, UserTypes } from 'src/common/constants';
 import { LoggerService } from 'src/logger/logger.service';
-import { EmailDto } from './dto/EmailDto';
-import { EmailAuthGuard } from 'src/common/guard/email.guard';
-import { LoginDto } from './dto/LoginDto';
-import { ResetPwdDto } from './dto/ResetPwdDto';
-import { EmailVerifyDto } from './dto/VerifyOtpDto';
-import { EmailPwdAuthGuard } from 'src/common/guard/email.pwd.guard';
-import { AdminSignupDto } from './dto/admin-signup.dto';
-import { TherapistSignupDto } from './dto/therapist-signup.dto';
+import { AuthService } from './auth.service';
 import { ClientSignupDto } from './dto/ client-signup.dto';
-import { Admin } from 'src/common/entities/admin.entity';
-import { Therapist } from 'src/common/entities/therapist.entity';
-import { Client } from 'src/common/entities/client.entity';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
-import { Response, Request } from 'express';
-import { AuthGuard } from '@nestjs/passport';
-import { ConfigService } from '@nestjs/config';
-import passport from 'passport';
+import { AdminSignupDto } from './dto/admin-signup.dto';
+import { EmailDto } from './dto/EmailDto';
+import { LoginDto } from './dto/LoginDto';
 import { oAuthDto } from './dto/oauth.dto';
+import { ResetPwdDto } from './dto/ResetPwdDto';
+import { TherapistSignupDto } from './dto/therapist-signup.dto';
+import { EmailVerifyDto } from './dto/VerifyOtpDto';
 
 class FirebaseTokenDto {
   @ApiProperty()
@@ -110,22 +116,43 @@ export class AuthController {
     return admin;
   }
 
+  // @HttpCode(200)
+  // @UseGuards(EmailPwdAuthGuard)
+  // @Post('login/client')
+  // async clientLogin(@CurrentUser() client: Client, @Body() _: LoginDto) {
+  //   return client;
+  // }
+
+  // @HttpCode(200)
+  // @UseGuards(EmailPwdAuthGuard)
+  // @Post('login/therapist')
+  // async therapistLogin(@CurrentUser() therapist: Therapist, @Body() _: LoginDto) {
+  //   return therapist;
+  // }
+
+  // @HttpCode(200)
+  // @UseGuards(EmailPwdAuthGuard)
+  // @Post('login/admin')
+  // async adminLogin(@CurrentUser() admin: Admin, @Body() _: LoginDto) {
+  //   return admin;
+  // }
+
   @HttpCode(200)
-  @UseGuards(EmailPwdAuthGuard)
+  @UseGuards(PhonePwdAuthGuard)
   @Post('login/client')
   async clientLogin(@CurrentUser() client: Client, @Body() _: LoginDto) {
     return client;
   }
 
   @HttpCode(200)
-  @UseGuards(EmailPwdAuthGuard)
+  @UseGuards(PhonePwdAuthGuard)
   @Post('login/therapist')
   async therapistLogin(@CurrentUser() therapist: Therapist, @Body() _: LoginDto) {
     return therapist;
   }
 
   @HttpCode(200)
-  @UseGuards(EmailPwdAuthGuard)
+  @UseGuards(PhonePwdAuthGuard)
   @Post('login/admin')
   async adminLogin(@CurrentUser() admin: Admin, @Body() _: LoginDto) {
     return admin;

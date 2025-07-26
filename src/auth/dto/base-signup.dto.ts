@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsNotEmpty, IsString, IsDateString, IsOptional } from "class-validator";
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsString } from "class-validator";
 import { Gender } from "src/common/constants";
+import { IsValidPhoneNumber } from "src/common/decorators/IsValidPhoneNumber";
 import { ValidPassword } from "src/common/decorators/valid-password";
 
 export class BaseSignupDto {
@@ -18,6 +19,14 @@ export class BaseSignupDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;
+
+  @ApiProperty({
+    description: 'phone number',
+    example: '923621874',
+  })
+  @IsNotEmpty()
+  @IsValidPhoneNumber()
+  phoneNumber: string;
 
   @ApiProperty({ description: 'Password', example: 'SecurePassword123' })
   @IsNotEmpty()

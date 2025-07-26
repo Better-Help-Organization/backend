@@ -90,3 +90,47 @@ export class EmailPwdStrategy extends PassportStrategy(Strategy, 'email-pwd') {
     return user;
   }
 }
+
+
+@Injectable()
+export class PhonePwdStrategy extends PassportStrategy(Strategy, 'phone-pwd') {
+  constructor(
+    private readonly authService: AuthService
+  ) {
+    super({
+      usernameField: 'phoneNumber',
+      passwordField: 'password',
+      passReqToCallback: true,
+    });
+  }
+
+  async validate(req: any, phoneNumber: string, password: string) {
+    const { firebaseToken } = req.body;
+
+    if (!firebaseToken) {
+      throw new BadRequestException('Firebase token is required.');
+    }
+
+    // Determine user type based on request path
+    const path = req.path.toLowerCase();
+    let userType: UserTypes;
+
+    if (path.includes('client')) {
+      userType = UserTypes.CLIENT;
+    } else if (path.includes('therapist')) {
+      userType = UserTypes.THERAPIST;
+    } else if (path.includes('admin')) {
+      userType = UserTypes.ADMIN;
+    } else {
+      throw new BadRequestException('Invalid login path');
+    }
+
+    const user = await this.authService.loginUserPhone(phoneNumber, password, firebaseToken, userType);
+
+    if (!user) {
+      throw new UnauthorizedException(`Invalid credentials for ${userType}`);
+    }
+
+    return user;
+  }
+}

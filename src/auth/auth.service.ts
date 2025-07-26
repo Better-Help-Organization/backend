@@ -1,25 +1,24 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { compare, hash } from 'bcryptjs';
+import * as speakeasy from 'speakeasy';
+import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
+import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
-import { getInclusiveColumns } from 'src/common/utils/getInclusiveColumns';
-import { AdminService } from 'src/admin/admin.service';
-import { LoggerService } from 'src/logger/logger.service';
-import { Repository } from 'typeorm';
-import * as speakeasy from 'speakeasy';
-import { compare, hash } from 'bcryptjs';
-import { ResetPwdDto } from './dto/ResetPwdDto';
-import { EmailService } from 'src/email/email.service';
-import { Admin } from 'src/common/entities/admin.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { TherapistService } from 'src/therapist/therapist.service';
-import { ClientSignupDto } from './dto/ client-signup.dto';
-import { TherapistSignupDto } from './dto/therapist-signup.dto';
-import { AdminSignupDto } from './dto/admin-signup.dto';
 import { User } from 'src/common/entities/user.entity';
+import { getInclusiveColumns } from 'src/common/utils/getInclusiveColumns';
+import { EmailService } from 'src/email/email.service';
+import { LoggerService } from 'src/logger/logger.service';
+import { TherapistService } from 'src/therapist/therapist.service';
+import { Repository } from 'typeorm';
+import { ClientSignupDto } from './dto/ client-signup.dto';
+import { AdminSignupDto } from './dto/admin-signup.dto';
+import { ResetPwdDto } from './dto/ResetPwdDto';
+import { TherapistSignupDto } from './dto/therapist-signup.dto';
 
 @Injectable()
 export class AuthService {
@@ -275,6 +274,41 @@ export class AuthService {
       if (type !== UserTypes.ADMIN && !user.isEmailAuthenticated) {
         throw new UnauthorizedException('Email is not verified.');
       }
+
+      const authenticated = await compare(password, user['password']);
+      if (!authenticated) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
+        this._generateTokens({
+          id: user.id,
+          type,
+          status: user.status,
+      });
+
+      user.refreshToken = refreshToken;
+      user.firebaseToken = firebaseToken;
+      await repo.save(user);
+
+      return { user, accessToken, refreshToken };
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
+    async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes) {
+
+    try{
+
+      const repo = await this.getRepo(type);
+
+      const inclusiveOf: (keyof  User)[] = ['password'];
+      const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
+
+      const user = await repo.findOneOrFail({ where: { phoneNumber }, select: selectColumns });
+      if (!user) throw new NotFoundException(`${type} not found`);
 
       const authenticated = await compare(password, user['password']);
       if (!authenticated) {
