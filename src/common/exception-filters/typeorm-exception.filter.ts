@@ -10,6 +10,8 @@ import { LoggerService } from 'src/logger/logger.service';
 import { TypeORMError } from 'typeorm';
 import { getHttpStatusMessage } from '../utils/getHttpStatusMessage';
 import { DataSource } from 'typeorm';
+import { EntityNotFoundError } from 'typeorm';
+
 
 @Catch(TypeORMError)
 export class TypeOrmExceptionFilter implements ExceptionFilter {
@@ -84,6 +86,17 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
       const field = exception.message.split("'")[1].split("."); // Extract the field from the error message
       status = HttpStatus.BAD_REQUEST;
       message = `The field '${field[1]}' does not exist on the ${field[0]} table. Please check your query parameters or database schema.`;
+    }
+
+    else if (exception instanceof EntityNotFoundError) {
+
+        const raw = exception.message;
+        const entityMatch = raw.match(/entity of type "(.*?)"/);
+        const entityName = entityMatch?.[1] ?? 'Entity';
+
+        status = HttpStatus.NOT_FOUND;
+        message = `No ${entityName.toLowerCase()} found matching the specified criteria.`;
+
     }
 
     else if (exception.message.includes('Cannot add or update a child row')) {

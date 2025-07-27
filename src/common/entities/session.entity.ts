@@ -105,46 +105,46 @@ export class Session extends CommonEntity {
 
 }
 
-@ViewEntity({
-  expression: `
-    SELECT
-      s.id,
-      s.clientId,
-      s.therapistId,
-      s.schedule,
-      s.duration,
-      s.type,
-      s.statusId,
-      s.noteId,
-      s.schedule + INTERVAL s.duration MINUTE AS end_time
-    FROM session s
-  `,
-})
-export class SessionWithEndTime {
-  @ViewColumn()
-  id: string;
+// @ViewEntity({
+//   expression: `
+//     SELECT
+//       s.id,
+//       s.clientId,
+//       s.therapistId,
+//       s.schedule,
+//       s.duration,
+//       s.type,
+//       s.statusId,
+//       s.noteId,
+//       s.schedule + INTERVAL s.duration MINUTE AS end_time
+//     FROM session s
+//   `,
+// })
+// export class SessionWithEndTime {
+//   @ViewColumn()
+//   id: string;
 
-  @ViewColumn()
-  clientId: string;
+//   @ViewColumn()
+//   clientId: string;
 
-  @ViewColumn()
-  therapistId: string;
+//   @ViewColumn()
+//   therapistId: string;
 
-  @ViewColumn()
-  schedule: Date;
+//   @ViewColumn()
+//   schedule: Date;
 
-  @ViewColumn()
-  duration: number;
+//   @ViewColumn()
+//   duration: number;
 
-  @ViewColumn()
-  type: string; // or SessionType enum if you want
+//   @ViewColumn()
+//   type: string; // or SessionType enum if you want
 
-  @ViewColumn()
-  statusId: string | null;
+//   @ViewColumn()
+//   statusId: string | null;
 
-  @ViewColumn()
-  noteId: string | null;
+//   @ViewColumn()
+//   noteId: string | null;
 
-  @ViewColumn()
-  end_time: Date;
-}
+//   @ViewColumn()
+//   end_time: Date;
+// }
