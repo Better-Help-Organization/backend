@@ -60,9 +60,9 @@ async function bootstrap() {
 
   const logger = new LoggerService()
   // Filters
-  app.useGlobalFilters(new BadRequestExceptionFilter(logger));
-  app.useGlobalFilters(new HttpExceptionFilter(logger));
-  app.useGlobalFilters(new TypeOrmExceptionFilter(logger));
+  //app.useGlobalFilters(new BadRequestExceptionFilter(logger));
+  //app.useGlobalFilters(new HttpExceptionFilter(logger));
+  //app.useGlobalFilters(new TypeOrmExceptionFilter(logger));
 
   if (process.env.NODE_ENV !== "prod") {
 
