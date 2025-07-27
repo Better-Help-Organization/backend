@@ -10,6 +10,7 @@ export class ClientSignupDto extends BaseSignupDto {
   username?: string;
 
   @ApiProperty({ description: 'Emergency Contact', example: '911123456' })
+  @IsOptional()
   @IsValidPhoneNumber()
   emergencyContact?: string;
 }

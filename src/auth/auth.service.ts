@@ -216,7 +216,7 @@ export class AuthService {
     
     if (client !== null) {
       await this.emailOtp(UserTypes.CLIENT, client);
-      return "An otp has been sent to your email, use it to verify your email.";
+      return client;
     }
   }
  
@@ -233,7 +233,7 @@ export class AuthService {
     
     if (therapist !== null) {
       await this.emailOtp(UserTypes.THERAPIST, therapist);
-      return "An otp has been sent to your email, use it to verify your email.";
+      return therapist;
     }
   }
 
@@ -249,7 +249,7 @@ export class AuthService {
     const admin = await this.adminService.create(adminSignupDto);
     if(admin !== null) {
       await this.emailOtp(UserTypes.ADMIN, admin);
-      return "An otp has been sent to your email, use it to verify your email."
+      return admin
     }
   }
 
