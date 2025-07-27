@@ -53,7 +53,7 @@ async function bootstrap() {
 
 
   // Interceptors
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  //app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Use global guards  
   app.useGlobalGuards(new DynamicGuard(reflector));
