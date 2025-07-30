@@ -16,7 +16,6 @@ import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
-import { ViewColumn, ViewEntity } from 'typeorm';
 import { Message } from './message.entity';
 
 @Unique('UQ_therapist_schedule', ['therapist','schedule'])
