@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   Entity,
@@ -11,15 +12,19 @@ import { Therapist } from './therapist.entity';
 @Entity('message')
 export class Message extends CommonEntity {
 
+  @ApiProperty({nullable:true, type: () => Session})
   @ManyToOne(() => Session, { nullable: false, onDelete: 'CASCADE' })
   session: Session;
 
+  @ApiProperty({nullable:true, type: () => Therapist})
   @ManyToOne(() => Therapist, { nullable: true, eager: true })
   therapist: Therapist;
 
+  @ApiProperty({nullable:true, type: () => Client})
   @ManyToOne(() => Client, { nullable: true, eager: true })
   client: Client;
 
+  @ApiProperty({nullable:true})
   @Column({ type: 'text' })
   content: string;
 }

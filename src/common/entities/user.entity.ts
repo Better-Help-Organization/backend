@@ -1,4 +1,4 @@
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import 'reflect-metadata';
 import { Column } from 'typeorm';
@@ -16,12 +16,12 @@ export abstract class User extends CommonEntity {
     lastName: string;
 
     @Exclude()
-    @ApiHideProperty()
+    @ApiProperty({ nullable: true })
     @Column({nullable:true})
     OTP: string
 
     @Exclude()
-    @ApiHideProperty()
+    @ApiProperty()
     @Column({ type: 'timestamp', nullable: true })
     OTPExpires: Date
 
@@ -42,19 +42,19 @@ export abstract class User extends CommonEntity {
     isPhoneNumberAuthenticated: boolean;
 
     @Exclude()
-    @ApiHideProperty()
+    @ApiProperty({ nullable: true })
     @Column({
         nullable: true
     })
     firebaseToken: string;
 
     @Exclude()
-    @ApiHideProperty()
+    @ApiProperty({ nullable: true })
     @Column({ nullable: true })
     refreshToken: string;
 
     @Exclude()
-    @ApiHideProperty()
+    @ApiProperty({ nullable: true })
     @Column({ nullable: true })
     password: string;
 

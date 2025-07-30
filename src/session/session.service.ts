@@ -49,20 +49,52 @@ export class SessionService {
   async create(id:string, createSessionDto: CreateSessionDto) {
     this.logger.log('Creating a new session');
     try {
+      // const newSession = this.sessionRepo.create({
+      //   ...createSessionDto,
+      //   client: { id: createSessionDto?.client },
+      //   therapist: id ? { id } : null,
+      //   group: createSessionDto.groupClients?.map(id => ({ id })),
+      // });
+      // console.log('New session created: - session.service.ts:58', newSession);
+      let clientEntity = null;
+      let groupEntities = null;
+      if(createSessionDto.client) {
+        clientEntity = await this.clientService.findOne(createSessionDto.client);
+        console.log({clientEntity});
+        // throw new BadRequestException('Group clients cannot be empty for group sessions');
+      }
+      
+      if(createSessionDto.groupClients?.length != 0) {
+        groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
+        console.log('Group entities: - session.service.ts:69', groupEntities);
+      }
+      const therapistEntity = await this.therapistService.findOne(id);
+
       const newSession = this.sessionRepo.create({
         ...createSessionDto,
-        client: { id: createSessionDto.client },
-        therapist: id ? { id } : null,
-        // groupClients: createSessionDto.groupClients?.map(id => ({ id })),
+        client: clientEntity,
+        therapist: therapistEntity,
+        group: groupEntities.data || null,
       });
+
       const savedSession = await this.sessionRepo.save(newSession);
       
       const tokens: string[] = []
-      
-      const clientToken = await this.clientService.findOne(createSessionDto.client)
-      const therapistToken = await this.therapistService.findOne(id)
+      let clientToken: string[] = []
+      if (createSessionDto.client != null) {
+        const client = await this.clientService.findOne(createSessionDto.client)
+        console.log('Client token: - session.service.ts:86', client); 
+        clientToken.push(client.firebaseToken);     
+      }
+      else {
+        const clients = (await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`}))
+        clientToken.push(clients.data.map(c => c.firebaseToken));
+        console.log('Group client tokens: - session.service.ts:92', ...clientToken);
+      }
 
-      tokens.push(clientToken?.firebaseToken, therapistToken?.firebaseToken);
+      const therapistToken = await this.therapistService.findOne(id)
+      console.log('Therapist token: - session.service.ts:96', therapistToken.firebaseToken);
+      tokens.push(...clientToken, therapistToken.firebaseToken);
 
       this.firebaseService.sendPushNotification(
         tokens,
@@ -119,14 +151,14 @@ async addToSession(sessionId: string, dto: AddToSessionDto) {
     // Fetch all clients to be added
     const clientsToAdd = await this.clientService.findAll({ids: `${groupClients.join(',')}`});
 
-    const newClients = clientsToAdd.filter(c => !existingClientIds.includes(c.id));
+    const newClients = clientsToAdd.data.filter(c => !existingClientIds.includes(c.id));
 
     if (newClients.length === 0) {
       throw new BadRequestException('All clients are already part of the session');
     }
 
     session.group = [...session.group, ...newClients];
-
+    console.log(session.group)
     return await this.sessionRepo.save(session);
   }
 

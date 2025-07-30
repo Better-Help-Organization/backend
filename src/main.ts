@@ -1,19 +1,19 @@
 (global as any).crypto = require('crypto');
 
 
-import { AppModule } from './app.module';
 import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
 
-import { SwaggerDocs } from './docs/SwaggerDocs';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerDocs } from './docs/SwaggerDocs';
 
 import * as glob from 'glob';
 import * as path from 'path';
 
-import {static as expose} from 'express'
 import cookieParser from 'cookie-parser';
+import { static as expose } from 'express';
 
 import { DynamicGuard } from './common/guard/dynamic.guard';
 import { LoggerService } from './logger/logger.service';
@@ -26,7 +26,6 @@ import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-excep
 
 import 'reflect-metadata';
 import { VERSION } from './common/constants';
-import cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -53,7 +52,7 @@ async function bootstrap() {
 
 
   // Interceptors
-  //app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Use global guards  
   app.useGlobalGuards(new DynamicGuard(reflector));

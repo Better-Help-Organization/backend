@@ -1,12 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Therapist } from 'src/common/entities/therapist.entity';
-import { Repository } from 'typeorm';
-import { LoggerService } from 'src/logger/logger.service';
-import { CreateTherapistDto } from './dto/create-therapist.dto';
-import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { Repository } from 'typeorm';
+import { UpdateTherapistDto } from './dto/update-therapist.dto';
 
 @Injectable()
 export class TherapistService {
@@ -16,7 +15,7 @@ export class TherapistService {
     private readonly therapistRepo: Repository<Therapist>,
   ) {}
 
-  async create(data: Partial<Therapist>): Promise<Therapist> {
+  async create(data: Partial<Therapist>) {
     try {
       this.logger.log(`Creating therapist with data: ${JSON.stringify(data)}`);
       const therapist = this.therapistRepo.create({
@@ -31,7 +30,7 @@ export class TherapistService {
     }
   }
 
-  async findOne(id: string, queryParams?: FindOneQueryParams<Therapist>): Promise<Therapist> {
+  async findOne(id: string, queryParams?: FindOneQueryParams<Therapist>) {
     try {
       this.logger.log(`Finding therapist with ID: ${id}`);
       const therapist = await new APIFeatures(this.therapistRepo, queryParams).getOne(id);
@@ -49,19 +48,19 @@ export class TherapistService {
     }
   }
 
-  async findAll(queryParams?: FindAllQueryParams<Therapist>): Promise<Therapist[]> {
+  async findAll(queryParams?: FindAllQueryParams<Therapist>) {
     try {
       this.logger.log(`Fetching all therapists`);
       const result = await new APIFeatures(this.therapistRepo, queryParams).getMany();
       this.logger.log(`Found ${result.data.length} therapists`);
-      return result.data;
+      return result;
     } catch (error) {
       this.logger.error(`Error fetching therapists: ${error.message}`);
       throw error;
     }
   }
 
-  async update(id: string, updateDto: UpdateTherapistDto): Promise<Therapist> {
+  async update(id: string, updateDto: UpdateTherapistDto) {
     const therapist = await this.findOne(id);
     Object.assign(therapist, updateDto);
     try {

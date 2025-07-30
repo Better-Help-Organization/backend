@@ -23,13 +23,21 @@ import { Message } from './message.entity';
 @Entity('session')
 export class Session extends CommonEntity {
 
+  @ApiProperty({ type : () => Client})
   @ManyToOne(() => Client, { 
     nullable: true,
-    cascade: true
+    // cascade: true
   })
   client: Client;
 
-  @ManyToMany(() => Client)
+  @ApiProperty({ type : () => [Client] })
+  @ManyToMany(() => Client, {
+    nullable: true,
+    // cascade: true
+    // eager: true, // Automatically load group clients when fetching the session
+    // onDelete: 'CASCADE', // If a client is deleted, remove them from the session group
+    // onUpdate: 'CASCADE' // Optional, if you want to update client references automatically
+  })
   @JoinTable({
     name: 'session_group_clients',
     joinColumn: { name: 'session_id', referencedColumnName: 'id' },
@@ -38,27 +46,33 @@ export class Session extends CommonEntity {
   group: Client[];
 
 
+  @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
     nullable: true,
-    cascade: true
+    // cascade: true
   })
   therapist: Therapist;
 
+  @ApiProperty()
   @Column({ type: 'timestamp' })
   schedule: Date;
 
+  @ApiProperty()
   @Column({ type: 'int', comment: 'Duration in minutes' })
   duration: number;
 
+  @ApiProperty()
   @Column({ type: 'enum', enum: SessionType })
   type: SessionType;
 
+  @ApiProperty({ type : () => Note} )
   @OneToMany(() => Note, note => note.session, {
     cascade: true,
     nullable: true, // optional
   })
   note: Note[];
 
+  @ApiProperty()
   @OneToMany(() => Status, status => status.session, {
     cascade: true,
     nullable: true, // optional
