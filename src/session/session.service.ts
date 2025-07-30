@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
 import { SessionNotif } from 'src/common/constants';
@@ -9,6 +9,7 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Repository } from 'typeorm';
+import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 
@@ -102,6 +103,31 @@ export class SessionService {
       this.logger.error(`Failed to update Session: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+async addToSession(sessionId: string, dto: AddToSessionDto) {
+    const { groupClients } = dto;
+
+    const session = await this.findOne(sessionId, { fields: 'client.*, group.*, therapist.*' });
+
+    if(session.client != null) {
+      throw new BadRequestException('Cannot add clients to a 1-on-1 session');
+    }
+
+    const existingClientIds = session.group.map(c => c.id);
+
+    // Fetch all clients to be added
+    const clientsToAdd = await this.clientService.findAll({ids: `${groupClients.join(',')}`});
+
+    const newClients = clientsToAdd.filter(c => !existingClientIds.includes(c.id));
+
+    if (newClients.length === 0) {
+      throw new BadRequestException('All clients are already part of the session');
+    }
+
+    session.group = [...session.group, ...newClients];
+
+    return await this.sessionRepo.save(session);
   }
 
   async remove(id: string): Promise<void> {

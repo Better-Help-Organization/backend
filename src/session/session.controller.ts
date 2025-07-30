@@ -4,13 +4,16 @@ import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
 @Controller('session')
 export class SessionController {
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(
+    private readonly sessionService: SessionService
+  ) {}
 
   // @Post()
   // create(@Body() createSessionDto: CreateSessionDto) {
@@ -27,6 +30,19 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);
+  }
+
+  @Post(":sessionId/add-to-session")
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  addToSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: TokenPayload,
+    @Body() addToSession: AddToSessionDto
+  ) {
+    return this.sessionService.addToSession(sessionId, addToSession);
   }
 
   @Get()
