@@ -1,6 +1,8 @@
-import { IsArray, IsEnum, IsJSON, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsEnum, IsJSON, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Gender, SessionFormat } from 'src/common/constants';
+import { UpdatePreferenceAvailabilityDto } from './update-preference-availability.dto';
+import { Type } from 'class-transformer';
 
 export class UpdatePreferenceDto {
   @ApiProperty({ description: 'Modal UUID', example: '2ec3e1e3-6c62-4b10-8c3f-49d456011d60' })
@@ -36,4 +38,11 @@ export class UpdatePreferenceDto {
   @IsOptional()
   @IsUUID()
   levelId: string;  
+
+  @ApiProperty({ type: () => [UpdatePreferenceAvailabilityDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdatePreferenceAvailabilityDto)
+  availability?: UpdatePreferenceAvailabilityDto[];
 }

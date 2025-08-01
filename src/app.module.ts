@@ -19,6 +19,9 @@ import { PreferenceModule } from './preference/preference.module';
 import { QuestionModule } from './question/question.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
+import { RatingModule } from './rating/rating.module';
+import { LicenseModule } from './license/license.module';
+import { AvailabilityModule } from './availability/availability.module';
 
 @Module({
   imports: [
@@ -35,7 +38,7 @@ import { TherapistModule } from './therapist/therapist.module';
     EmailModule, PreferenceModule, ModalModule, 
     QuestionModule, OptionModule, AnswerModule, 
     LanguageModule, LevelModule,
-    SessionModule, FirebaseModule,
+    SessionModule, FirebaseModule, RatingModule, LicenseModule, AvailabilityModule,
   ],
   controllers: [AppController],
   providers: [AppService,    {

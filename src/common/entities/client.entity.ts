@@ -3,6 +3,7 @@ import { Column, Entity, OneToMany } from 'typeorm';
 import { Answer } from './answer.entity';
 import { Preference } from './preference.entity';
 import { User } from './user.entity';
+import { Rating } from './rating.entity';
 
 @Entity()
 export class Client extends User {
@@ -26,6 +27,10 @@ export class Client extends User {
   @ApiProperty({ type: () => Answer })
   @OneToMany(() => Answer, answer => answer.client)
   answer: Answer[];
+
+  @ApiProperty({ type: () => Rating })
+  @OneToMany(() => Rating, rating => rating.client)
+  rating: Rating[];
 
   // @ApiProperty({ type: () => Session })
   // @ManyToMany(() => Session, session => session.group)

@@ -1,9 +1,15 @@
+import * as dotenv from 'dotenv';
 import { Module } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import { FirebaseService } from './firebase.service';
 
-const serviceAccount = path.resolve(__dirname, '../../../src/config/navi-care-b7a15-firebase-adminsdk-fbsvc-94c2bd0cd8.json');
+dotenv.config();
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+  throw new Error('FIREBASE_SERVICE_ACCOUNT_PATH env variable is not set');
+}
+
+const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
 
 @Module({
   providers: [

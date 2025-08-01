@@ -57,6 +57,8 @@ export interface TokenPayload {
 }
 
 export enum ValidFolders {
+  LICENCE = "licence",
+  PROFILE = "profile"
 }
 
 export enum VERSION {
@@ -79,6 +81,15 @@ export enum SessionType {
   AUDIO = "audio",
 }
 
+export enum DayOfWeek {
+  MONDAY = 'Monday',
+  TUESDAY = 'Tuesday',
+  WEDNESDAY = 'Wednesday',
+  THURSDAY = 'Thursday',
+  FRIDAY = 'Friday',
+  SATURDAY = 'Saturday',
+  SUNDAY = 'Sunday',
+}
 
 export const SessionNotif: Record<string, { code: string; title: string }> = {
   SCHEDULED: { code: "1", title: 'session_scheduled' },
@@ -87,12 +98,15 @@ export const SessionNotif: Record<string, { code: string; title: string }> = {
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
 
+export const MIN_RATING = 1;
+export const MAX_RATING = 5;
 
-export const FILE_UPLOAD_KEY = 'image';
+export const FILE_UPLOAD_KEY = 'file';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_FILE_COUNT = 15;
-export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const Tmp_Files_Dir = join(process.cwd(),'uploads','tmp')
 export const Final_Files_Dir = join(process.cwd(),'uploads')
