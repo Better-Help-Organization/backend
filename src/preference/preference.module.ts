@@ -8,10 +8,11 @@ import { Client } from 'src/common/entities/client.entity';
 import { Modal } from 'src/common/entities/modal.entity';
 import { Language } from 'src/common/entities/language.entity';
 import { Level } from 'src/common/entities/level.entity';
+import { Availability } from 'src/common/entities/availability.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Preference, Client, Modal, Language, Level]),
+    TypeOrmModule.forFeature([Preference, Client, Modal, Language, Level, Availability]),
     LoggerModule,
   ], 
   controllers: [PreferenceController],

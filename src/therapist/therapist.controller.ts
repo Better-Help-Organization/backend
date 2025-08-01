@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
-import { TokenPayload } from 'src/common/constants';
+import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
@@ -50,9 +53,9 @@ export class TherapistController {
   
   
   @Get()
-//   @DynamicGuards(
-// new AdminJwtAuthGuard()  
-//   )
+  @DynamicGuards(
+    new AdminJwtAuthGuard()  
+  )
   @ApiFindAllQueryParams()
   findAll(
     @Query() queryparams?: FindAllQueryParams
@@ -63,7 +66,7 @@ export class TherapistController {
   @Get(':id')
   @ApiFindOneQueryParams()
   @DynamicGuards(
-      new AdminJwtAuthGuard()
+    new AdminJwtAuthGuard()
   )
   findOne(
     @Query() queryParams,
@@ -73,7 +76,7 @@ export class TherapistController {
 
   @Patch('me')
   @DynamicGuards(
-  new TherapistJwtAuthGuard()
+    new TherapistJwtAuthGuard()
   )
   updateMe( @CurrentUser() user: TokenPayload, @Body() updateTherapistDto: UpdateTherapistDto ) {
     return this.therapistService.update(user.id, updateTherapistDto);
@@ -81,7 +84,7 @@ export class TherapistController {
 
   @Patch(':id')
   @DynamicGuards(
-new AdminJwtAuthGuard()
+    new AdminJwtAuthGuard()
   )
   update(@Param('id') id: string, @Body() updateTherapistDto: UpdateTherapistDto) {
     return this.therapistService.update(id, updateTherapistDto);
@@ -89,9 +92,50 @@ new AdminJwtAuthGuard()
 
   @Delete(':id')
   @DynamicGuards(
-new AdminJwtAuthGuard()
+    new AdminJwtAuthGuard()
   )
   remove(@Param('id') id: string) {
     return this.therapistService.remove(id);
+  }
+
+  @Post('me/upload/:folder')
+  @UseGuards(TherapistJwtAuthGuard)
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'folder',
+    enum: Object.values(ValidFolders),
+    required: true,
+    description: 'Target folder: profile, licence, etc.',
+  })
+  @ApiQuery({
+    name: 'modalId',
+    type: 'string',
+    required: false,
+    description:
+      'Required when folder is "licence". Associates the uploaded license with a specific modal.',
+    example: '4be8f40a-123b-4e0a-b3f2-7767c64a88a6',
+  })
+  @ApiBody({
+    description: 'File to upload. Folder comes from URL. modalId is passed via query, not body.',
+    schema: {
+      type: 'object',
+      properties: {
+        [FILE_UPLOAD_KEY]: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image or PDF file to upload',
+        },
+      },
+    },
+  })
+  @UseInterceptors(UploadInterceptor)
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @ValidatedFolder() _: ValidFolders,
+  ) {
+    return {
+      message: 'File uploaded successfully',
+      filename: file.filename,
+    };
   }
 }

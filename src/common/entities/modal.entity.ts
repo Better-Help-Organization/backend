@@ -3,6 +3,7 @@ import { CommonEntity } from './common.entity';
 import { Question } from './question.entity';
 import { Preference } from './preference.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { License } from './license.entity';
 
 @Entity()
 export class Modal extends CommonEntity {
@@ -15,10 +16,14 @@ export class Modal extends CommonEntity {
   description: string;
 
   @ApiProperty({type: () => Preference})
-  @OneToOne(() => Preference, preference => preference.modal, { cascade: true, onDelete: 'CASCADE' })
+  @OneToOne(() => Preference, preference => preference.modal)
   preference: Preference;
 
   @ApiProperty({type: () => Question})
-  @OneToMany(() => Question, question => question.modal, { cascade: true, onDelete: 'CASCADE' })
+  @OneToMany(() => Question, question => question.modal)
   question: Question[];
+
+  @ApiProperty({type: () => License})
+  @OneToMany(() => License, license => license.modal)
+  license: License[];
 }

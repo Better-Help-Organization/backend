@@ -16,7 +16,7 @@ export class Preference extends CommonEntity {
   client: Client;
 
   @ApiProperty({ type: () => Modal })
-  @OneToOne(() => Modal, modal => modal.preference)
+  @OneToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn()
   modal: Modal;
 
@@ -42,11 +42,10 @@ export class Preference extends CommonEntity {
   goal: string;
 
   @ApiProperty({ type: () => Level })
-  @OneToOne(() => Level, level => level.preference, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn()
+  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL' })
   level: Level;
 
   @ApiProperty({type: () => Availability})
-  @OneToMany(() => Availability, availability => availability.preference)
+  @OneToMany(() => Availability, availability => availability.preference, {cascade: true})
   availability: Availability[];
 }
