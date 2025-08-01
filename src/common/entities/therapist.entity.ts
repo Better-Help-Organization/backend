@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { Availability } from './availability.entity';
-import { User } from './user.entity';
-import { License } from './license.entity';
-import { Rating } from './rating.entity';
-import { MatchTherapist } from './match-therapist.entity';
 import { Level } from './level.entity';
+import { License } from './license.entity';
+import { MatchTherapist } from './match-therapist.entity';
 import { Match } from './match.entity';
+import { Rating } from './rating.entity';
+import { User } from './user.entity';
 
 @Entity()
 export class Therapist extends User {

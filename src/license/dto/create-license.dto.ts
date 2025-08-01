@@ -1,5 +1,5 @@
-import { IsUUID, IsString, IsDateString, IsBoolean, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class CreateLicenseDto {
   @ApiProperty({

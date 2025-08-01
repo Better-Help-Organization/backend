@@ -1,24 +1,24 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
 import { License } from 'src/common/entities/license.entity';
-import { LoggerService } from 'src/logger/logger.service';
+import { Modal } from 'src/common/entities/modal.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import {
   FindAllQueryParams,
   FindOneQueryParams,
 } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { Repository } from 'typeorm';
 import { CreateLicenseDto } from './dto/create-license.dto';
 import { UpdateLicenseDto } from './dto/update-license.dto';
-import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
-import { Modal } from 'src/common/entities/modal.entity';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class LicenseService {
@@ -153,7 +153,7 @@ export class LicenseService {
         }
 
         fs.renameSync(tmpPath, finalPath);
-        console.log("licence name: ", newFileName)
+        console.log("licence name: - license.service.ts:156", newFileName)
         license.filename = newFileName;
       }
 

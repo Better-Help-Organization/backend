@@ -15,7 +15,7 @@ import { TherapistService } from './therapist.service';
     LoggerModule
   ],  
   controllers: [TherapistController],
-  providers: [TherapistService],
+  providers: [TherapistService, UploadInterceptor],
   exports: [TherapistService],
 })
 export class TherapistModule {}

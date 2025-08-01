@@ -1,16 +1,15 @@
 import {
+  BadRequestException,
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Observable, from, switchMap } from 'rxjs';
 import * as fs from 'fs';
-import * as path from 'path';
 import multer from 'multer';
-import { ModalService } from 'src/modal/modal.service';
+import * as path from 'path';
+import { Observable, from, switchMap } from 'rxjs';
 import {
   ALLOWED_MIME_TYPES,
   FILE_UPLOAD_KEY,
@@ -18,6 +17,7 @@ import {
   Tmp_Files_Dir,
   ValidFolders,
 } from 'src/common/constants';
+import { ModalService } from 'src/modal/modal.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -81,7 +81,7 @@ export class UploadInterceptor implements NestInterceptor {
           }),
           fileFilter: (req, file, cb) => {
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-              console.warn('Rejected file type:', file.mimetype);
+              console.warn('Rejected file type: - upload.interceptor.ts:84', file.mimetype);
             }
             cb(null, true);
           },
