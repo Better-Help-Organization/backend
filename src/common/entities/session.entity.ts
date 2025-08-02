@@ -83,7 +83,7 @@ export class Session extends CommonEntity {
   @OneToMany(() => Message, (message) => message.session, {onDelete: 'CASCADE'})
   message: Message[];
 
-    async addMessage(
+  async addMessage(
     msgRepo: Repository<Message>,
     messageText: string,
     therapist ?: Therapist,
@@ -109,7 +109,7 @@ export class Session extends CommonEntity {
     });
   
     if (!message) {
-      throw new Error('Message not found or does not belong to this chat');
+      throw new Error('Message not found or does not belong to this session');
     }
   
     message.content = newMessageText;

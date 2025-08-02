@@ -111,6 +111,26 @@ export class FindOneQueryParams<T=any> {
   // options: FindOneOptions<T>
 }
 
+export class FindOnePathParams {
+  @ApiProperty({
+    description: 'The unique identifier for the parameter.',
+    example: '1',
+    required: true,
+  })
+  @IsString()
+  id: string;
+
+  @ApiProperty({
+    description: 'The hcat id to be used in the message route.',
+    example: '1',
+    required: true,
+  })
+  @IsOptional()
+  @IsString()
+  chatId: string;
+
+}
+
 export function ApiFindOneQueryParams(guards: any[] = []) {
   return applyDecorators(
     ConditionalGuards(guards),
