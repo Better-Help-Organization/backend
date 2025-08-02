@@ -1,15 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
-import { TherapistService } from './therapist.service';
-import { UpdateTherapistDto } from './dto/update-therapist.dto';
-import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
-import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { ChatService } from 'src/chat/chat.service';
 import { TokenPayload } from 'src/common/constants';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
+import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { UpdateTherapistDto } from './dto/update-therapist.dto';
+import { TherapistService } from './therapist.service';
 
 @Controller('therapist')
 export class TherapistController {
-  constructor(private readonly therapistService: TherapistService) {}
+  constructor(
+    private readonly therapistService: TherapistService,
+        private readonly chatService: ChatService
+  ) {}
 
   @Get('me')
   @UseGuards(TherapistJwtAuthGuard)
@@ -21,6 +26,28 @@ export class TherapistController {
     return await this.therapistService.findOne(user.id,queryParams);
   }
 
+
+    @ApiFindAllQueryParams()
+    @Get('me/chats')
+    @UseGuards(TherapistJwtAuthGuard)
+    async findMyChats(
+      @CurrentUser() _: TokenPayload,
+      @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+    ) {
+      return this.chatService.findAll(queryParams);
+    }
+  
+    @ApiFindOneQueryParams()
+    @Get('me/chats/:id')
+    @UseGuards(TherapistJwtAuthGuard)
+    async findOneChat(
+      @CurrentUser() _: TokenPayload,
+      @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+      @Param('id') id: string
+    ) {
+      return this.chatService.findOne(id, queryParams);
+    }
+  
   
   @Get()
 //   @DynamicGuards(
