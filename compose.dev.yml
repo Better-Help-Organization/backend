@@ -42,10 +42,10 @@ services:
     # networks: []              # 👈 Required: disable Docker-managed networks
 
 
-  turnserver:
-    extends:
-      file: ./compose.base.yml
-      service: turnserver
+  # turnserver:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: turnserver
 
 volumes:
   dev_db_data:
