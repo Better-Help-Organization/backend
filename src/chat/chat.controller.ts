@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, MethodNotAllowedException, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Query } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { TokenPayload } from 'src/common/constants';
@@ -35,13 +35,7 @@ export class ChatController {
   async create(
     @CurrentUser() token:TokenPayload, 
     @Body() createChatDto: CreateChatDto) {
-    // const booking = await this.bookingService.findOne(createChatDto.bookingId,{fields:"driver.*,user.*"})
-    // if (booking.driver.id && booking.user.id)
-    //   if (token.userId === booking.driver.id || token.userId === booking.user.id)
-       return this.chatService.create(createChatDto);
-    
-    throw new MethodNotAllowedException("You can't start a conversation for this booking")
-  
+       return this.chatService.create(createChatDto);  
   }
 
   @DynamicGuards(
@@ -73,7 +67,7 @@ export class ChatController {
     return chat;
     } 
   catch (error) {
-    // this.logger.error(`Error finding booking: ${error.message}`);
+    // this.logger.error(`Error finding chat: ${error.message}`);
     return error;
     }
   }
@@ -110,7 +104,7 @@ export class ChatController {
    try{
     return await this.chatService.getMessages(id, queryParams);
   } catch (error) {
-    // this.logger.error(`Error finding booking: ${error.message}`);
+    this.logger.error(`Error finding chat: ${error.message}`);
     return error;
   }
   }
@@ -124,7 +118,7 @@ export class ChatController {
    try{
     return await this.chatService.findOne(id, queryParams);
   } catch (error) {
-    // this.logger.error(`Error finding booking: ${error.message}`);
+    this.logger.error(`Error finding chat: ${error.message}`);
     return error;
   }
   }
@@ -142,7 +136,7 @@ export class ChatController {
    try{
     return await this.chatService.call(id,user, roomDto.room);
   } catch (error) {
-    // this.logger.error(`Error finding booking: ${error.message}`);
+    this.logger.error(`Error finding chat: ${error.message}`);
     return error;
   }
   }
