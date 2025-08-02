@@ -1,20 +1,19 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateMatchDto } from './dto/create-match.dto';
-import { UpdateMatchDto } from './dto/update-match.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ClientService } from 'src/client/client.service';
 import { SessionNotif, TokenPayload } from 'src/common/constants';
-import { TherapistService } from 'src/therapist/therapist.service';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { Answer } from 'src/common/entities/answer.entity';
+import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
 import { Match } from 'src/common/entities/match.entity';
+import { Preference } from 'src/common/entities/preference.entity';
+import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
-import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { APIFeatures } from 'src/common/middlewares/api-features';
-import { FindOneQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
-import { Preference } from 'src/common/entities/preference.entity';
+import { TherapistService } from 'src/therapist/therapist.service';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
-import { Answer } from 'src/common/entities/answer.entity';
-import { ClientService } from 'src/client/client.service';
+import { CreateMatchDto } from './dto/create-match.dto';
 
 @Injectable()
 export class MatchService {
@@ -47,11 +46,11 @@ export class MatchService {
       relations: ['client', 'accepted'],
     });
 
-    if (existingMatch) {
-      throw new ConflictException(
-        'You already have a pending match request. Please wait patiently while you are being matched — this may take up to 3 days.'
-      );
-    }
+    // if (existingMatch) {
+    //   throw new ConflictException(
+    //     'You already have a pending match request. Please wait patiently while you are being matched — this may take up to 3 days.'
+    //   );
+    // }
 
     const preference = await this.preferenceRepository.findOne({
       where: { id: createMatchDto.preferenceId },
@@ -128,9 +127,9 @@ export class MatchService {
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify({
-          matchData: match,
-          clientData: client,
-          answerData: answer
+          matchData: match.id,
+          clientData: client.id,
+          answerData: answer,
         }),
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
@@ -190,7 +189,7 @@ export class MatchService {
         .map(mt => mt.therapist.firebaseToken)
         .filter((token): token is string => Boolean(token)); // type-safe non-null filter
 
-      console.log("other tokens: ", otherTokens)
+      console.log("other tokens: - match.service.ts:192", otherTokens)
       if (otherTokens.length > 0) {
         await this.firebaseService.sendPushNotification(
           otherTokens,

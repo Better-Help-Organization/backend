@@ -129,19 +129,19 @@ services:
     volumes:
       - ./livekit/ingress.yaml:/etc/ingress.yaml
 
-  turnserver:
-    image: coturn/coturn  # Or the actual image you're using
-    command: turnserver -c /etc/turnserver.conf
-    networks:
-      - ${NODE_ENV}_default
-    ports:
-      - "5349:5349"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
-      - "traefik.tcp.routers.turn.entrypoints=websecure"
-      - "traefik.tcp.routers.turn.tls=true"
-      - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
-      - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
+  # turnserver:
+  #   image: coturn/coturn  # Or the actual image you're using
+  #   command: turnserver -c /etc/turnserver.conf
+  #   networks:
+  #     - ${NODE_ENV}_default
+  #   ports:
+  #     - "5349:5349"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
+  #     - "traefik.tcp.routers.turn.entrypoints=websecure"
+  #     - "traefik.tcp.routers.turn.tls=true"
+  #     - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
+  #     - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
 
 
