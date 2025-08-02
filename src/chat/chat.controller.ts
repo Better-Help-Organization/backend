@@ -129,14 +129,14 @@ export class ChatController {
   }
   }
 
-  @Post(':id/call')
+  @Post('call/:id')
   @DynamicGuards(
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
   async call(
     @Param('id') id: string,
-    @CurrentUser() user: TokenPayload,  
+    @CurrentUser() user: TokenPayload,
     @Body() roomDto: RoomDto
   ) {
    try{
