@@ -5,7 +5,7 @@ import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindOnePathParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { LoggerService } from 'src/logger/logger.service';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
