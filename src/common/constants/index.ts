@@ -83,7 +83,8 @@ export enum SessionType {
 export const SessionNotif: Record<string, { code: string; title: string }> = {
   SCHEDULED: { code: "1", title: 'Session scheduled' },
   NEW_MESSAGE: { code: "2", title: 'New message' },
-  EDIT_MESSAGE: { code: "2", title: 'Edit message' },
+  EDIT_MESSAGE: { code: "3", title: 'Edit message' },
+  INCOMING_CALL: { code: "4", title: 'Incoming Call' },
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

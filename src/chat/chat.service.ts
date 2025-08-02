@@ -162,4 +162,20 @@ export class ChatService {
       return error;
     }
   }
+
+  async call(id: string, caller: TokenPayload, room: string) {
+    try {
+
+    const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
+    const isCallerClient = chat.client.id === caller.id;
+    const recipient = isCallerClient ? chat.therapist : chat.client;
+      
+    await this.firebaseService.sendPushNotification([recipient.firebaseToken], room, SessionNotif.INCOMING_CALL)
+
+    return chat;
+    } catch (error) {
+      this.logger.error(`Error finding chat for call: ${error.message}`);
+      throw error;
+    }
+  }
 }

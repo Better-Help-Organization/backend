@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, MethodNotAllowedException, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -9,6 +11,13 @@ import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 
+
+class RoomDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  room: string;
+}
 
 @Controller('chat')
 export class ChatController {
@@ -120,14 +129,18 @@ export class ChatController {
   }
   }
 
-  @Post('call')
+  @Post(':id/call')
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   async call(
-    @Query() queryParams,
-    @Param('id') id: string
-    // @
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,  
+    @Body() roomDto: RoomDto
   ) {
    try{
-    return await this.chatService.findOne(id, queryParams);
+    return await this.chatService.call(id,user, roomDto.room);
   } catch (error) {
     // this.logger.error(`Error finding booking: ${error.message}`);
     return error;
