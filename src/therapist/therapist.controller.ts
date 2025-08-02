@@ -23,9 +23,9 @@ export class TherapistController {
 
   
   @Get()
-  @DynamicGuards(
-new AdminJwtAuthGuard()  
-  )
+//   @DynamicGuards(
+// new AdminJwtAuthGuard()  
+//   )
   @ApiFindAllQueryParams()
   findAll(
     @Query() queryparams?: FindAllQueryParams
@@ -36,7 +36,7 @@ new AdminJwtAuthGuard()
   @Get(':id')
   @ApiFindOneQueryParams()
   @DynamicGuards(
-new AdminJwtAuthGuard()
+      new AdminJwtAuthGuard()
   )
   findOne(
     @Query() queryParams,

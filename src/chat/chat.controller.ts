@@ -49,6 +49,20 @@ export class ChatController {
     return this.chatService.findAll(queryParams);
   }
 
+  @ApiFindOneQueryParams()
+  @Get(':id')
+  async findOne(
+    @Query() queryParams,
+    @Param('id') id: string
+  ) {
+   try{
+    return await this.chatService.findOne(id, queryParams);
+  } catch (error) {
+    // this.logger.error(`Error finding booking: ${error.message}`);
+    return error;
+  }
+  }
+
   @DynamicGuards(
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
@@ -104,21 +118,7 @@ export class ChatController {
    try{
     return await this.chatService.getMessages(id, queryParams);
   } catch (error) {
-    this.logger.error(`Error finding chat: ${error.message}`);
-    return error;
-  }
-  }
-
-  @ApiFindOneQueryParams()
-  @Get(':id')
-  async findOne(
-    @Query() queryParams,
-    @Param('id') id: string
-  ) {
-   try{
-    return await this.chatService.findOne(id, queryParams);
-  } catch (error) {
-    this.logger.error(`Error finding chat: ${error.message}`);
+    // this.logger.error(`Error finding booking: ${error.message}`);
     return error;
   }
   }

@@ -6,7 +6,7 @@ services:
       - "80:80"
       - "443:443"
       - "8080:8080"
-      - "5349:5349"  # Directly expose port 5349
+      # - "5349:5349"  # Directly expose port 5349
     networks:
     # DONOT CHANGE THESE VALUES
       - dev_default
