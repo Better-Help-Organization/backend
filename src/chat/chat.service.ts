@@ -169,8 +169,9 @@ export class ChatService {
     const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
     const isCallerClient = chat.client.id === caller.id;
     const recipient = isCallerClient ? chat.therapist : chat.client;
-      
-    await this.firebaseService.sendPushNotification([recipient.firebaseToken], room, SessionNotif.INCOMING_CALL)
+    const callerData = isCallerClient ? chat.client : chat.therapist ;
+
+    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData }), SessionNotif.INCOMING_CALL)
 
     return chat;
     } catch (error) {

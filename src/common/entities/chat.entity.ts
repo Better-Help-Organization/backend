@@ -20,14 +20,12 @@ export class Chat extends CommonEntity {
   @ApiProperty({ type : () => Client})
   @ManyToOne(() => Client, { 
     nullable: true,
-    cascade: true
   })
   client: Client;
 
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
     nullable: true,
-    cascade: true
   })
   therapist: Therapist;
 
