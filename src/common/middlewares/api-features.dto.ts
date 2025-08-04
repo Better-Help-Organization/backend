@@ -1,7 +1,7 @@
-import { IsOptional, IsString, IsNumberString, IsUUID } from 'class-validator';
-import { ApiProperty, ApiQuery } from '@nestjs/swagger';
 import { applyDecorators } from '@nestjs/common';
-import { ConditionalGuards } from 'src/common/guard/conditional.guard'
+import { ApiProperty, ApiQuery } from '@nestjs/swagger';
+import { IsNumberString, IsOptional, IsString } from 'class-validator';
+import { ConditionalGuards } from 'src/common/guard/conditional.guard';
 
 type Primitive = string | number | boolean | null | undefined;
 
@@ -61,6 +61,17 @@ export class FindAllQueryParams<T=any> {
   @IsNumberString()
   page?: string;
 
+  @ApiProperty({
+    description:
+      'Comma-separated list of IDs to filter by. Example: uuid1,uuid2,uuid3',
+    required: false,
+    example:
+      '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
+  })
+  @IsOptional()
+  @IsString()
+  ids?: string;
+
   // options: FindManyOptions<T> | FindOneOptions<T>
 }
 
@@ -96,7 +107,28 @@ export class FindOneQueryParams<T=any> {
 
   page?: string;
 
+  ids?: string;
   // options: FindOneOptions<T>
+}
+
+export class FindOnePathParams {
+  @ApiProperty({
+    description: 'The unique identifier for the parameter.',
+    example: '1',
+    required: true,
+  })
+  @IsString()
+  id: string;
+
+  @ApiProperty({
+    description: 'The hcat id to be used in the message route.',
+    example: '1',
+    required: true,
+  })
+  @IsOptional()
+  @IsString()
+  chatId: string;
+
 }
 
 export function ApiFindOneQueryParams(guards: any[] = []) {
@@ -154,6 +186,13 @@ export function ApiFindAllQueryParams(guards: any[] = []) {
       name: 'page',
       description: 'Current page number for pagination. Defaults to 1.',
       // example: 2,
+      required: false,
+    }),
+    ApiQuery({
+      name: 'ids',
+      description: 'Comma-separated list of IDs to filter by',
+      example:
+        '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
       required: false,
     }),
   );

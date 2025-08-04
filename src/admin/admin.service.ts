@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { UpdateAdminDto } from './dto/update-admin.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Admin } from 'src/common/entities/admin.entity';
-import { LoggerService } from 'src/logger/logger.service';
-import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { Repository } from 'typeorm';
+import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -14,7 +14,7 @@ export class AdminService {
     @InjectRepository(Admin) private readonly adminRepo: Repository<Admin>,
   ) {}
 
-  async create(data: Partial<Admin>): Promise<Admin> {
+  async create(data: Partial<Admin>) {
     try {
       this.logger.log(`Creating admin with data: ${JSON.stringify(data)}`);
       const user = this.adminRepo.create(data);
@@ -27,7 +27,7 @@ export class AdminService {
     }
   }
 
-  async findOne(id: string, queryParams?: FindOneQueryParams<Admin>): Promise<Admin> {
+  async findOne(id: string, queryParams?: FindOneQueryParams<Admin>) {
     try {
       this.logger.log(`Finding user with ID: ${id}`);
       const user = await new APIFeatures(this.adminRepo, queryParams).getOne(id);
@@ -45,7 +45,7 @@ export class AdminService {
     }
   }
 
-  async findAll(queryParams?: FindAllQueryParams<Admin>): Promise<Admin[]> {
+  async findAll(queryParams?: FindAllQueryParams<Admin>) {
     try {
       this.logger.log(`Finding all admins with query params: ${JSON.stringify(queryParams)}`);
       const admin = await new APIFeatures(this.adminRepo, queryParams).getMany();
@@ -57,7 +57,7 @@ export class AdminService {
     }
   }
 
-  async update(id: string, updateDto: UpdateAdminDto): Promise<Admin> {
+  async update(id: string, updateDto: UpdateAdminDto) {
     const admin = await this.findOne(id);
     Object.assign(admin, updateDto);
     try {

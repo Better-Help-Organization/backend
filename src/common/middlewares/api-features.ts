@@ -218,11 +218,28 @@ export class APIFeatures {
     return query;
   }
 
+// Done
+  ManyIds() {
+    if (this.queryParams?.ids) {
+      const ids = this.queryParams.ids
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (ids.length > 0) {
+        this.query = this.query.andWhere(`${this.tableName}.id IN (:...ids)`, {
+          ids,
+        });
+      }
+    }
+    return this;
+  }
+
   async getMany({useCache = false} = {}) {
 
     this.sort();
     this.field();
     this.filter();
+    this.ManyIds();
     this.paginate();
 
     // if (useCache) this.query.cache('cache_getMany', 60000); // Cache for 60 seconds

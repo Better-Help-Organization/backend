@@ -1,0 +1,15 @@
+redis:
+    address: localhost:6379
+    username: ""
+    password: ""
+    db: 0
+    use_tls: false
+    sentinel_master_name: ""
+    sentinel_username: ""
+    sentinel_password: ""
+    sentinel_addresses: []
+    cluster_addresses: []
+    max_redirects: null
+api_key: APIY64mRzLyKhzH
+api_secret: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
+ws_url: wss://livekit.navigo.et

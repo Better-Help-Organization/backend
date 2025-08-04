@@ -51,7 +51,7 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
       if (sender.type === UserTypes.CLIENT) client = sender.id 
       if (sender.type === UserTypes.THERAPIST) therapist = sender.id
       
-      const session = await this.sessionService.findOne(sessionId,{fields:"client.*,therapist.*"})
+      const session = await this.sessionService.findOne(sessionId,{fields:"client.*,therapist.*, group.*"})
 
       const {content } = createMessageDto
 
@@ -62,19 +62,35 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
         client
       )
 
-      if(msg) {
-        let token = []
-        if (sender.type === UserTypes.CLIENT) token.push(session.client.firebaseToken)
-        if( sender.type === UserTypes.THERAPIST) token.push(session.therapist.firebaseToken)
+    if (!msg) throw new BadRequestException("Unable to send message");
 
-        await this.firebaseService.sendPushNotification(
-          token, 
-          JSON.stringify(msg),
-          SessionNotif.NEW_MESSAGE);
+    const senderId = sender.id;
+
+    // Collect all potential recipients
+    let tokens: string[] = [];
+
+    if (session.group.length > 0) {
+      tokens = session.group
+        .filter(g => g.firebaseToken && g.id !== senderId)
+        .map(g => g.firebaseToken);
+    } else {
+      // 1-on-1 session fallback
+      if (sender.type === UserTypes.CLIENT && session.therapist.firebaseToken && session.therapist.id !== senderId) {
+        tokens.push(session.therapist.firebaseToken);
       }
-      else {
-        throw new BadRequestException("Unable to send message")
+
+      if (sender.type === UserTypes.THERAPIST && session.client.firebaseToken && session.client.id !== senderId) {
+        tokens.push(session.client.firebaseToken);
       }
+    }
+
+    if (tokens.length > 0) {
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify(msg),
+        SessionNotif.NEW_MESSAGE
+      );
+    }
 
     } catch (error) {
       this.logger.error(`Unable to send message: ${error.message}`);

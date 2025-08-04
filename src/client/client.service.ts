@@ -3,10 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Client } from 'src/common/entities/client.entity';
-import { LoggerService } from 'src/logger/logger.service';
-import { UpdateClientDto } from './dto/update-client.dto';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { UpdateClientDto } from './dto/update-client.dto';
 
 @Injectable()
 export class ClientService {
@@ -16,7 +16,7 @@ export class ClientService {
     private readonly clientRepo: Repository<Client>,
   ) {}
 
-  async create(data: Partial<Client>): Promise<Client> {
+  async create(data: Partial<Client>) {
     try {
       this.logger.log(`Creating client with data: ${JSON.stringify(data)}`);
       const client = this.clientRepo.create({
@@ -31,7 +31,7 @@ export class ClientService {
     }
   }
 
-  async findOne(id: string, queryParams?: FindOneQueryParams<Client>): Promise<Client> {
+  async findOne(id: string, queryParams?: FindOneQueryParams<Client>) {
     try {
       this.logger.log(`Finding client with ID: ${id}`);
       const client = await new APIFeatures(this.clientRepo, queryParams).getOne(id);
@@ -49,19 +49,20 @@ export class ClientService {
     }
   }
 
-  async findAll(queryParams?: FindAllQueryParams<Client>): Promise<Client[]> {
+  async findAll(queryParams?: FindAllQueryParams<Client>) {
     try {
+      console.log({queryParams})
       this.logger.log(`Fetching all clients`);
       const result = await new APIFeatures(this.clientRepo, queryParams).getMany();
       this.logger.log(`Found ${result.data.length} clients`);
-      return result.data;
+      return result;
     } catch (error) {
       this.logger.error(`Error fetching clients: ${error.message}`);
       throw error;
     }
   }
 
-  async update(id: string, updateDto: UpdateClientDto): Promise<Client> {
+  async update(id: string, updateDto: UpdateClientDto) {
     const client = await this.findOne(id);
     Object.assign(client, updateDto);
     try {
