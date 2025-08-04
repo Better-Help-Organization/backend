@@ -25,7 +25,7 @@ write_files:
           use_external_ip: true
           enable_loopback_candidate: false
       redis:
-          address: localhost:6379
+          address: redis:6379
           username: ""
           password: ""
           db: 0
@@ -189,7 +189,7 @@ write_files:
   - path: /opt/livekit/egress.yaml
     content: |
       redis:
-          address: localhost:6379
+          address: redis:6379
           username: ""
           password: ""
           db: 0
@@ -208,7 +208,7 @@ write_files:
   - path: /opt/livekit/ingress.yaml
     content: |
       redis:
-          address: localhost:6379
+          address: redis:6379
           username: ""
           password: ""
           db: 0
