@@ -92,6 +92,9 @@ services:
       - "traefik.http.routers.livekitwhip.tls.certresolver=myresolver"
       - "traefik.http.services.livekitwhip.loadbalancer.server.port=8080"
 
+      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
+      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
+
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit.yaml
 
