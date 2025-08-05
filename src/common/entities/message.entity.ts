@@ -14,11 +14,11 @@ import { Therapist } from './therapist.entity';
 export class Message extends CommonEntity {
 
   @ApiProperty({nullable:true, type: () => Session})
-  @ManyToOne(() => Session, {})
+  @ManyToOne(() => Session, { nullable: true })
   session: Session;
 
   @ApiProperty({ type: () => Chat })
-  @ManyToOne(() => Chat, (chat) => chat.message, { })
+  @ManyToOne(() => Chat, (chat) => chat.message, {nullable: true})
   chat: Chat;
 
   @ApiProperty({nullable:true, type: () => Therapist})

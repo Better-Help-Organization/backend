@@ -9,6 +9,7 @@ import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindOnePathParams } from 
 import { LoggerService } from 'src/logger/logger.service';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
+import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
 
 
@@ -33,9 +34,22 @@ export class ChatController {
   )
   @Post()
   async create(
-    @CurrentUser() token:TokenPayload, 
+    @CurrentUser() user:TokenPayload, 
     @Body() createChatDto: CreateChatDto) {
-       return this.chatService.create(createChatDto);  
+       return this.chatService.create(user.id, createChatDto);  
+  }
+
+  @Post(":chatId/add-to-chat")
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  addToSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: TokenPayload,
+    @Body() addToSession: AddToChatDto
+  ) {
+    return this.chatService.addToChat(sessionId, addToSession);
   }
 
   @DynamicGuards(
