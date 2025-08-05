@@ -1,5 +1,7 @@
 import {
   Entity,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   Repository,
@@ -11,11 +13,21 @@ import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
 import { Message } from './message.entity';
-import { Session } from './session.entity';
 
 @Unique('UQ_client_therapist', ['client', 'therapist'])
 @Entity('chat')
 export class Chat extends CommonEntity {
+
+  @ApiProperty({ type : () => [Client] })
+  @ManyToMany(() => Client, {
+    nullable: true,
+  })
+  @JoinTable({
+    name: 'chat_group_clients',
+    joinColumn: { name: 'chat_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'chat_client_id', referencedColumnName: 'id' },
+  })
+  group: Client[];
 
   @ApiProperty({ type : () => Client})
   @ManyToOne(() => Client, { 
@@ -38,7 +50,6 @@ export class Chat extends CommonEntity {
     content: string,
     therapist ?: Therapist,
     client?: Client,
-      session?: Session,
   ) {
 
     if (!this.id) {
@@ -50,8 +61,6 @@ export class Chat extends CommonEntity {
       therapist,
       client,
       chat: this,
-          session,
-
     });
     
     return await msgRepo.save(message);
