@@ -62,7 +62,7 @@ export class Chat extends CommonEntity {
       client,
       chat: this,
     });
-    
+    console.log(message)
     return await msgRepo.save(message);
   }
 

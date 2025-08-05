@@ -37,18 +37,19 @@ export class ChatService {
         if(createChatDto.client) {
           clientEntity = await this.clientService.findOne(createChatDto.client);
       }
-        
-        if(createChatDto.groupClients?.length != 0) {
+          console.log(createChatDto.groupClients)
+        if(createChatDto.groupClients && createChatDto.groupClients.length !== 0) {
           groupEntities = await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`});
           console.log('Group entities: - chat.service.ts:43', groupEntities);
         }
+        console.log({groupEntities})
         const therapistEntity = await this.therapistService.findOne(id);
   
         const newSession = this.chatRepo.create({
           ...createChatDto,
           client: clientEntity,
           therapist: therapistEntity,
-          group: groupEntities.data || null,
+          group: groupEntities ? groupEntities?.data : null,
         });
   
         const savedSession = await this.chatRepo.save(newSession);
@@ -95,7 +96,7 @@ export class ChatService {
 
   async getMessages(id: string, queryParams?: FindAllQueryParams){
     try {
-      return await new APIFeatures(this.msgRepo, {...queryParams, filters:`chat=${id}`}).getMany();
+      return await new APIFeatures(this.msgRepo, {...queryParams}).getMany();
     } catch (error) {
       this.logger.error(`Error finding all chats: ${error.message}`);
       return error;
@@ -116,8 +117,8 @@ export class ChatService {
       let client = null
       let therapist = null
 
-      if (sender.type === UserTypes.CLIENT) client = sender.type 
-      if (sender.type === UserTypes.THERAPIST) therapist = sender.type
+      if (sender.type === UserTypes.CLIENT) client = sender.id 
+      if (sender.type === UserTypes.THERAPIST) therapist = sender.id
       
       const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
 
