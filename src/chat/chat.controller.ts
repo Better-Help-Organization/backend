@@ -72,7 +72,7 @@ export class ChatController {
    try{
     return await this.chatService.findOne(id, queryParams);
   } catch (error) {
-    // this.logger.error(`Error finding booking: ${error.message}`);
+    this.logger.error(`Error finding chat: ${error.message}`);
     return error;
   }
   }
@@ -104,14 +104,14 @@ export class ChatController {
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
-  @Post(':id/messages')
+  @Post(':chatId/messages')
   async createOneMessage(
     @CurrentUser() sender:TokenPayload,
-    @Param() {id}: FindOnePathParams,
+    @Param('chatId') chatId: string,
     @Body() createMessageDto: CreateMessageDto,
   ) {
    try{
-    await this.chatService.createOneMessage(id, sender,createMessageDto);
+    await this.chatService.createOneMessage(chatId, sender,createMessageDto);
   }
   catch (error) {
     this.logger.error(`Error sending message: ${error.message}`);
