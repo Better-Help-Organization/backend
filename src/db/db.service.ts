@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Admin } from 'src/common/entities/admin.entity';
+import { ConfigService } from '@nestjs/config';
 import { hash } from 'bcryptjs';
 import { BaseStatus, LangCode, LevelType, ModalName, QuestionType } from 'src/common/constants';
-import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
-import { Modal } from 'src/common/entities/modal.entity';
-import { Question } from 'src/common/entities/question.entity';
-import { Option } from 'src/common/entities/option.entity';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
-import { Level } from 'src/common/entities/level.entity';
+import { Admin } from 'src/common/entities/admin.entity';
 import { Language } from 'src/common/entities/language.entity';
+import { Level } from 'src/common/entities/level.entity';
+import { Modal } from 'src/common/entities/modal.entity';
+import { Option } from 'src/common/entities/option.entity';
+import { Question } from 'src/common/entities/question.entity';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -128,6 +128,21 @@ export class DbService implements OnModuleInit {
         this.logger.log(`Created Modal: ${modalEnumValue}`);
         } else {
         this.logger.log(`Modal "${modalEnumValue}" already exists`);
+        }
+
+        // 🗑 Remove questions in DB that are not in the current data
+        const currentQuestionTexts = questions.map(q => q.text);
+        const existingQuestions = await questionRepository.find({
+        where: { modal: { id: modal.id } },
+        relations: ['option', 'modal'],
+        });
+
+        for (const existingQuestion of existingQuestions) {
+            if (!currentQuestionTexts.includes(existingQuestion.text)) {
+            await optionRepository.delete({ question: { id: existingQuestion.id } });
+            await questionRepository.delete(existingQuestion.id);
+            this.logger.log(`Deleted outdated question: ${existingQuestion.text}`);
+            }
         }
 
         for (const questionData of questions) {
