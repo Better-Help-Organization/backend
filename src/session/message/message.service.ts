@@ -88,7 +88,8 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify(msg),
-        SessionNotif.NEW_MESSAGE
+        SessionNotif.NEW_MESSAGE,
+        content
       );
     }
 
@@ -98,19 +99,6 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
     }
   }
 
-  // async findOneBySession(id: number, queryParams?: FindAllQueryParams){
-  //     try {
-  //       return await new APIFeatures(this., {...queryParams, filters:`chat=${id}`}).getMany();
-  //     } catch (error) {
-  //       // this.logger.error(`Error finding all bookings: ${error.message}`);
-  //       return error;
-  //     }
-  //   }
-  
-
-  // update(id: number, updateDto: UpdateDto) {
-  //   return `This action updates a #${id} `;
-  // }
 
   remove(id: number) {
     return `This action removes a #${id} `;

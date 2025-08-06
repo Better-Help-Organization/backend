@@ -98,8 +98,9 @@ export class SessionService {
 
       this.firebaseService.sendPushNotification(
         tokens,
+        JSON.stringify(savedSession),
+        SessionNotif.SCHEDULED,
         `Your session has been scheduled for ${new Date(createSessionDto.schedule).toLocaleString()}`,
-        SessionNotif.SCHEDULED
       );
   
       this.logger.log('Session created successfully');
@@ -123,14 +124,17 @@ export class SessionService {
       const tokens: string[] = [];
       
       tokens.push(clientToken?.firebaseToken, therapistToken?.firebaseToken);
-
+      
+      const savedSession = await this.sessionRepo.save(session);
+      
       this.firebaseService.sendPushNotification(
         tokens,
+        JSON.stringify(savedSession),
+        SessionNotif.SCHEDULED,
         `Your session has been updated for ${new Date(session.schedule).toLocaleString()}`,
-        SessionNotif.SCHEDULED
       );
       
-      return await this.sessionRepo.save(session);
+      return savedSession
     } catch (error) {
       this.logger.error(`Failed to update Session: ${error.message}`, error.stack);
       throw error;
