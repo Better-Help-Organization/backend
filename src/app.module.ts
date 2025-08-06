@@ -41,6 +41,7 @@ import { TherapistModule } from './therapist/therapist.module';
     LanguageModule, LevelModule,
     SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
     ChatModule,
+    // MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

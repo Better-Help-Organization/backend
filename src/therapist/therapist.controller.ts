@@ -105,7 +105,7 @@ export class TherapistController {
     name: 'folder',
     enum: Object.values(ValidFolders),
     required: true,
-    description: 'Target folder: profile, licence, etc.',
+    description: 'Target folder: licence, etc.',
   })
   @ApiQuery({
     name: 'modalId',

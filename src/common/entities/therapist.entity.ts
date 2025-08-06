@@ -1,9 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 import { Availability } from './availability.entity';
 import { User } from './user.entity';
 import { License } from './license.entity';
 import { Rating } from './rating.entity';
+// import { MatchTherapist } from './match-therapist.entity';
+import { Level } from './level.entity';
+// import { Match } from './match.entity';
 
 @Entity()
 export class Therapist extends User {
@@ -27,4 +30,19 @@ export class Therapist extends User {
   @ApiProperty({type: () => Rating})
   @OneToMany(() => Rating, rating => rating.therapist)
   rating: Rating[];
+
+  @ApiProperty({type: () => Level})
+  @ManyToOne(() => Level, level => level.therapist)
+  level: Level;
+
+  // @ApiProperty({type: () => MatchTherapist})
+  // @OneToMany(() => MatchTherapist, matchTherapist => matchTherapist.therapist)
+  // match: MatchTherapist[];
+
+  // @ApiProperty({ type: () => [Match], nullable: true })
+  // @OneToMany(() => Match, match => match.accepted, {
+  //   cascade: false,
+  //   onDelete: 'SET NULL',
+  // })
+  // acceptedMatch: Match[];
 }
