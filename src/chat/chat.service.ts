@@ -37,21 +37,22 @@ export class ChatService {
         if(createChatDto.client) {
           clientEntity = await this.clientService.findOne(createChatDto.client);
       }
-        
-        if(createChatDto.groupClients?.length != 0) {
+          console.log(createChatDto.groupClients)
+        if(createChatDto.groupClients && createChatDto.groupClients.length !== 0) {
           groupEntities = await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`});
           console.log('Group entities: - chat.service.ts:43', groupEntities);
         }
+        console.log({groupEntities})
         const therapistEntity = await this.therapistService.findOne(id);
   
-        const newSession = this.chatRepo.create({
+        const newChat = this.chatRepo.create({
           ...createChatDto,
           client: clientEntity,
           therapist: therapistEntity,
-          group: groupEntities.data || null,
+          group: groupEntities ? groupEntities?.data : null,
         });
   
-        const savedSession = await this.chatRepo.save(newSession);
+        const savedChat = await this.chatRepo.save(newChat);
         
         const tokens: string[] = []
         let clientToken: string[] = []
@@ -72,12 +73,13 @@ export class ChatService {
   
         this.firebaseService.sendPushNotification(
           tokens,
-          `You have has been added to a group chat`,
-          SessionNotif.SCHEDULED
+          `You have been added to a group chat`,
+          SessionNotif.SCHEDULED,
+          `You have been added to a group chat`
         );
     
-        this.logger.log('Session created successfully');
-        return savedSession;
+        this.logger.log('chat created successfully');
+        return savedChat;
       } catch (error) {
         this.logger.error(`Error creating chat: ${error.message}`);
         throw error;
@@ -116,8 +118,8 @@ export class ChatService {
       let client = null
       let therapist = null
 
-      if (sender.type === UserTypes.CLIENT) client = sender.type 
-      if (sender.type === UserTypes.THERAPIST) therapist = sender.type
+      if (sender.type === UserTypes.CLIENT) client = sender.id 
+      if (sender.type === UserTypes.THERAPIST) therapist = sender.id
       
       const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
 
@@ -129,7 +131,7 @@ export class ChatService {
         if (sender.type === UserTypes.CLIENT) token = chat.therapist.firebaseToken
         if( sender.type === UserTypes.THERAPIST) token = chat.client.firebaseToken
 
-        await this.firebaseService.sendPushNotification([token], JSON.stringify(msg), SessionNotif.NEW_MESSAGE)
+        await this.firebaseService.sendPushNotification([token], JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content)
       }
       else {
         throw new BadRequestException("Unable to send message")
@@ -171,7 +173,7 @@ export class ChatService {
       
       if( sender.type = UserTypes.CLIENT) token = chat.client.firebaseToken
 
-      await this.firebaseService.sendPushNotification([token], editedMsg.toString(), SessionNotif.EDIT_MESSAGE)
+      await this.firebaseService.sendPushNotification([token], JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content)
       
     }
     else {
@@ -215,7 +217,7 @@ export class ChatService {
     const recipient = isCallerClient ? chat.therapist : chat.client;
     const callerData = isCallerClient ? chat.client : chat.therapist ;
 
-    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData }), SessionNotif.INCOMING_CALL)
+    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
 
     return chat;
     } catch (error) {
