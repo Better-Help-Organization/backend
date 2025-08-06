@@ -64,3 +64,84 @@ services:
       - "traefik.http.services.phpmyadmin.loadbalancer.server.port=80"
       - "traefik.http.routers.phpmyadmin.middlewares=strip-db"
       - "traefik.http.middlewares.strip-db.stripprefix.prefixes=/db"
+
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit.yaml
+    restart: unless-stopped
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
+    depends_on:
+      redis:
+        condition: service_started
+    labels:
+      - "traefik.enable=true"
+      
+      # LiveKit WebSocket (7880)
+      - "traefik.http.routers.livekit.rule=Host(`livekit.navigo.et`)"
+      - "traefik.http.routers.livekit.entrypoints=websecure"
+      - "traefik.http.routers.livekit.tls=true"
+      - "traefik.http.routers.livekit.tls.certresolver=myresolver"
+      - "traefik.http.services.livekit.loadbalancer.server.port=7880"
+
+      # WHIP/WHEP over HTTP (8080)
+      - "traefik.http.routers.livekitwhip.rule=Host(`livekit-whip.navigo.et`)"
+      - "traefik.http.routers.livekitwhip.entrypoints=websecure"
+      - "traefik.http.routers.livekitwhip.tls=true"
+      - "traefik.http.routers.livekitwhip.tls.certresolver=myresolver"
+      - "traefik.http.services.livekitwhip.loadbalancer.server.port=8080"
+
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server /etc/redis.conf
+    restart: unless-stopped
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
+    volumes:
+      - ./livekit/redis.conf:/etc/redis.conf
+
+  egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
+    volumes:
+      - ./livekit/egress.yaml:/etc/egress.yaml
+    cap_add:
+      - CAP_SYS_ADMIN
+
+  ingress:
+    image: livekit/ingress:latest
+    restart: unless-stopped
+    environment:
+      - INGRESS_CONFIG_FILE=/etc/ingress.yaml
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
+    volumes:
+      - ./livekit/ingress.yaml:/etc/ingress.yaml
+
+  turnserver:
+    image: coturn/coturn  # Or the actual image you're using
+    command: turnserver -c /etc/turnserver.conf
+    networks:
+      - ${NODE_ENV}_default
+    ports:
+      - "5349:5349"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
+      - "traefik.tcp.routers.turn.entrypoints=websecure"
+      - "traefik.tcp.routers.turn.tls=true"
+      - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
+      - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
+
+

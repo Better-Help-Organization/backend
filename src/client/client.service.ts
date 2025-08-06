@@ -51,6 +51,7 @@ export class ClientService {
 
   async findAll(queryParams?: FindAllQueryParams<Client>) {
     try {
+      console.log({queryParams})
       this.logger.log(`Fetching all clients`);
       const result = await new APIFeatures(this.clientRepo, queryParams).getMany();
       this.logger.log(`Found ${result.data.length} clients`);

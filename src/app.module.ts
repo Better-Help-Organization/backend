@@ -5,6 +5,7 @@ import { AnswerModule } from './answer/answer.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
 import { DatabaseModule } from './db/db.module';
@@ -38,13 +39,15 @@ import { AvailabilityModule } from './availability/availability.module';
     EmailModule, PreferenceModule, ModalModule, 
     QuestionModule, OptionModule, AnswerModule, 
     LanguageModule, LevelModule,
-    SessionModule, FirebaseModule, RatingModule, LicenseModule, AvailabilityModule,
+    SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
+    ChatModule,
   ],
   controllers: [AppController],
-  providers: [AppService,    {
-    provide: APP_INTERCEPTOR,
-    useClass: LoggingInterceptor,
-  },
+  providers: [AppService,    
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
 ],
 })
 export class AppModule {}
