@@ -123,7 +123,7 @@ export class ChatController {
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
-  @ApiFindOneQueryParams()
+  @ApiFindAllQueryParams()
   @Get(':id/messages')
   async getMessages(
     @Query() queryParams,
