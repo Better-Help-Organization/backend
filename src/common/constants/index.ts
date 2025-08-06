@@ -57,8 +57,7 @@ export interface TokenPayload {
 }
 
 export enum ValidFolders {
-  LICENCE = "licence",
-  PROFILE = "profile"
+  LICENCE = "licence"
 }
 
 export enum VERSION {
@@ -113,7 +112,6 @@ export const FILE_UPLOAD_KEY = 'file';
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_FILE_COUNT = 15;
 export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const Tmp_Files_Dir = join(process.cwd(),'uploads','tmp')
 export const Final_Files_Dir = join(process.cwd(),'uploads')
