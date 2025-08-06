@@ -1,10 +1,10 @@
-import { Entity, Column, OneToMany, ManyToOne, Unique } from 'typeorm';
-import { CommonEntity } from './common.entity';
-import { Option } from './option.entity';
-import { Answer } from './answer.entity';
-import { Modal } from './modal.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
 import { QuestionType } from '../constants';
+import { Answer } from './answer.entity';
+import { CommonEntity } from './common.entity';
+import { Modal } from './modal.entity';
+import { Option } from './option.entity';
 
 @Unique(['text', 'modal'])
 @Entity()
@@ -24,6 +24,7 @@ export class Question extends CommonEntity {
   @OneToMany(() => Option, option => option.question, {
     cascade: true,
     onDelete: 'CASCADE',
+    eager:true
   })
   option: Option[];
 
