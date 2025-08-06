@@ -60,6 +60,62 @@ export class TherapistService {
     }
   }
 
+  // async findMatchingTherapists(preference: {
+  //   // modal: string;
+  //   gender: string;
+  //   // languages: string[];
+  //   level?: string;
+  //   availability: {
+  //     day: string;
+  //     start_time: string;
+  //     timezone: string;
+  //   }[];
+  // }): Promise<Therapist[]> {
+  //   const query = this.therapistRepo.createQueryBuilder('therapist')
+  //     // .leftJoinAndSelect('therapist.language', 'language')
+  //     .leftJoinAndSelect('therapist.availability', 'availability')
+  //     .leftJoinAndSelect('therapist.level', 'level');
+
+  //   if (preference.gender) {
+  //     query.andWhere('therapist.gender = :gender', { gender: preference.gender });
+  //   }
+
+  //   // if (preference.modal) {
+  //   //   query.andWhere('therapist.modal = :modal', { modal: preference.modal });
+  //   // }
+
+  //   if (preference.level) {
+  //     query.andWhere('level.id = :level', { level: preference.level });
+  //   }
+
+  //   // if (preference.languages?.length) {
+  //   //   query.andWhere('language.id IN (:...languageIds)', { languageIds: preference.languages });
+  //   // }
+
+  //   if (preference.availability?.length) {
+  //     const conditions: string[] = [];
+  //     const parameters: Record<string, any> = {};
+
+  //     preference.availability.forEach((slot, i) => {
+  //       conditions.push(`(
+  //         availability.day = :day${i}
+  //         AND availability.start_time = :start${i}
+  //         AND availability.timezone = :tz${i}
+  //       )`);
+
+  //       parameters[`day${i}`] = slot.day;
+  //       parameters[`start${i}`] = slot.start_time;
+  //       parameters[`tz${i}`] = slot.timezone;
+  //     });
+
+  //     query.andWhere(conditions.join(' OR '), parameters);
+  //   }
+
+  //   const therapists = await query.getMany();
+
+  //   return therapists;
+  // }
+
   async update(id: string, updateDto: UpdateTherapistDto) {
     const therapist = await this.findOne(id);
     Object.assign(therapist, updateDto);

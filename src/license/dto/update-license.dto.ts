@@ -33,12 +33,12 @@ export class UpdateLicenseDto {
   @IsOptional()
   @IsDateString()
   expiration_date: string;
-
+  
   @ApiProperty({
-    example: true,
-    description: 'Whether the license has been verified by the platform',
+    example: '6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24.pdf',
+    description: 'File name of the uploaded licence',
   })
   @IsOptional()
-  @IsBoolean()
-  verified: boolean;
+  @IsString()
+  filename: string;
 }

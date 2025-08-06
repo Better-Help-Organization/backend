@@ -6,7 +6,6 @@ import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
 import { ModalModule } from 'src/modal/modal.module';
 import { LoggerModule } from 'src/logger/logger.module';
-import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 
 @Module({
   imports: [
@@ -16,7 +15,7 @@ import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
     LoggerModule
   ],  
   controllers: [TherapistController],
-  providers: [TherapistService, UploadInterceptor],
+  providers: [TherapistService],
   exports: [TherapistService],
 })
 export class TherapistModule {}

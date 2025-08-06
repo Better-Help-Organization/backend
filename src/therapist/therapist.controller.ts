@@ -1,6 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards, UseInterceptors, UploadedFile, Post } from '@nestjs/common';
 import { ChatService } from 'src/chat/chat.service';
-import { TokenPayload } from 'src/common/constants';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -8,9 +7,7 @@ import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-a
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
 import { ApiBody, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
@@ -108,7 +105,7 @@ export class TherapistController {
     name: 'folder',
     enum: Object.values(ValidFolders),
     required: true,
-    description: 'Target folder: profile, licence, etc.',
+    description: 'Target folder: licence, etc.',
   })
   @ApiQuery({
     name: 'modalId',
