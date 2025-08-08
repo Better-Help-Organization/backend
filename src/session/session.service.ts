@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
@@ -11,15 +10,11 @@ import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Repository } from 'typeorm';
 import { AddToSessionDto } from './dto/add-session.dto';
-=======
-import { Injectable } from '@nestjs/common';
->>>>>>> 08c0711 (feat: add sessions modules and entityies)
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 
 @Injectable()
 export class SessionService {
-<<<<<<< HEAD
 
   constructor (
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
@@ -71,7 +66,7 @@ export class SessionService {
       
       if(createSessionDto.groupClients?.length != 0) {
         groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
-        console.log('Group entities: - session.service.ts:74', groupEntities);
+        console.log('Group entities: - session.service.ts:69', groupEntities);
       }
       const therapistEntity = await this.therapistService.findOne(id);
 
@@ -88,17 +83,17 @@ export class SessionService {
       let clientToken: string[] = []
       if (createSessionDto.client != null) {
         const client = await this.clientService.findOne(createSessionDto.client)
-        console.log('Client token: - session.service.ts:91', client); 
+        console.log('Client token: - session.service.ts:86', client); 
         clientToken.push(client.firebaseToken);     
       }
       else {
         const clients = (await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`}))
         clientToken.push(clients.data.map(c => c.firebaseToken));
-        console.log('Group client tokens: - session.service.ts:97', ...clientToken);
+        console.log('Group client tokens: - session.service.ts:92', ...clientToken);
       }
 
       const therapistToken = await this.therapistService.findOne(id)
-      console.log('Therapist token: - session.service.ts:101', therapistToken.firebaseToken);
+      console.log('Therapist token: - session.service.ts:96', therapistToken.firebaseToken);
       tokens.push(...clientToken, therapistToken.firebaseToken);
 
       this.firebaseService.sendPushNotification(
@@ -180,25 +175,5 @@ async addToSession(sessionId: string, dto: AddToSessionDto) {
       this.logger.error(`Failed to remove session: ${error.message}`, error.stack);
       throw error;
     }
-=======
-  create(createSessionDto: CreateSessionDto) {
-    return 'This action adds a new session';
-  }
-
-  findAll() {
-    return `This action returns all session`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} session`;
-  }
-
-  update(id: number, updateSessionDto: UpdateSessionDto) {
-    return `This action updates a #${id} session`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} session`;
->>>>>>> 08c0711 (feat: add sessions modules and entityies)
   }
 }
