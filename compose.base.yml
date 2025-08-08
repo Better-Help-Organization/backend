@@ -12,23 +12,6 @@ services:
       NODE_ENV: ${NODE_ENV}
     networks:
       - ${NODE_ENV}_default
-    labels:
-      - "traefik.enable=true"
-      # HTTPS Route
-      - "traefik.http.routers.${NODE_ENV}-app-secure.rule=${HOST}"
-      - "traefik.http.routers.${NODE_ENV}-app-secure.entrypoints=websecure"
-      - "traefik.http.routers.${NODE_ENV}-app-secure.middlewares=strip-${TAG}"
-      - "traefik.http.routers.${NODE_ENV}-app-secure.tls.certresolver=myresolver"
-      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
- #     - "traefik.http.routers.${NODE_ENV}-app.middlewares=auth"
-#      - "traefik.http.middlewares.auth.basicauth.users=user:$$apr1$$sdARNjrF$$o5oY9am2uedUdHztBJUOn1"
-
-      # HTTP Route
-      - "traefik.http.routers.${NODE_ENV}-app.rule=${HOST}"
-      - "traefik.http.routers.${NODE_ENV}-app.entrypoints=web"
-      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
-      - "traefik.http.routers.${NODE_ENV}-app.middlewares=strip-${TAG}"
-      - "traefik.http.middlewares.strip-${TAG}.stripPrefix.prefixes=/${TAG}"
     
   db:
     image: mysql:8.0
@@ -126,25 +109,25 @@ services:
     restart: unless-stopped
     environment:
       - INGRESS_CONFIG_FILE=/etc/ingress.yaml
-    # network_mode: "host"
-    networks:
-      - ${NODE_ENV}_default
+    network_mode: "host"
+    # networks:
+    #   - ${NODE_ENV}_default
     volumes:
       - ./livekit/ingress.yaml:/etc/ingress.yaml
 
-  turnserver:
-    image: coturn/coturn  # Or the actual image you're using
-    command: turnserver -c /etc/turnserver.conf
-    networks:
-      - ${NODE_ENV}_default
-    ports:
-      - "5349:5349"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
-      - "traefik.tcp.routers.turn.entrypoints=websecure"
-      - "traefik.tcp.routers.turn.tls=true"
-      - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
-      - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
+  # turnserver:
+  #   image: coturn/coturn  # Or the actual image you're using
+  #   command: turnserver -c /etc/turnserver.conf
+  #   networks:
+  #     - ${NODE_ENV}_default
+  #   ports:
+  #     - "5349:5349"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
+  #     - "traefik.tcp.routers.turn.entrypoints=websecure"
+  #     - "traefik.tcp.routers.turn.tls=true"
+  #     - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
+  #     - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
 
 

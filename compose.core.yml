@@ -1,36 +1,42 @@
 services:
-  traefik:
-    image: traefik:v2.10
+  caddy:
+    image: livekit/caddyl4
     container_name: proxy
+    command: run --config /etc/caddy.yaml --adapter yaml
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
+      - "2019:2019"  # Admin API (optional)
+      # - "8080:8080"
       # - "5349:5349"  # Directly expose port 5349
     networks:
     # DONOT CHANGE THESE VALUES
       - dev_default
       - prod_default
       - test_default
-    restart: unless-stopped
-    command:
-      - "--log.level=DEBUG"
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # cert
-      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--ping.manualrouting=true"
+    # restart: unless-stopped
+    # command:
+    #   - "--log.level=DEBUG"
+    #   - "--api.dashboard=true"
+    #   - "--providers.docker=true"
+    #   - "--entrypoints.web.address=:80"
+    #   - "--entrypoints.websecure.address=:443"
+    #   # cert
+    #   - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+    #   - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
+    #   - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    #   - "--ping.manualrouting=true"
+    # volumes:
+    #   - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    #   - traefik-data:/data
+    #   # cert
+    #   - letsencrypt:/letsencrypt
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - traefik-data:/data
-      # cert
-      - letsencrypt:/letsencrypt
-    labels:
-      - "traefik.enable=true"
+      - ./livekit/caddy.yaml:/etc/caddy.yaml
+      - ./caddy_data:/data
+    # labels:
+    #   - "traefik.enable=true"
 
 networks:
 # DONOT CHANGE THESE VALUES
@@ -45,8 +51,11 @@ networks:
     name: test_default
 
 volumes:
-  traefik-data:
-    driver: local
-  # cert
-  letsencrypt:
-    driver: local
+  caddy_data:
+  caddy_config:
+
+  # traefik-data:
+  #   driver: local
+  # # cert
+  # letsencrypt:
+  #   driver: local
