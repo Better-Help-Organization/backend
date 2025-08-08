@@ -58,17 +58,17 @@ export class ChatService {
         let clientToken: string[] = []
         if (createChatDto.client != null) {
           const client = await this.clientService.findOne(createChatDto.client)
-          console.log('Client token: - chat.service.ts:60', client); 
+          console.log('Client token: - chat.service.ts:61', client); 
           clientToken.push(client.firebaseToken);     
         }
         else {
           const clients = (await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`}))
           clientToken.push(clients.data.map(c => c.firebaseToken));
-          console.log('Group client tokens: - chat.service.ts:66', ...clientToken);
+          console.log('Group client tokens: - chat.service.ts:67', ...clientToken);
         }
   
         const therapistToken = await this.therapistService.findOne(id)
-        console.log('Therapist token: - chat.service.ts:70', therapistToken.firebaseToken);
+        console.log('Therapist token: - chat.service.ts:71', therapistToken.firebaseToken);
         tokens.push(...clientToken, therapistToken.firebaseToken);
   
         this.firebaseService.sendPushNotification(
@@ -124,7 +124,7 @@ export class ChatService {
       const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
 
       const { content  } = createMessageDto
-      const msg = await chat.addMessage(this.msgRepo,content,therapist,client)
+      const msg = await chat.addMessage(this.msgRepo,content,therapist,client, this.chatRepo)
 
       if(msg) {
         let token = ''

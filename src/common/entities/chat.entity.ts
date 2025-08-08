@@ -1,9 +1,11 @@
 import {
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
+  OneToOne,
   Repository,
   Unique
 } from 'typeorm';
@@ -45,11 +47,18 @@ export class Chat extends CommonEntity {
   @OneToMany(() => Message, (message) => message.chat, )
   message: Message[];
 
+  // Inside Chat entity class
+  @ApiProperty({ type: () => Message })
+  @OneToOne(() => Message, { nullable: true, cascade: true, eager: true })
+  @JoinColumn({ name: 'last_message_id' })
+  lastMessage: Message;
+
   async addMessage(
     msgRepo: Repository<Message>,
     content: string,
     therapist ?: Therapist,
     client?: Client,
+    chatRepo?: Repository<Chat>,
   ) {
 
     if (!this.id) {
@@ -63,7 +72,16 @@ export class Chat extends CommonEntity {
       chat: this,
     });
     console.log(message)
-    return await msgRepo.save(message);
+    const savedMessage = await msgRepo.save(message);
+
+    if (chatRepo) {
+      this.lastMessage = savedMessage;
+      this.updatedAt = new Date();
+      await chatRepo.save(this);
+    }
+
+    return savedMessage;
+
   }
 
   async editMessage(
