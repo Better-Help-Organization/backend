@@ -29,10 +29,18 @@ services:
       file: ./compose.base.yml
       service: egress
 
+  # ingress:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: ingress
   ingress:
     extends:
       file: ./compose.base.yml
       service: ingress
+    network_mode: host        # 👈 Use host networking
+    # ports: []                 # 👈 Required: disable `ports` when using host mode
+    # networks: []              # 👈 Required: disable Docker-managed networks
+
 
   turnserver:
     extends:
