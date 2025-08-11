@@ -107,7 +107,6 @@ services:
     restart: unless-stopped
     environment:
       - INGRESS_CONFIG_FILE=/etc/ingress.yaml
-    # network_mode: "host"
     networks:
       - ${NODE_ENV}_default
     volumes:
@@ -116,9 +115,7 @@ services:
   turnserver:
     image: coturn/coturn  # Or the actual image you're using
     command: turnserver -c /etc/turnserver.conf
-    # network_mode: "host"
-    networks:
-      - ${NODE_ENV}_default
+    network_mode: "host"
     ports:
       - "5349:5349/tcp"   # TCP for TURN TLS
       - "3478:3478/udp"   # UDP for TURN relay
