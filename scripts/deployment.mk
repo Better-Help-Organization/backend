@@ -1,24 +1,24 @@
-# Traefik proxy management
-traefik-up:
-	@echo "🚀 Starting Traefik reverse proxy..."
+# Proxy management
+proxy-up:
+	@echo "🚀 Starting proxy reverse proxy..."
 	@docker compose -f compose.core.yml up -d
 
-traefik-down:
-	@echo "🛑 Stopping Traefik reverse proxy..."
+proxy-down:
+	@echo "🛑 Stopping proxy reverse proxy..."
 	@docker compose -f compose.core.yml down
 
-traefik-logs:
-	@echo "📜 Fetching Traefik logs..."
+proxy-logs:
+	@echo "📜 Fetching proxy logs..."
 	@docker logs -f --tail 100 haproxy
 
-traefik-build:
-	@echo "🔨 Building Traefik..."
+proxy-build:
+	@echo "🔨 Building proxy..."
 	@docker compose -f compose.core.yml build --no-cache
 	
-traefik-rebuild: traefik-down
-	@echo "🔄 Rebuilding Traefik..."
-	make traefik-build
-	make traefik-up
+proxy-rebuild: proxy-down
+	@echo "🔄 Rebuilding proxy..."
+	make proxy-build
+	make proxy-up
 
 # Centralized docker-compose command setup
 docker-compose-command:
@@ -29,7 +29,7 @@ bash-service:
 	@$(MAKE) docker-compose-command CMD="exec $(SERVICE) /bin/sh"
 
 # Declare phony targets
-.PHONY: up down rebuild logs test docker-compose-command validate-env bash-service traefik-build
+.PHONY: up down rebuild logs test docker-compose-command validate-env bash-service proxy-build
 
 # Targets
 up:
