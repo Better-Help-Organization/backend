@@ -4,9 +4,9 @@ import { Availability } from './availability.entity';
 import { User } from './user.entity';
 import { License } from './license.entity';
 import { Rating } from './rating.entity';
-// import { MatchTherapist } from './match-therapist.entity';
+import { MatchTherapist } from './match-therapist.entity';
 import { Level } from './level.entity';
-// import { Match } from './match.entity';
+import { Match } from './match.entity';
 
 @Entity()
 export class Therapist extends User {
@@ -35,14 +35,14 @@ export class Therapist extends User {
   @ManyToOne(() => Level, level => level.therapist)
   level: Level;
 
-  // @ApiProperty({type: () => MatchTherapist})
-  // @OneToMany(() => MatchTherapist, matchTherapist => matchTherapist.therapist)
-  // match: MatchTherapist[];
+  @ApiProperty({type: () => MatchTherapist})
+  @OneToMany(() => MatchTherapist, matchTherapist => matchTherapist.therapist)
+  match: MatchTherapist[];
 
-  // @ApiProperty({ type: () => [Match], nullable: true })
-  // @OneToMany(() => Match, match => match.accepted, {
-  //   cascade: false,
-  //   onDelete: 'SET NULL',
-  // })
-  // acceptedMatch: Match[];
+  @ApiProperty({ type: () => [Match], nullable: true })
+  @OneToMany(() => Match, match => match.accepted, {
+    cascade: false,
+    onDelete: 'SET NULL',
+  })
+  acceptedMatch: Match[];
 }

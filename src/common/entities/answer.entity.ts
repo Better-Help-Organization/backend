@@ -18,7 +18,7 @@ export class Answer extends CommonEntity {
   question: Question;
 
   @ApiProperty({type: () => Modal})
-  @OneToOne(() => Question, question => question.modal, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Modal, modal => modal.answer, { onDelete: 'CASCADE' })
   modal: Modal;
 
   @ApiProperty({type: () => Option})

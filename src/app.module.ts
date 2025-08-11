@@ -23,7 +23,7 @@ import { TherapistModule } from './therapist/therapist.module';
 import { RatingModule } from './rating/rating.module';
 import { LicenseModule } from './license/license.module';
 import { AvailabilityModule } from './availability/availability.module';
-// import { MatchModule } from './match/match.module';
+import { MatchModule } from './match/match.module';
 
 @Module({
   imports: [
@@ -42,7 +42,7 @@ import { AvailabilityModule } from './availability/availability.module';
     LanguageModule, LevelModule,
     SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
     ChatModule,
-    // MatchModule,
+    MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService,    
