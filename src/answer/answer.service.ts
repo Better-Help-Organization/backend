@@ -10,6 +10,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { QuestionType, TokenPayload } from 'src/common/constants';
 import { Option } from 'src/common/entities/option.entity';
 import { Question } from 'src/common/entities/question.entity';
+import { ModalService } from 'src/modal/modal.service';
 
 @Injectable()
 export class AnswerService {
@@ -18,10 +19,14 @@ export class AnswerService {
     @InjectRepository(Question) private readonly questionRepository: Repository<Question>,
     @InjectRepository(Option) private readonly optionRepository: Repository<Option>,
 
+    private readonly modalService: ModalService,
     private readonly logger: LoggerService
   ) {}
   async create(client: TokenPayload, dto: CreateAnswerDto) {
-    const { answers } = dto;
+    const { modalId, answers } = dto;
+
+    const modal = await this.modalService.findOne(modalId);
+    if (!modal) throw new NotFoundException(`Modal ${modalId} not found`);
 
     const savedAnswers: Answer[] = [];
 
@@ -32,8 +37,12 @@ export class AnswerService {
         throw new BadRequestException(`Question ${questionId} requires either an option or text.`);
       }
 
-      const question = await this.questionRepository.findOne({ where: { id: questionId }, relations: ['option'] });
+      const question = await this.questionRepository.findOne({ where: { id: questionId }, relations: ['option', 'modal'] });
       if (!question) throw new NotFoundException(`Question ${questionId} not found`);
+          
+      if (!question.modal || question.modal.id !== modalId) {
+        throw new BadRequestException(`Question ${questionId} does not belong to modal ${modalId}`);
+      }
 
       switch (question.type) {
         case QuestionType.SINGLE:
@@ -72,6 +81,7 @@ export class AnswerService {
       const answer = this.answerRepository.create({
         client: { id: client.id },
         question: { id: questionId },
+        modal: {id: dto.modalId},
         ...(singleOptionId ? { singleOption: { id: singleOptionId } } : {}),
         ...(Array.isArray(multiOptionIds) && multiOptionIds.length > 0
           ? { multiOption: multiOptionIds.map(id => ({ id })) }

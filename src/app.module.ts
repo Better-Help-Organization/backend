@@ -16,6 +16,7 @@ import { LanguageModule } from './language/language.module';
 import { LevelModule } from './level/level.module';
 import { LicenseModule } from './license/license.module';
 import { LoggerModule } from './logger/logger.module';
+import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
 import { OptionModule } from './option/option.module';
 import { PreferenceModule } from './preference/preference.module';
@@ -41,7 +42,7 @@ import { TherapistModule } from './therapist/therapist.module';
     LanguageModule, LevelModule,
     SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
     ChatModule,
-    // MatchModule,
+    MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService,    
