@@ -14,7 +14,6 @@ apps:
         - livekit-whip.navigo.et
         - app.navigo.et
         - php.navigo.et
-
   http:
     servers:
       http:
@@ -53,6 +52,7 @@ apps:
               - handler: reverse_proxy
                 upstreams:
                   - dial: "localhost:8091"
+                  
 
   layer4:
     servers:
@@ -67,7 +67,7 @@ apps:
               - handler: tls
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:5349"]
+                  - dial: ["turnserver:5349"]
           - match:
               - tls:
                   sni:
@@ -75,10 +75,11 @@ apps:
             handle:
               - handler: tls
                 connection_policies:
+                  # Allow both HTTP and ACME during issuance
                   - alpn: ["http/1.1"]
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:7880"]
+                  - dial: ["livekit:7880"]
           - match:
               - tls:
                   sni:
@@ -89,4 +90,4 @@ apps:
                   - alpn: ["http/1.1"]
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:8080"]
+                  - dial: ["livekit-whip:8080"]

@@ -1,42 +1,79 @@
 services:
-  caddy:
-    image: livekit/caddyl4
+  traefik:
+    image: traefik:v2.10
     container_name: proxy
-    command: run --config /etc/caddy.yaml --adapter yaml
-    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-      - "2019:2019"  # Admin API (optional)
-      # - "8080:8080"
+      - "8080:8080"
       # - "5349:5349"  # Directly expose port 5349
     networks:
     # DONOT CHANGE THESE VALUES
       - dev_default
       - prod_default
       - test_default
-    # restart: unless-stopped
-    # command:
-    #   - "--log.level=DEBUG"
-    #   - "--api.dashboard=true"
-    #   - "--providers.docker=true"
-    #   - "--entrypoints.web.address=:80"
-    #   - "--entrypoints.websecure.address=:443"
-    #   # cert
-    #   - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-    #   - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
-    #   - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    #   - "--ping.manualrouting=true"
-    # volumes:
-    #   - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    #   - traefik-data:/data
-    #   # cert
-    #   - letsencrypt:/letsencrypt
+    restart: unless-stopped
+    command:
+      - "--log.level=DEBUG"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # cert
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--ping.manualrouting=true"
     volumes:
-      - ./livekit/caddy.yaml:/etc/caddy.yaml
-      - ./caddy_data:/data
-    # labels:
-    #   - "traefik.enable=true"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - traefik-data:/data
+      # cert
+      - letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+
+  # caddy:
+  #   image: livekit/caddyl4
+  #   container_name: proxy
+  #   command: run --config /etc/caddy.yaml --adapter yaml
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "8080:8080"
+  #     - "443:443"
+  #     - "2019:2019"  # Admin API (optional)
+  #     # - "7881:7881/tcp"
+  #     - "3478:3478/udp"   # STUN/TURN
+  #     # - "10000-20000:10000-20000/udp"  # Media ports (adjust per your config)
+  #     # - "5349:5349"  # Directly expose port 5349
+  #     # - "8080:8080"
+  #   networks:
+  #   # DONOT CHANGE THESE VALUES
+  #     - dev_default
+  #     - prod_default
+  #     - test_default
+  #   # restart: unless-stopped
+  #   # command:
+  #   #   - "--log.level=DEBUG"
+  #   #   - "--api.dashboard=true"
+  #   #   - "--providers.docker=true"
+  #   #   - "--entrypoints.web.address=:80"
+  #   #   - "--entrypoints.websecure.address=:443"
+  #   #   # cert
+  #   #   - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+  #   #   - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
+  #   #   - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+  #   #   - "--ping.manualrouting=true"
+  #   # volumes:
+  #   #   - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  #   #   - traefik-data:/data
+  #   #   # cert
+  #   #   - letsencrypt:/letsencrypt
+  #   volumes:
+  #     - ./livekit/caddy.yaml:/etc/caddy.yaml
+  #     - ./caddy_data:/data
+  #   # labels:
+  #   #   - "traefik.enable=true"
 
 networks:
 # DONOT CHANGE THESE VALUES
@@ -51,11 +88,11 @@ networks:
     name: test_default
 
 volumes:
-  caddy_data:
-  caddy_config:
+  # caddy_data:
+  # caddy_config:
 
-  # traefik-data:
-  #   driver: local
-  # # cert
-  # letsencrypt:
-  #   driver: local
+  traefik-data:
+    driver: local
+  # cert
+  letsencrypt:
+    driver: local

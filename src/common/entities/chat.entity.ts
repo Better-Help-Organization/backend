@@ -23,6 +23,7 @@ export class Chat extends CommonEntity {
   @ApiProperty({ type : () => [Client] })
   @ManyToMany(() => Client, {
     nullable: true,
+    // eager:true
   })
   @JoinTable({
     name: 'chat_group_clients',
