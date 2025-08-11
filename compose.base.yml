@@ -76,26 +76,6 @@ services:
     depends_on:
       redis:
         condition: service_started
-    # labels:
-    #   - "traefik.enable=true"
-      
-    #   # LiveKit WebSocket (7880)
-    #   - "traefik.http.routers.livekit.rule=Host(`livekit.navigo.et`)"
-    #   - "traefik.http.routers.livekit.entrypoints=websecure"
-    #   - "traefik.http.routers.livekit.tls=true"
-    #   - "traefik.http.routers.livekit.tls.certresolver=myresolver"
-    #   - "traefik.http.services.livekit.loadbalancer.server.port=7880"
-
-    #   # WHIP/WHEP over HTTP (8080)
-    #   - "traefik.http.routers.livekitwhip.rule=Host(`livekit-whip.navigo.et`)"
-    #   - "traefik.http.routers.livekitwhip.entrypoints=websecure"
-    #   - "traefik.http.routers.livekitwhip.tls=true"
-    #   - "traefik.http.routers.livekitwhip.tls.certresolver=myresolver"
-    #   - "traefik.http.services.livekitwhip.loadbalancer.server.port=8080"
-
-    #   - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
-    #   - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
-
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit.yaml
 
@@ -127,25 +107,18 @@ services:
     restart: unless-stopped
     environment:
       - INGRESS_CONFIG_FILE=/etc/ingress.yaml
-    network_mode: "host"
-    # networks:
-    #   - ${NODE_ENV}_default
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
     volumes:
       - ./livekit/ingress.yaml:/etc/ingress.yaml
 
-  # turnserver:
-  #   image: coturn/coturn  # Or the actual image you're using
-  #   command: turnserver -c /etc/turnserver.conf
-  #   networks:
-  #     - ${NODE_ENV}_default
-    # ports:
-    #   - "5349:5349"
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"
-  #     - "traefik.tcp.routers.turn.entrypoints=websecure"
-  #     - "traefik.tcp.routers.turn.tls=true"
-  #     - "traefik.tcp.routers.turn.tls.certresolver=myresolver"
-  #     - "traefik.tcp.services.turn.loadbalancer.server.port=5349"
-
-
+  turnserver:
+    image: coturn/coturn  # Or the actual image you're using
+    command: turnserver -c /etc/turnserver.conf
+    # network_mode: "host"
+    networks:
+      - ${NODE_ENV}_default
+    ports:
+      - "5349:5349/tcp"   # TCP for TURN TLS
+      - "3478:3478/udp"   # UDP for TURN relay
