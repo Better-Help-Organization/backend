@@ -29,62 +29,113 @@ export class ChatService {
     private readonly therapistService: TherapistService,  
 
   ) {}
-    async create(id:string, createChatDto: CreateChatDto) {
-      this.logger.log('Creating a new chat');
-      try {
-        let clientEntity = null;
-        let groupEntities = null;
-        if(createChatDto.client) {
-          clientEntity = await this.clientService.findOne(createChatDto.client);
-      }
-          console.log(createChatDto.groupClients)
-        if(createChatDto.groupClients && createChatDto.groupClients.length !== 0) {
-          groupEntities = await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`});
-          console.log('Group entities: - chat.service.ts:43', groupEntities);
-        }
-        console.log({groupEntities})
-        const therapistEntity = await this.therapistService.findOne(id);
-  
-        const newChat = this.chatRepo.create({
-          ...createChatDto,
-          client: clientEntity,
-          therapist: therapistEntity,
-          group: groupEntities ? groupEntities?.data : null,
-        });
-  
-        const savedChat = await this.chatRepo.save(newChat);
-        
-        const tokens: string[] = []
-        let clientToken: string[] = []
-        if (createChatDto.client != null) {
-          const client = await this.clientService.findOne(createChatDto.client)
-          console.log('Client token: - chat.service.ts:61', client); 
-          clientToken.push(client.firebaseToken);     
-        }
-        else {
-          const clients = (await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`}))
-          clientToken.push(clients.data.map(c => c.firebaseToken));
-          console.log('Group client tokens: - chat.service.ts:67', ...clientToken);
-        }
-  
-        const therapistToken = await this.therapistService.findOne(id)
-        console.log('Therapist token: - chat.service.ts:71', therapistToken.firebaseToken);
-        tokens.push(...clientToken, therapistToken.firebaseToken);
-  
-        this.firebaseService.sendPushNotification(
-          tokens,
-          `You have been added to a group chat`,
-          SessionNotif.SCHEDULED,
-          `You have been added to a group chat`
-        );
-    
-        this.logger.log('chat created successfully');
-        return savedChat;
-      } catch (error) {
-        this.logger.error(`Error creating chat: ${error.message}`);
-        throw error;
-      }
+  async create(id: string, createChatDto: CreateChatDto) {
+  this.logger.log('Creating a new chat');
+  try {
+    const therapist = await this.therapistService.findOne(id);
+
+    let clients = [];
+    if (createChatDto.client) {
+      // 1-on-1 chat
+      const client = await this.clientService.findOne(createChatDto.client);
+      clients = [client];
+    } else if (createChatDto.groupClients?.length) {
+      // Group chat
+      const group = await this.clientService.findAll({ ids: createChatDto.groupClients.join(',') });
+      clients = group.data;
     }
+
+    const newChat = this.chatRepo.create({
+      ...createChatDto,
+      client: createChatDto.client ? clients[0] : null,
+      therapist,
+      group: createChatDto.client ? null : clients,
+    });
+
+    const savedChat = await this.chatRepo.save(newChat);
+
+    // Collect tokens
+    const tokens = [
+      ...clients.map(c => c.firebaseToken).filter(Boolean),
+      therapist.firebaseToken
+    ];
+
+    this.firebaseService.sendPushNotification(
+      tokens,
+      `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`,
+      SessionNotif.SCHEDULED,
+      `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`
+    );
+
+    this.logger.log('Chat created successfully');
+    return savedChat;
+  } catch (error) {
+    this.logger.error(`Error creating chat: ${error.message}`);
+    throw error;
+  }
+}
+
+    // async create(id:string, createChatDto: CreateChatDto) {
+    //   this.logger.log('Creating a new chat');
+    //   try {
+    //     let clientEntity = null;
+    //     let groupEntities = null;
+    //     if(createChatDto.client) {
+    //       clientEntity = await this.clientService.findOne(createChatDto.client);
+    //   }
+    //       console.log(createChatDto.groupClients)
+    //     if(createChatDto.groupClients && createChatDto.groupClients.length !== 0) {
+    //       groupEntities = await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`});
+    //       console.log('Group entities: - chat.service.ts:43', groupEntities);
+    //     }
+    //     console.log({groupEntities})
+    //     const therapistEntity = await this.therapistService.findOne(id);
+  
+    //     const newChat = this.chatRepo.create({
+    //       ...createChatDto,
+    //       client: clientEntity,
+    //       therapist: therapistEntity,
+    //       group: groupEntities ? groupEntities?.data : null,
+    //     });
+  
+    //     const savedChat = await this.chatRepo.save(newChat);
+        
+    //     const tokens: string[] = []
+    //     let clientToken: string[] = []
+    //     if (createChatDto.client != null) {
+    //       const client = await this.clientService.findOne(createChatDto.client)
+    //       console.log('Client token: - chat.service.ts:61', client); 
+    //       clientToken.push(client.firebaseToken);     
+    //     }
+    //     else {
+    //       const clients = (await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`}))
+    //       clientToken.push(clients.data.map(c => {
+    //         console.log(c.firebaseToken,'cht-ser 67')
+    //         return c.firebaseToken
+    //       }));
+    //       console.log({clients}, 'chat.service.ts:70')
+    //       console.log('Group client tokens: - chat.service.ts:71', ...clientToken);
+    //     }
+  
+    //     const therapistToken = await this.therapistService.findOne(id)
+    //     console.log('Therapist token: - chat.service.ts:75', therapistToken.firebaseToken);
+    //     tokens.push(...clientToken, therapistToken.firebaseToken);
+    //     console.log(tokens)
+    //     console.log(tokens.length)
+    //     this.firebaseService.sendPushNotification(
+    //       tokens,
+    //       `You have been added to a group chat`,
+    //       SessionNotif.SCHEDULED,
+    //       `You have been added to a group chat`
+    //     );
+    
+    //     this.logger.log('chat created successfully');
+    //     return savedChat;
+    //   } catch (error) {
+    //     this.logger.error(`Error creating chat: ${error.message}`);
+    //     throw error;
+    //   }
+    // }
 
   async findAll(queryParams?: FindAllQueryParams) {
     try {
@@ -113,76 +164,177 @@ export class ChatService {
     }
   }
 
-  async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
-    try {
-      let client = null
-      let therapist = null
+  async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto) {
+  try {
+    let client = null;
+    let therapist = null;
 
-      if (sender.type === UserTypes.CLIENT) client = sender.id 
-      if (sender.type === UserTypes.THERAPIST) therapist = sender.id
-      
-      const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
+    if (sender.type === UserTypes.CLIENT) client = sender.id;
+    if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
 
-      const { content  } = createMessageDto
-      const msg = await chat.addMessage(this.msgRepo,content,therapist,client, this.chatRepo)
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
 
-      if(msg) {
-        let token = ''
-        if (sender.type === UserTypes.CLIENT) token = chat.therapist.firebaseToken
-        if( sender.type === UserTypes.THERAPIST) token = chat.client.firebaseToken
+    const { content } = createMessageDto;
+    const msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
-        await this.firebaseService.sendPushNotification([token], JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content)
+    if (!msg) throw new BadRequestException("Unable to send message");
+
+    // Build list of firebase tokens for all recipients except sender
+    let tokens: string[] = [];
+
+    if (chat.group?.length) {
+      // Group chat: send to all group clients except sender
+      tokens = chat.group
+        .filter(c => c.id !== sender.id)
+        .map(c => c.firebaseToken)
+        .filter(Boolean);
+      if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
+        console.log(chat.therapist.firebaseToken, "osdmksmdflsmdlsmdlkdsf")
+        tokens.push(chat.therapist.firebaseToken);
       }
-      else {
-        throw new BadRequestException("Unable to send message")
+
+    } else {
+      // One-to-one chat
+      if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
+        tokens.push(chat.therapist.firebaseToken);
       }
-
-    } catch (error) {
-      this.logger.error(`Error finding all message: ${error.message}`);
-      return error;
+      if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
+        tokens.push(chat.client.firebaseToken);
+      }
     }
+
+    if (tokens.length > 0) {
+      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content);
+    }
+
+  } catch (error) {
+    this.logger.error(`Error sending message: ${error.message}`);
+    throw error;
   }
+}
 
-  async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto){
-    try {
-      let client = null
-      let therapist = null
-      if (sender.type = UserTypes.CLIENT) client = sender.type 
-      if (sender.type = UserTypes.THERAPIST) therapist = sender.type
-      // console.log({client, therapist, id})
-      const { content } = updateMessageDto
-      const msg = await  this.msgRepo.findOne({
-        where: {id},
-        relations:["client","therapist"]
-      });
+  // async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
+  //   try {
+  //     let client = null
+  //     let therapist = null
 
-    if(!msg) throw new NotFoundException("Message Not Found")
-
-    if (msg.client.id !== client ||  msg.therapist.id !== therapist)
-      throw new MethodNotAllowedException("You can't edit a message in this chat")
+  //     if (sender.type === UserTypes.CLIENT) client = sender.id 
+  //     if (sender.type === UserTypes.THERAPIST) therapist = sender.id
       
-    const chat = await this.findOne(chatId, {fields:"client.firebaseToken, therapist.firebaseToken"})
-    const editedMsg = await chat.editMessage(this.msgRepo,id,content)
+  //     const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
 
-    console.log({chat})
-    console.log({editedMsg})
+  //     const { content  } = createMessageDto
+  //     const msg = await chat.addMessage(this.msgRepo,content,therapist,client, this.chatRepo)
 
-    if(editedMsg) {
-      let token = ''
-      if (sender.type = UserTypes.THERAPIST) token = chat.therapist.firebaseToken
-      
-      if( sender.type = UserTypes.CLIENT) token = chat.client.firebaseToken
+  //     if(msg) {
+  //       let token: string[] = []
+  //       if (sender.type === UserTypes.CLIENT) token.push(chat.therapist.firebaseToken)
+  //       if( sender.type === UserTypes.THERAPIST) token.push(chat.client.firebaseToken)
 
-      await this.firebaseService.sendPushNotification([token], JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content)
-      
+  //       await this.firebaseService.sendPushNotification(token, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content)
+  //     }
+  //     else {
+  //       throw new BadRequestException("Unable to send message")
+  //     }
+
+  //   } catch (error) {
+  //     this.logger.error(`Error finding all message: ${error.message}`);
+  //     return error;
+  //   }
+  // }
+
+  async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto) {
+  try {
+    let client = null;
+    let therapist = null;
+
+    if (sender.type === UserTypes.CLIENT) client = sender.id;
+    if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
+
+    const { content } = updateMessageDto;
+    const msg = await this.msgRepo.findOne({
+      where: { id },
+      relations: ["client", "therapist", "chat", "chat.group"]
+    });
+
+    if (!msg) throw new NotFoundException("Message Not Found");
+
+    // Check sender owns the message
+    if ((msg.client?.id && msg.client.id !== client) && (msg.therapist?.id && msg.therapist.id !== therapist)) {
+      throw new MethodNotAllowedException("You can't edit this message");
     }
-    else {
-      throw new BadRequestException("Error while editing the message")
+
+    const chat = await this.findOne(chatId, { fields: "client.*, therapist.*, group.*" });
+    const editedMsg = await chat.editMessage(this.msgRepo, id, content);
+
+    if (!editedMsg) throw new BadRequestException("Error while editing the message");
+
+    // Build token list for notifications
+    let tokens: string[] = [];
+
+    if (chat.group?.length) {
+      tokens = chat.group
+        .filter(c => c.id !== sender.id)
+        .map(c => c.firebaseToken)
+        .filter(Boolean);
+    } else {
+      if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
+        tokens.push(chat.therapist.firebaseToken);
+      }
+      if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
+        tokens.push(chat.client.firebaseToken);
+      }
     }
-    } catch (error) {
-      throw  error;
+
+    if (tokens.length > 0) {
+      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content);
     }
+
+  } catch (error) {
+    throw error;
   }
+}
+
+  // async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto){
+  //   try {
+  //     let client = null
+  //     let therapist = null
+  //     if (sender.type == UserTypes.CLIENT) client = sender.type 
+  //     if (sender.type == UserTypes.THERAPIST) therapist = sender.type
+  //     // console.log({client, therapist, id})
+  //     const { content } = updateMessageDto
+  //     const msg = await  this.msgRepo.findOne({
+  //       where: {id},
+  //       relations:["client","therapist"]
+  //     });
+
+  //   if(!msg) throw new NotFoundException("Message Not Found")
+
+  //   if (msg.client.id !== client ||  msg.therapist.id !== therapist)
+  //     throw new MethodNotAllowedException("You can't edit a message in this chat")
+      
+  //   const chat = await this.findOne(chatId, {fields:"client.firebaseToken, therapist.firebaseToken"})
+  //   const editedMsg = await chat.editMessage(this.msgRepo,id,content)
+
+  //   console.log({chat})
+  //   console.log({editedMsg})
+
+  //   if(editedMsg) {
+  //       let token: string[] = []
+  //     if (sender.type == UserTypes.THERAPIST) token.push(chat.therapist.firebaseToken)
+      
+  //     if( sender.type == UserTypes.CLIENT) token.push(chat.client.firebaseToken)
+
+  //     await this.firebaseService.sendPushNotification(token, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content)
+      
+  //   }
+  //   else {
+  //     throw new BadRequestException("Error while editing the message")
+  //   }
+  //   } catch (error) {
+  //     throw  error;
+  //   }
+  // }
 
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Chat> {
   try {

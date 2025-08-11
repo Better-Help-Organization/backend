@@ -12,6 +12,24 @@ services:
       NODE_ENV: ${NODE_ENV}
     networks:
       - ${NODE_ENV}_default
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Route
+      - "traefik.http.routers.${NODE_ENV}-app-secure.rule=${HOST}"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.middlewares=strip-${TAG}"
+      - "traefik.http.routers.${NODE_ENV}-app-secure.tls.certresolver=myresolver"
+      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
+ #     - "traefik.http.routers.${NODE_ENV}-app.middlewares=auth"
+#      - "traefik.http.middlewares.auth.basicauth.users=user:$$apr1$$sdARNjrF$$o5oY9am2uedUdHztBJUOn1"
+
+      # HTTP Route
+      - "traefik.http.routers.${NODE_ENV}-app.rule=${HOST}"
+      - "traefik.http.routers.${NODE_ENV}-app.entrypoints=web"
+      - "traefik.http.services.${NODE_ENV}-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${NODE_ENV}-app.middlewares=strip-${TAG}"
+      - "traefik.http.middlewares.strip-${TAG}.stripPrefix.prefixes=/${TAG}"
+
     
   db:
     image: mysql:8.0
@@ -58,25 +76,25 @@ services:
     depends_on:
       redis:
         condition: service_started
-    labels:
-      - "traefik.enable=true"
+    # labels:
+    #   - "traefik.enable=true"
       
-      # LiveKit WebSocket (7880)
-      - "traefik.http.routers.livekit.rule=Host(`livekit.navigo.et`)"
-      - "traefik.http.routers.livekit.entrypoints=websecure"
-      - "traefik.http.routers.livekit.tls=true"
-      - "traefik.http.routers.livekit.tls.certresolver=myresolver"
-      - "traefik.http.services.livekit.loadbalancer.server.port=7880"
+    #   # LiveKit WebSocket (7880)
+    #   - "traefik.http.routers.livekit.rule=Host(`livekit.navigo.et`)"
+    #   - "traefik.http.routers.livekit.entrypoints=websecure"
+    #   - "traefik.http.routers.livekit.tls=true"
+    #   - "traefik.http.routers.livekit.tls.certresolver=myresolver"
+    #   - "traefik.http.services.livekit.loadbalancer.server.port=7880"
 
-      # WHIP/WHEP over HTTP (8080)
-      - "traefik.http.routers.livekitwhip.rule=Host(`livekit-whip.navigo.et`)"
-      - "traefik.http.routers.livekitwhip.entrypoints=websecure"
-      - "traefik.http.routers.livekitwhip.tls=true"
-      - "traefik.http.routers.livekitwhip.tls.certresolver=myresolver"
-      - "traefik.http.services.livekitwhip.loadbalancer.server.port=8080"
+    #   # WHIP/WHEP over HTTP (8080)
+    #   - "traefik.http.routers.livekitwhip.rule=Host(`livekit-whip.navigo.et`)"
+    #   - "traefik.http.routers.livekitwhip.entrypoints=websecure"
+    #   - "traefik.http.routers.livekitwhip.tls=true"
+    #   - "traefik.http.routers.livekitwhip.tls.certresolver=myresolver"
+    #   - "traefik.http.services.livekitwhip.loadbalancer.server.port=8080"
 
-      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
-      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
+    #   - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
+    #   - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
 
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit.yaml
@@ -120,8 +138,8 @@ services:
   #   command: turnserver -c /etc/turnserver.conf
   #   networks:
   #     - ${NODE_ENV}_default
-  #   ports:
-  #     - "5349:5349"
+    # ports:
+    #   - "5349:5349"
   #   labels:
   #     - "traefik.enable=true"
   #     - "traefik.tcp.routers.turn.rule=HostSNI(`turn.navigo.et`)"

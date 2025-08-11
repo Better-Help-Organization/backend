@@ -5,7 +5,7 @@ export class CommonEntity {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ select:false, type: 'timestamp', nullable: true, onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({ select:false, type: 'timestamp', nullable: true, onUpdate: 'CURRENT_TIMESTAMP', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

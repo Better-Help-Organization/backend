@@ -6,3 +6,4 @@ docker-compose.yml
 *.log
 .env
 .pnpm*
+caddy_data
