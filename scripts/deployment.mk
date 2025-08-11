@@ -9,7 +9,7 @@ traefik-down:
 
 traefik-logs:
 	@echo "📜 Fetching Traefik logs..."
-	@docker logs -f --tail 100 proxy
+	@docker logs -f --tail 100 haproxy
 
 traefik-build:
 	@echo "🔨 Building Traefik..."

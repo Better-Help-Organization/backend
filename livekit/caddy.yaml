@@ -12,52 +12,21 @@ apps:
         - livekit.navigo.et
         - turn.navigo.et
         - livekit-whip.navigo.et
-        - app.navigo.et
-        - php.navigo.et
   http:
     servers:
       http:
-        listen: [":80"]
+        listen: [":8080"]
         routes:
           - handle:
               - handler: static_response
                 status_code: 308
                 headers:
                   Location: ["https://{http.request.host}{http.request.uri}"]
-      web:
-        listen: [":443"]
-        routes:
-          - match:
-              - host: ["app.navigo.et", "app.localhost"]
-                path: ["/dev*"]
-            handle:
-              - handler: subroute
-                routes:
-                  - handle:
-                      - handler: rewrite
-                        strip_path_prefix: /dev
-              - handler: reverse_proxy
-                upstreams:
-                  - dial: "app:3000"
-
-          - match:
-              - host: ["php.navigo.et", "php.localhost"]
-                # path: ["/dev*"]
-            handle:
-              # - handler: subroute
-              #   routes:
-              #     - handle:
-              #         - handler: rewrite
-              #           strip_path_prefix: /dev
-              - handler: reverse_proxy
-                upstreams:
-                  - dial: "localhost:8091"
-                  
 
   layer4:
     servers:
       main:
-        listen: [":443"]
+        listen: [":8443"]
         routes:
           - match:
             - tls:
