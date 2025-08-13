@@ -12,10 +12,21 @@ apps:
         - livekit.navigo.et
         - turn.navigo.et
         - livekit-whip.navigo.et
+  http:
+    servers:
+      http:
+        listen: [":8080"]
+        routes:
+          - handle:
+              - handler: static_response
+                status_code: 308
+                headers:
+                  Location: ["https://{http.request.host}{http.request.uri}"]
+
   layer4:
     servers:
       main:
-        listen: [":443"]
+        listen: [":8443"]
         routes:
           - match:
             - tls:
@@ -25,7 +36,7 @@ apps:
               - handler: tls
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:5349"]
+                  - dial: ["turnserver:5349"]
           - match:
               - tls:
                   sni:
@@ -33,10 +44,11 @@ apps:
             handle:
               - handler: tls
                 connection_policies:
+                  # Allow both HTTP and ACME during issuance
                   - alpn: ["http/1.1"]
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:7880"]
+                  - dial: ["livekit:7880"]
           - match:
               - tls:
                   sni:
@@ -47,4 +59,4 @@ apps:
                   - alpn: ["http/1.1"]
               - handler: proxy
                 upstreams:
-                  - dial: ["localhost:8080"]
+                  - dial: ["livekit-whip:8080"]

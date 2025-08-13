@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { Gender } from "src/common/constants";
 import { IsValidPhoneNumber } from "src/common/decorators/IsValidPhoneNumber";
 import { ValidPassword } from "src/common/decorators/valid-password";
@@ -41,4 +41,10 @@ export class BaseSignupDto {
   @ApiProperty({ description: 'Date of Birth', example: '2000-01-01' })
   @IsDateString()
   dob: Date;
+
+  @ApiProperty({ description: 'Firebase Token', example: 'Abebe' })
+  @IsOptional()
+  @IsString()
+  firebaseToken: string;
+
 }

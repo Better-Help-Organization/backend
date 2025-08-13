@@ -20,16 +20,20 @@ export class APIFeatures {
     this.query = this.entity.createQueryBuilder(this.tableName)
     this.target = this.entity.target
   }
+// Done
+filter() {
+  if (this.queryParams?.filters) {
+    const filters = this.queryParams.filters.split(',').map((f: string) => f.trim());
 
-  // Done
-  filter() {
-    if (this.queryParams?.filters) {
-      const filters = this.queryParams.filters.split(',').map((filter: string) => filter.trim());
+    filters.forEach((filter: string, index: number) => {
+      // OR clause support: (field:=value|field2=value2)
+      if (filter.startsWith('(') && filter.endsWith(')') && filter.includes('|')) {
+        const orConditions = filter.slice(1, -1).split('|');
 
-      filters.forEach((filter: string, index: number) => {
-        const match = filter.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
+        const orWhereClauses = orConditions.map((orCond, i) => {
+          const match = orCond.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
+          if (!match) return '';
 
-        if (match) {
           const [_, field, operator, value] = match;
           const fieldParts = field.split('.');
           let fieldPath;
@@ -38,7 +42,6 @@ export class APIFeatures {
             const relation = fieldParts[0];
             const relationField = fieldParts[1];
 
-            // Join the relation only if it hasn't been joined yet
             if (!this.joinedRelations.has(relation)) {
               this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
               this.joinedRelations.add(relation);
@@ -49,41 +52,84 @@ export class APIFeatures {
             fieldPath = `${this.tableName}.${fieldParts[0]}`;
           }
 
-          // Handle NULL checks
+          const paramName = `${field}_${index}_${i}`;
+          let clause = '';
+          let queryValue = value;
+
           if (value === 'null') {
-            const condition = `${fieldPath} IS NULL`;
-            index === 0
-              ? this.query.where(condition)
-              : this.query.andWhere(condition);
+            return `${fieldPath} IS NULL`;
           } else if (value === '!null' || value === '!=null') {
-            const condition = `${fieldPath} IS NOT NULL`;
-            index === 0
-              ? this.query.where(condition)
-              : this.query.andWhere(condition);
+            return `${fieldPath} IS NOT NULL`;
+          } else if (operator === '=') {
+            clause = `${fieldPath} LIKE :${paramName}`;
+            queryValue = `%${value}%`;
+          } else if (operator === ':=') {
+            clause = `${fieldPath} = :${paramName}`;
           } else {
-            const paramName = `${field}_${index}`;
-            let condition = '';
-            let queryValue = value;
-  
-            if (operator === '=') {
-              condition = `${fieldPath} LIKE :${paramName}`;
-              queryValue = `%${value}%`;
-            }  else if (operator === ':=') {
-              condition = `${fieldPath} = :${paramName}`;
-              queryValue = value; // For = operation  
-            } else {
-              condition = `${fieldPath} ${operator} :${paramName}`;
-            }
-  
-            index === 0
-              ? this.query.where(condition, { [paramName]: queryValue })
-              : this.query.andWhere(condition, { [paramName]: queryValue });
+            clause = `${fieldPath} ${operator} :${paramName}`;
           }
+
+          this.query.setParameter(paramName, queryValue);
+          return clause;
+        });
+
+        const orSql = orWhereClauses.filter(Boolean).join(' OR ');
+        if (orSql) {
+          index === 0
+            ? this.query.where(`(${orSql})`)
+            : this.query.andWhere(`(${orSql})`);
         }
-      });
-    }
-    return this;
+      }
+
+      // Handle standard filters (not OR grouped)
+      else {
+        const match = filter.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
+        if (!match) return;
+
+        const [_, field, operator, value] = match;
+        const fieldParts = field.split('.');
+        let fieldPath;
+
+        if (fieldParts.length > 1) {
+          const relation = fieldParts[0];
+          const relationField = fieldParts[1];
+
+          if (!this.joinedRelations.has(relation)) {
+            this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
+            this.joinedRelations.add(relation);
+          }
+
+          fieldPath = `${relation}.${relationField}`;
+        } else {
+          fieldPath = `${this.tableName}.${fieldParts[0]}`;
+        }
+
+        const paramName = `${field}_${index}`;
+        let clause = '';
+        let queryValue = value;
+
+        if (value === 'null') {
+          clause = `${fieldPath} IS NULL`;
+        } else if (value === '!null' || value === '!=null') {
+          clause = `${fieldPath} IS NOT NULL`;
+        } else if (operator === '=') {
+          clause = `${fieldPath} LIKE :${paramName}`;
+          queryValue = `%${value}%`;
+        } else if (operator === ':=') {
+          clause = `${fieldPath} = :${paramName}`;
+        } else {
+          clause = `${fieldPath} ${operator} :${paramName}`;
+        }
+
+        index === 0
+          ? this.query.where(clause, { [paramName]: queryValue })
+          : this.query.andWhere(clause, { [paramName]: queryValue });
+      }
+    });
   }
+
+  return this;
+}
 
   // Done
   field() {

@@ -19,6 +19,7 @@ import { ClientSignupDto } from './dto/ client-signup.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { TherapistSignupDto } from './dto/therapist-signup.dto';
+import { Admin } from 'src/common/entities/admin.entity';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly emailService: EmailService,
     @InjectRepository(Client) private clientRepo: Repository<Client>,
     @InjectRepository(Therapist) private therapistRepo: Repository<Therapist>,
+    @InjectRepository(Admin) private adminRepo: Repository<Admin>,
   ){}
 
   private _getAccessTokenSecret(type: string) {
@@ -213,10 +215,23 @@ export class AuthService {
     clientSignupDto["password"] = hashedPassword;
 
     const client = await this.clientService.create(clientSignupDto);
+
+    const [accessToken, refreshToken] =
+        this._generateTokens({
+          id: client.id,
+          type: UserTypes.CLIENT,
+          status: client.status,
+      });
+    
+    client.refreshToken = refreshToken;
+    client.firebaseToken = clientSignupDto?.firebaseToken ? clientSignupDto?.firebaseToken : '';
+    this.clientRepo.save(client)
+    await this.clientRepo.save(client);
+
     
     if (client !== null) {
       await this.emailOtp(UserTypes.CLIENT, client);
-      return client;
+      return {user:client, accessToken,refreshToken};
     }
   }
  
@@ -230,10 +245,22 @@ export class AuthService {
     therapistSignupDto["password"] = hashedPassword;
 
     const therapist = await this.therapistService.create(therapistSignupDto);
+
+    const [accessToken, refreshToken] =
+        this._generateTokens({
+          id: therapist.id,
+          type: UserTypes.THERAPIST,
+          status: therapist.status,
+      });
+    
+    therapist.refreshToken = refreshToken;
+    therapist.firebaseToken = therapistSignupDto?.firebaseToken ? therapistSignupDto?.firebaseToken : '';
+    this.therapistRepo.save(therapist)
+    await this.therapistRepo.save(therapist);
     
     if (therapist !== null) {
       await this.emailOtp(UserTypes.THERAPIST, therapist);
-      return therapist;
+      return { user:therapist, accessToken, refreshToken };
     }
   }
 
@@ -247,9 +274,21 @@ export class AuthService {
     adminSignupDto["password"] = hashedPassword;
 
     const admin = await this.adminService.create(adminSignupDto);
+
+      const [accessToken, refreshToken] =
+        this._generateTokens({
+          id: admin.id,
+          type: UserTypes.ADMIN,
+          status: admin.status,
+      });
+    
+    admin.refreshToken = refreshToken;
+    admin.firebaseToken = adminSignupDto?.firebaseToken ? adminSignupDto?.firebaseToken : '';
+    this.adminRepo.save(admin)
+    await this.adminRepo.save(admin);
     if(admin !== null) {
       await this.emailOtp(UserTypes.ADMIN, admin);
-      return admin
+      return { user:admin, accessToken, refreshToken };
     }
   }
 

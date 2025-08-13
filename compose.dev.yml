@@ -3,7 +3,7 @@ services:
     extends:
       file: ./compose.base.yml
       service: app
-      
+
   db:
     extends:
       file: ./compose.base.yml
