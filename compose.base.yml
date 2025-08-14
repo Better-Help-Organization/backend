@@ -70,14 +70,32 @@ services:
     image: livekit/livekit-server:latest
     command: --config /etc/livekit.yaml
     restart: unless-stopped
-    # network_mode: "host"
-    networks:
-      - ${NODE_ENV}_default
-    depends_on:
-      redis:
-        condition: service_started
+    ports:
+      - "7880:7880"       # API / WebRTC signaling
+      - "7881:7881"       # TCP fallback
+      - "50000-60000:50000-60000/udp"  # Media relay ports
+      - "3478:3478/udp"   # TURN UDP
+      - "3478:3478/tcp"   # TURN TCP
+      - "5349:5349/tcp"   # TURN TLS
+      - "5349:5349/udp"   # TURN TLS UDP
     volumes:
-      - ./livekit/livekit.yaml:/etc/livekit.yaml
+      - ./livekit/config.yaml:/etc/livekit/config.yaml
+    environment:
+      - LIVEKIT_CONFIG=/etc/livekit/config.yaml
+      - LIVEKIT_ANNOUNCE_IP="0.0.0.0"  # or your public IP
+
+
+    # environment:
+    #   # LIVEKIT_KEYS: "livekit-secret:supersecret"
+    #   LIVEKIT_TURN_SECRET: "turn-secret"
+    # # network_mode: "host"
+    # networks:
+    #   - ${NODE_ENV}_default
+    # depends_on:
+    #   redis:
+    #     condition: service_started
+    # volumes:
+    #   - ./livekit/livekit.yaml:/etc/livekit.yaml
 
   redis:
     image: redis:7-alpine
@@ -113,15 +131,18 @@ services:
     volumes:
       - ./livekit/ingress.yaml:/etc/ingress.yaml
 
-  turnserver:
-    image: coturn/coturn  # Or the actual image you're using
-    command: turnserver -c /etc/turnserver.conf
-    # network_mode: "host"
-    networks:
-      - ${NODE_ENV}_default
-    ports:
-      - "3478:3478/udp"  # UDP relay (default TURN UDP)
-      - "3478:3478/tcp"  # TURN TCP (default)
-      - "5349:5349/tcp"  # TURN TLS TCP
-      - "5349:5349/udp"  # TURN TLS UDP (optional, if used)
+  # turnserver:
+  #   image: coturn/coturn  # Or the actual image you're using
+  #   command: turnserver -c /etc/turnserver.conf
+  #   # network_mode: "host"
+  #   restart: always
+  #   networks:
+  #     - ${NODE_ENV}_default
+  #   ports:
+  #     - "3478:3478/udp"  # UDP relay (default TURN UDP)
+  #     - "3478:3478/tcp"  # TURN TCP (default)
+  #     - "5349:5349/tcp"  # TURN TLS TCP
+  #     - "5349:5349/udp"  # TURN TLS UDP (optional, if used)
+  #   volumes:
+  #     - ./livekit/turnserver.conf:/etc/turnserver.conf
 
