@@ -95,7 +95,6 @@ export class MatchService {
     // });
     const {data:therapists} = await this.therapistService.findAll();
 
-
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');
     }
@@ -191,7 +190,8 @@ export class MatchService {
         .map(mt => mt.therapist.firebaseToken)
         .filter((token): token is string => Boolean(token)); // type-safe non-null filter
 
-      console.log("other tokens: - match.service.ts:192", otherTokens)
+      console.log("other tokens: - match.service.ts:193", otherTokens)
+      console.log("other tokens: - match.service.ts:194", otherTokens)
       if (otherTokens.length > 0) {
         await this.firebaseService.sendPushNotification(
           otherTokens,
