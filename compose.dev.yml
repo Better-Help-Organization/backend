@@ -34,10 +34,10 @@ services:
       file: ./compose.base.yml
       service: ingress
 
-  turnserver:
-    extends:
-      file: ./compose.base.yml
-      service: turnserver
+  # turnserver:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: turnserver
 
 volumes:
   dev_db_data:

@@ -42,6 +42,16 @@ down:
 	@echo "🛑 Stopping $(ENVIRONMENT) environment..."
 	$(MAKE) docker-compose-command CMD="down"
 
+stop:
+	$(MAKE) validate-env
+	@echo "🛑 Stopping $(SERVICE) environment..."
+	$(MAKE) docker-compose-command CMD="stop $(SERVICE)" 
+
+start:
+	$(MAKE) validate-env
+	@echo "🛑 Starting $(SERVICE) environment..."
+	$(MAKE) docker-compose-command CMD="start $(SERVICE)" 
+
 rebuild: down
 	make validate-env
 	@echo "🔄 Rebuilding $(ENVIRONMENT) environment..."
