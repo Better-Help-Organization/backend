@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany, OneToOne } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { CommonEntity } from './common.entity';
 import { Question } from './question.entity';
 import { Preference } from './preference.entity';
@@ -17,8 +17,8 @@ export class Modal extends CommonEntity {
   description: string;
 
   @ApiProperty({type: () => Preference})
-  @OneToOne(() => Preference, preference => preference.modal)
-  preference: Preference;
+  @OneToMany(() => Preference, preference => preference.modal)
+  preference: Preference[];
 
   @ApiProperty({type: () => Question})
   @OneToMany(() => Question, question => question.modal)

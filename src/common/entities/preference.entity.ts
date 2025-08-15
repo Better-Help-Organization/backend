@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, Unique, OneToMany, OneToOne, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, Unique, OneToMany, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
 import { Client } from './client.entity';
 import { Modal } from './modal.entity';
 import { Language } from './language.entity';
@@ -16,7 +16,7 @@ export class Preference extends CommonEntity {
   client: Client;
 
   @ApiProperty({ type: () => Modal })
-  @OneToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn()
   modal: Modal;
 
