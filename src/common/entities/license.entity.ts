@@ -3,7 +3,6 @@ import { Column, Entity, ManyToOne, Unique } from "typeorm";
 import { CommonEntity } from "./common.entity";
 import { Modal } from "./modal.entity";
 import { Therapist } from "./therapist.entity";
-import { ApiProperty } from "@nestjs/swagger";
 
 @Unique(['therapist', 'modal'])
 @Entity('license')
