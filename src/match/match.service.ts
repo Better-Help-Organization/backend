@@ -85,15 +85,17 @@ export class MatchService {
       throw new NotFoundException('Answer not found for this modal and client');
     }
 
-    const therapists = await this.therapistService.findMatchingTherapists({
-      gender: preference.gender,
-      level: preference.level?.id,
-      availability: preference.availability.map(a => ({
-        day: a.day,
-        start_time: a.start_time,
-        timezone: a.timezone,
-      })),
-    });
+    // const therapists = await this.therapistService.findMatchingTherapists({
+    //   gender: preference.gender,
+    //   level: preference.level?.id,
+    //   availability: preference.availability.map(a => ({
+    //     day: a.day,
+    //     start_time: a.start_time,
+    //     timezone: a.timezone,
+    //   })),
+    // });
+    const {data:therapists} = await this.therapistService.findAll();
+
 
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');

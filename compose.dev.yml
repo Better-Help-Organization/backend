@@ -14,25 +14,25 @@ services:
       file: ./compose.base.yml
       service: phpmyadmin
 
-  livekit:
-    extends:
-      file: ./compose.base.yml
-      service: livekit
+  # livekit:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: livekit
 
-  redis:
-    extends:
-      file: ./compose.base.yml
-      service: redis
+  # redis:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: redis
 
-  egress:
-    extends:
-      file: ./compose.base.yml
-      service: egress
+  # egress:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: egress
 
-  ingress:
-    extends:
-      file: ./compose.base.yml
-      service: ingress
+  # ingress:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: ingress
 
   # turnserver:
   #   extends:
