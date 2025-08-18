@@ -3,6 +3,7 @@ import { QuestionType } from "../constants";
 export const onboardingData = [
   {
     name: 'Individual Therapy',
+    order: 1,
     description: 'For individuals seeking one-on-one support to manage personal challenges and improve mental well-being.',
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
@@ -26,6 +27,7 @@ export const onboardingData = [
 
   {
     name: 'Teen Therapy',
+    order: 2,
     description: 'For teens or guardians seeking support for adolescent mental health and development.',
     questions: [
       { text: 'Who is filling this out?', type: QuestionType.SINGLE, option: ['Teen', 'Parent/Guardian (on behalf of teen)'] },
@@ -48,6 +50,7 @@ export const onboardingData = [
 
   {
     name: 'Couple Therapy',
+    order: 4,
     description: 'For couples looking to improve communication, resolve conflict, and grow together.',
     questions: [
       { text: 'Which country/region do you live in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Other'] },
@@ -67,6 +70,7 @@ export const onboardingData = [
 
   {
     name: 'Group Therapy',
+    order: 3,
     description: 'For individuals looking to join a support group for shared experiences and healing.',
     questions: [
       { text: 'Which country/region do you live in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Other'] },
