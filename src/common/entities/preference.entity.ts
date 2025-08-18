@@ -1,12 +1,12 @@
-import { Entity, Column, ManyToOne, Unique, OneToMany, OneToOne, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
-import { Client } from './client.entity';
-import { Modal } from './modal.entity';
-import { Language } from './language.entity';
-import { CommonEntity } from './common.entity';
-import { Gender, SessionFormat } from '../constants';
 import { ApiProperty } from '@nestjs/swagger';
-import { Level } from './level.entity';
+import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Gender, SessionFormat } from '../constants';
 import { Availability } from './availability.entity';
+import { Client } from './client.entity';
+import { CommonEntity } from './common.entity';
+import { Language } from './language.entity';
+import { Level } from './level.entity';
+import { Modal } from './modal.entity';
 
 @Unique(['client', 'modal'])
 @Entity()
@@ -16,7 +16,7 @@ export class Preference extends CommonEntity {
   client: Client;
 
   @ApiProperty({ type: () => Modal })
-  @OneToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn()
   modal: Modal;
 

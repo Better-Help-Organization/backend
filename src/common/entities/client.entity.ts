@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, OneToMany } from 'typeorm';
 import { Answer } from './answer.entity';
+import { Match } from './match.entity';
 import { Preference } from './preference.entity';
+import { Rating } from './rating.entity';
 import { User } from './user.entity';
 import { Rating } from './rating.entity';
 import { Match } from './match.entity';
@@ -38,6 +40,4 @@ export class Client extends User {
   match: Match[];
 
   // @ApiProperty({ type: () => Session })
-  // @ManyToMany(() => Session, session => session.group)
-  // groupSessions: Session[];
 }

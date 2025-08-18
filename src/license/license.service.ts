@@ -1,4 +1,5 @@
 import {
+<<<<<<< HEAD
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -8,17 +9,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { License } from 'src/common/entities/license.entity';
 import { LoggerService } from 'src/logger/logger.service';
+=======
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
+import { License } from 'src/common/entities/license.entity';
+import { Modal } from 'src/common/entities/modal.entity';
+>>>>>>> 61b58df795c76dd503d0186ed9c8ad61fe6d4f9c
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import {
   FindAllQueryParams,
   FindOneQueryParams,
 } from 'src/common/middlewares/api-features.dto';
+<<<<<<< HEAD
 import { CreateLicenseDto } from './dto/create-license.dto';
 import { UpdateLicenseDto } from './dto/update-license.dto';
 import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
 import { Modal } from 'src/common/entities/modal.entity';
 import * as fs from 'fs';
 import * as path from 'path';
+=======
+import { LoggerService } from 'src/logger/logger.service';
+import { Repository } from 'typeorm';
+import { CreateLicenseDto } from './dto/create-license.dto';
+import { UpdateLicenseDto } from './dto/update-license.dto';
+>>>>>>> 61b58df795c76dd503d0186ed9c8ad61fe6d4f9c
 
 @Injectable()
 export class LicenseService {
@@ -153,7 +174,11 @@ export class LicenseService {
         }
 
         fs.renameSync(tmpPath, finalPath);
+<<<<<<< HEAD
         console.log("licence name: ", newFileName)
+=======
+        console.log("licence name: - license.service.ts:156", newFileName)
+>>>>>>> 61b58df795c76dd503d0186ed9c8ad61fe6d4f9c
         license.filename = newFileName;
       }
 
