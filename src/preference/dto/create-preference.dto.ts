@@ -11,7 +11,7 @@ export class CreatePreferenceDto {
   modalId: string;
 
   @ApiProperty({ description: 'Gender', enum: Gender })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEnum(Gender)
   gender: Gender;
 
