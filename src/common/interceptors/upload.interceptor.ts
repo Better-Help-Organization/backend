@@ -81,11 +81,7 @@ export class UploadInterceptor implements NestInterceptor {
           }),
           fileFilter: (req, file, cb) => {
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-<<<<<<< HEAD
-              console.warn('Rejected file type:', file.mimetype);
-=======
               console.warn('Rejected file type: - upload.interceptor.ts:84', file.mimetype);
->>>>>>> 61b58df795c76dd503d0186ed9c8ad61fe6d4f9c
             }
             cb(null, true);
           },

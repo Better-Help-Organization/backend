@@ -128,9 +128,9 @@ export class MatchService {
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify({
-          matchData: match.id,
-          clientData: client.id,
           answerData: answer,
+          matchData: match,
+          clientData: client,
         }),
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
@@ -148,11 +148,12 @@ export class MatchService {
     await queryRunner.startTransaction();
 
     try {
+      console.log({acceptMatchDto})
       const match = await this.matchRepository.findOne({
         where: { id: acceptMatchDto.matchId },
         relations: ['client', 'matchedTherapist', 'matchedTherapist.therapist', 'accepted'],
       });
-
+      console.log({match})
       if (!match) {
         throw new NotFoundException('Match not found');
       }
