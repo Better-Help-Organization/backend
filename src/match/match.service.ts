@@ -89,8 +89,7 @@ export class MatchService {
     //   level: preference.level?.id,
     //   availability: preference.availability.map(a => ({
     //     day: a.day,
-    //     start_time: a.start_time,
-    //     timezone: a.timezone,
+    //     day_period: a.day_period,
     //   })),
     // });
     const {data:therapists} = await this.therapistService.findAll();
@@ -208,7 +207,7 @@ export class MatchService {
         await this.firebaseService.sendPushNotification(
           [match.client.firebaseToken],
           JSON.stringify({
-            match: match,
+            AcceptedTherapist: match.accepted,
           }),
           SessionNotif.MATCH_ACCEPTED,
           'Your match request has been accepted!'

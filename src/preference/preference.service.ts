@@ -117,9 +117,7 @@ export class PreferenceService {
         const newAvailabilities = dto.availability.map(a =>
           this.availabilityRepository.create({
             day: a.day,
-            start_time: a.start_time,
-            duration: a.duration,
-            timezone: a.timezone,
+            day_period: a.day_period,
             preference,
           }),
         );

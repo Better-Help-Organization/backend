@@ -1,6 +1,6 @@
-import { IsUUID, IsEnum, IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { IsUUID, IsEnum, IsString, IsNotEmpty, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender, SessionFormat } from 'src/common/constants';
+import { Gender } from 'src/common/constants';
 import { Type } from 'class-transformer';
 import { CreatePreferenceAvailabilityDto } from './create-preference-availability.dto';
 
@@ -23,11 +23,6 @@ export class CreatePreferenceDto {
   @IsArray()
   @IsUUID('all', { each: true })
   languageIds?: string[];
-
-  @ApiProperty({ description: 'Session Format', enum: SessionFormat })
-  @IsNotEmpty()
-  @IsEnum(SessionFormat)
-  sessionFormat: SessionFormat;
 
   @ApiProperty({ description: 'Personal goals for the session', example: 'Improve communication skills' })
   @IsNotEmpty()

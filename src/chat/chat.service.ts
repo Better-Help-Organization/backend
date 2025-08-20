@@ -9,7 +9,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
@@ -378,6 +378,40 @@ export class ChatService {
     }
   }
 
+  // async endCall(chatId: string, caller: TokenPayload) {
+  //   const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+  //   const isCallerClient = chat.client.id === caller.id;
+
+  //   const recipient = isCallerClient ? chat.therapist : chat.client;
+  //   const callerData = isCallerClient ? chat.client : chat.therapist;
+
+  //   await this.firebaseService.sendPushNotification(
+  //     [recipient.firebaseToken],
+  //     JSON.stringify({ chatId, callerData }),
+  //     SessionNotif.CALL_ENDED,
+  //     `Call ended by ${callerData.firstName}`
+  //   );
+
+  //   return { success: true, status: 'ended' };
+  // }
+
+  // async rejectCall(chatId: string, caller: TokenPayload) {
+  //   const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+  //   const isCallerClient = chat.client.id === caller.id;
+
+  //   const recipient = isCallerClient ? chat.therapist : chat.client;
+  //   const callerData = isCallerClient ? chat.client : chat.therapist;
+
+  //   await this.firebaseService.sendPushNotification(
+  //     [recipient.firebaseToken],
+  //     JSON.stringify({ chatId, callerData }),
+  //     SessionNotif.CALL_REJECTED,
+  //     `Call rejected by ${callerData.firstName}`
+  //   );
+
+  //   return { success: true, status: 'rejected' };
+  // }
+
   async addToChat(sessionId: string, dto: AddToChatDto) {
       const { groupClients } = dto;
   
@@ -402,4 +436,20 @@ export class ChatService {
       console.log(chat.group)
       return await this.chatRepo.save(chat);
     }
+
+    // async markMessagesAsRead(chatId: string, token: TokenPayload): Promise<void> {
+    //   const tokenId = token.id;
+
+    //   await this.msgRepo
+    //     .createQueryBuilder()
+    //     .update(Message)
+    //     .set({ isRead: true })
+    //     .where("chatId = :chatId", { chatId })
+    //     .andWhere("isRead = false")
+    //     .andWhere(
+    //       "(clientId IS NULL OR clientId != :tokenId) AND (therapistId IS NULL OR therapistId != :tokenId)",
+    //       { tokenId },
+    //     )
+    //     .execute();
+    // }
 }

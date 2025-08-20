@@ -3,10 +3,10 @@ import { Therapist } from './therapist.entity';
 import { Preference } from './preference.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { CommonEntity } from './common.entity';
-import { DayOfWeek } from '../constants';
+import { DayOfWeek, DayPeriod } from '../constants';
 
-@Unique(['therapist', 'day', 'start_time'])
-@Unique(['preference', 'day', 'start_time'])
+@Unique(['therapist', 'day', 'day_period'])
+@Unique(['preference', 'day', 'day_period'])
 @Entity()
 export class Availability extends CommonEntity {
   @ApiProperty({ type: () => Therapist, required: false })
@@ -31,15 +31,11 @@ export class Availability extends CommonEntity {
   })
   day: DayOfWeek;
 
-  @ApiProperty({ example: '09:00:00' })
-  @Column({ type: 'time' })
-  start_time: string;
-
-  @ApiProperty({ example: 60, description: 'Duration in minutes' })
-  @Column({ type: 'int' })
-  duration: number;
-
-  @ApiProperty({ example: 'America/New_York' })
-  @Column()
-  timezone: string;
+  @Column({ type: 'enum', enum: DayPeriod })
+  @ApiProperty({
+    example: 'morning',
+    description: 'Time period of the Day',
+    enum: DayPeriod,
+  })
+  day_period: DayPeriod;
 }

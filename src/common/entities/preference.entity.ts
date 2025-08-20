@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
-import { Gender, SessionFormat } from '../constants';
+import { Gender } from '../constants';
 import { Availability } from './availability.entity';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
@@ -32,10 +32,6 @@ export class Preference extends CommonEntity {
   @ManyToMany(() => Language, language => language.preference)
   @JoinTable()
   language: Language[];
-
-  @ApiProperty()
-  @Column({ type: 'enum', enum: SessionFormat })
-  sessionFormat: SessionFormat;
 
   @ApiProperty()
   @Column('text')

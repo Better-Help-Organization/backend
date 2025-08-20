@@ -1,6 +1,6 @@
 import { IsString, IsInt, Min, IsNotEmpty, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { DayOfWeek } from 'src/common/constants';
+import { DayOfWeek, DayPeriod } from 'src/common/constants';
 
 export class UpdatePreferenceAvailabilityDto {
   @ApiProperty({
@@ -13,19 +13,13 @@ export class UpdatePreferenceAvailabilityDto {
   @IsIn(Object.values(DayOfWeek))
   day: DayOfWeek;
 
-  @ApiProperty({ example: '09:00:00' })
+  @ApiProperty({
+    example: 'morning',
+    description: 'Time Period of the day',
+    enum: DayPeriod,
+  })
+  @IsNotEmpty()
   @IsString()
-  @IsNotEmpty()
-  start_time: string;
-
-  @ApiProperty({ example: 60 })
-  @IsInt()
-  @Min(1)
-  @IsNotEmpty()
-  duration: number;
-
-  @ApiProperty({ example: 'America/New_York' })
-  @IsString()
-  @IsNotEmpty()
-  timezone: string;
+  @IsIn(Object.values(DayPeriod))
+  day_period: DayPeriod;
 }

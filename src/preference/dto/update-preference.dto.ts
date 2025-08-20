@@ -1,6 +1,6 @@
-import { IsArray, IsEnum, IsJSON, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender, SessionFormat } from 'src/common/constants';
+import { Gender } from 'src/common/constants';
 import { UpdatePreferenceAvailabilityDto } from './update-preference-availability.dto';
 import { Type } from 'class-transformer';
 
@@ -23,11 +23,6 @@ export class UpdatePreferenceDto {
   @IsArray()
   @IsUUID('all', { each: true })
   languageIds?: string[];
-
-  @ApiProperty({ description: 'Session Format', enum: SessionFormat })
-  @IsOptional()
-  @IsEnum(SessionFormat)
-  sessionFormat: SessionFormat;
 
   @ApiProperty({ description: 'Personal goals for the session', example: 'Improve communication skills' })
   @IsOptional()

@@ -16,8 +16,7 @@ export const onboardingData = [
       { text: 'How would you describe your sleep?', type: QuestionType.SINGLE, option: ['I sleep well', 'Trouble falling asleep', 'Trouble staying asleep', 'Sleep too much', 'Not sure'] },
       { text: 'Have you attended therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
       { text: 'What is your main goal for therapy?', type: QuestionType.OPEN, option: [] },
-      { text: 'Therapist experience level?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
-      { text: 'What brings you to therapy today?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
+      // { text: 'Therapist experience level?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
       // { text: 'Preferred therapist gender:', type: QuestionType.SINGLE, option: ['Male', 'Female', 'No preference'] },
       // { text: 'Preferred language for sessions:', type: QuestionType.SINGLE, option: ['Amharic', 'English', 'Oromo', 'Tigrigna', 'Other'] },
       // { text: 'Preferred session format:', type: QuestionType.SINGLE, option: ['Video Call', 'Phone Call', 'Chat/Text'] },
@@ -25,7 +24,7 @@ export const onboardingData = [
     ]
   },
 
-  {
+  {      // { text: 'What brings you to therapy today?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
     name: 'Teen Therapy',
     order: 2,
     description: 'For teens or guardians seeking support for adolescent mental health and development.',
@@ -40,7 +39,7 @@ export const onboardingData = [
       { text: 'How is the teen’s sleep?', type: QuestionType.SINGLE, option: ['Sleeps well', 'Can’t fall asleep', 'Wakes up often', 'Sleeps too much', 'Unknown'] },
       { text: 'Has the teen been in therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
       { text: 'What is the goal for therapy?', type: QuestionType.OPEN, option: [] },
-      { text: 'Preferred therapist experience level:', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
+      // { text: 'Preferred therapist experience level:', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
       // { text: 'Preferred therapist gender:', type: QuestionType.SINGLE, option: ['Male', 'Female', 'No preference'] },
       // { text: 'Preferred language:', type: QuestionType.SINGLE, option: ['Amharic', 'English', 'Oromo', 'Other'] },
       // { text: 'Preferred session type:', type: QuestionType.SINGLE, option: ['Video Call', 'Phone Call', 'Chat/Text'] },
