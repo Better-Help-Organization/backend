@@ -14,6 +14,7 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { Client } from 'src/common/entities/client.entity';
 
 @Injectable()
 export class MatchService {
@@ -92,7 +93,7 @@ export class MatchService {
     //     day_period: a.day_period,
     //   })),
     // });
-    const {data:therapists} = await this.therapistService.findAll();
+    const {data:therapists} = await this.therapistService.findAll({take:'0'});
 
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');
@@ -119,10 +120,7 @@ export class MatchService {
       .filter(token => token);
 
     if (tokens?.length > 0) {
-      const client = await this.clientService.findOne(token.id);
-      if (!client) {
-        throw new NotFoundException('Client not found');
-      }
+      const client: Pick<Client, 'firstName' | 'lastName' | 'gender' | 'dob'> = await this.clientService.findOne(token.id);
 
       await this.firebaseService.sendPushNotification(
         tokens,
