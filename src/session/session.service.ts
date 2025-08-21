@@ -64,7 +64,7 @@ export class SessionService {
         // throw new BadRequestException('Group clients cannot be empty for group sessions');
       }
       
-      if(createSessionDto.groupClients?.length != 0) {
+      if(createSessionDto.groupClients?.length) {
         groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
         console.log('Group entities: - session.service.ts:69', groupEntities);
       }
@@ -74,7 +74,7 @@ export class SessionService {
         ...createSessionDto,
         client: clientEntity,
         therapist: therapistEntity,
-        group: groupEntities.data || null,
+        group: groupEntities?.data || null,
       });
 
       const savedSession = await this.sessionRepo.save(newSession);
