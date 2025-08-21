@@ -336,6 +336,50 @@ export class ChatService {
   //   }
   // }
 
+  async markMessagesAsRead(chatId: string, user: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    if (!chat) throw new NotFoundException('Chat not found');
+
+    const isClient = user.type === UserTypes.CLIENT && chat.client?.id === user.id;
+    const isTherapist = user.type === UserTypes.THERAPIST && chat.therapist?.id === user.id;
+    if (!isClient && !isTherapist) {
+      throw new BadRequestException('You are not a participant of this chat');
+    }
+
+    const qb = this.msgRepo
+      .createQueryBuilder()
+      .update(Message)
+      .set({ isRead: true })
+      .where('chatId = :chatId', { chatId })
+      .andWhere('isRead = false');
+
+    if (isClient) {
+      qb.andWhere('therapistId IS NOT NULL');
+    } else {
+      qb.andWhere('clientId IS NOT NULL');
+    }
+
+    const result = await qb.execute();
+
+    if (!result.affected || result.affected === 0) {
+      return { success: true, message: 'No unread messages' };
+    }
+
+    const readBy = { [user.type.toLowerCase()]: user.id };
+
+    const recipientToken = isClient ? chat.therapist?.firebaseToken : chat.client?.firebaseToken;
+    if (recipientToken) {
+      await this.firebaseService.sendPushNotification(
+        [recipientToken],
+        JSON.stringify({ chatId, readBy, count: result.affected }),
+        SessionNotif.MESSAGE_READ,
+        `Messages marked as read in chat ${chatId}`
+      );
+    }
+
+    return { success: true, affected: result.affected };
+  }
+
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Chat> {
   try {
     console.log({id, queryParams})
@@ -378,39 +422,39 @@ export class ChatService {
     }
   }
 
-  // async endCall(chatId: string, caller: TokenPayload) {
-  //   const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
-  //   const isCallerClient = chat.client.id === caller.id;
+  async endCall(chatId: string, caller: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    const isCallerClient = chat.client.id === caller.id;
 
-  //   const recipient = isCallerClient ? chat.therapist : chat.client;
-  //   const callerData = isCallerClient ? chat.client : chat.therapist;
+    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
 
-  //   await this.firebaseService.sendPushNotification(
-  //     [recipient.firebaseToken],
-  //     JSON.stringify({ chatId, callerData }),
-  //     SessionNotif.CALL_ENDED,
-  //     `Call ended by ${callerData.firstName}`
-  //   );
+    await this.firebaseService.sendPushNotification(
+      [recipient.firebaseToken],
+      JSON.stringify({ chatId, callerData }),
+      SessionNotif.CALL_ENDED,
+      `Call ended by ${callerData.firstName}`
+    );
 
-  //   return { success: true, status: 'ended' };
-  // }
+    return { success: true, status: 'ended' };
+  }
 
-  // async rejectCall(chatId: string, caller: TokenPayload) {
-  //   const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
-  //   const isCallerClient = chat.client.id === caller.id;
+  async rejectCall(chatId: string, caller: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    const isCallerClient = chat.client.id === caller.id;
 
-  //   const recipient = isCallerClient ? chat.therapist : chat.client;
-  //   const callerData = isCallerClient ? chat.client : chat.therapist;
+    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
 
-  //   await this.firebaseService.sendPushNotification(
-  //     [recipient.firebaseToken],
-  //     JSON.stringify({ chatId, callerData }),
-  //     SessionNotif.CALL_REJECTED,
-  //     `Call rejected by ${callerData.firstName}`
-  //   );
+    await this.firebaseService.sendPushNotification(
+      [recipient.firebaseToken],
+      JSON.stringify({ chatId, callerData }),
+      SessionNotif.CALL_REJECTED,
+      `Call rejected by ${callerData.firstName}`
+    );
 
-  //   return { success: true, status: 'rejected' };
-  // }
+    return { success: true, status: 'rejected' };
+  }
 
   async addToChat(sessionId: string, dto: AddToChatDto) {
       const { groupClients } = dto;
@@ -436,20 +480,4 @@ export class ChatService {
       console.log(chat.group)
       return await this.chatRepo.save(chat);
     }
-
-    // async markMessagesAsRead(chatId: string, token: TokenPayload): Promise<void> {
-    //   const tokenId = token.id;
-
-    //   await this.msgRepo
-    //     .createQueryBuilder()
-    //     .update(Message)
-    //     .set({ isRead: true })
-    //     .where("chatId = :chatId", { chatId })
-    //     .andWhere("isRead = false")
-    //     .andWhere(
-    //       "(clientId IS NULL OR clientId != :tokenId) AND (therapistId IS NULL OR therapistId != :tokenId)",
-    //       { tokenId },
-    //     )
-    //     .execute();
-    // }
 }

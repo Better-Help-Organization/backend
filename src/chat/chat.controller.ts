@@ -123,6 +123,18 @@ export class ChatController {
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
+  @Patch(':chatId/read')
+  async markAsRead(
+    @Param('chatId') chatId: string,
+    @CurrentUser() token: TokenPayload,
+  ) {
+    return this.chatService.markMessagesAsRead(chatId, token);
+  }
+
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
   @ApiFindAllQueryParams()
   @Get(':id/messages')
   async getMessages(
@@ -155,47 +167,39 @@ export class ChatController {
   }
   }
 
-  // @Post('call/end/:id')
-  // @DynamicGuards(
-  //   new ClientJwtAuthGuard(),
-  //   new TherapistJwtAuthGuard(),
-  // )
-  // async endCall(
-  //   @Param('id') id: string,
-  //   @CurrentUser() user: TokenPayload,
-  // ) {
-  //   try {
-  //     return await this.chatService.endCall(id, user);
-  //   } catch (error) {
-  //     this.logger.error(`Error ending call: ${error.message}`);
-  //     return error;
-  //   }
-  // }
+  @Post('call/end/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
+  async endCall(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+  ) {
+    try {
+      return await this.chatService.endCall(id, user);
+    } catch (error) {
+      this.logger.error(`Error ending call: ${error.message}`);
+      return error;
+    }
+  }
 
-  // @Post('call/reject/:id')
-  // @DynamicGuards(
-  //   new ClientJwtAuthGuard(),
-  //   new TherapistJwtAuthGuard(),
-  // )
-  // async rejectCall(
-  //   @Param('id') id: string,
-  //   @CurrentUser() user: TokenPayload,
-  // ) {
-  //   try {
-  //     return await this.chatService.rejectCall(id, user);
-  //   } catch (error) {
-  //     this.logger.error(`Error rejecting call: ${error.message}`);
-  //     return error;
-  //   }
-  // }
-
-  // @Patch(':chatId/read')
-  // async markAsRead(
-  //   @Param('chatId') chatId: string,
-  //   @CurrentUser() token: TokenPayload,
-  // ) {
-  //   return this.chatService.markMessagesAsRead(chatId, token);
-  // }
+  @Post('call/reject/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
+  async rejectCall(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+  ) {
+    try {
+      return await this.chatService.rejectCall(id, user);
+    } catch (error) {
+      this.logger.error(`Error rejecting call: ${error.message}`);
+      return error;
+    }
+  }
 
   // @Patch(':id')
   // async update(@Param('id') id: string, @Body() updateChatDto: UpdateChatDto) {

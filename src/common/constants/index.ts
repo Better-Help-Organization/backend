@@ -94,14 +94,15 @@ export const SessionNotif: Record<string, { code: string; title: string }> = {
   SCHEDULED: { code: "1", title: 'Session scheduled' },
   NEW_MESSAGE: { code: "2", title: 'New message' },
   EDIT_MESSAGE: { code: "3", title: 'Edit message' },
-  INCOMING_CALL: { code: "4", title: 'Incoming Call' },
-  CALL_ENDED: { code: "5", title: 'Call Ended' },
-  CALL_REJECTED: { code: "6", title: 'Call Rejected' },
+  MESSAGE_READ: { code: "4", title: 'Message Read' },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call' },
+  CALL_ENDED: { code: "6", title: 'Call Ended' },
+  CALL_REJECTED: { code: "7", title: 'Call Rejected' },
 
   // Match-related notifications
-  MATCH_REQUEST: { code: '7', title: 'New match request' },
-  MATCH_ACCEPTED: { code: '8', title: 'Match accepted' },
-  MATCH_TAKEN: { code: '9', title: 'Match already taken' },
+  MATCH_REQUEST: { code: '8', title: 'New match request' },
+  MATCH_ACCEPTED: { code: '9', title: 'Match accepted' },
+  MATCH_TAKEN: { code: '10', title: 'Match already taken' },
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
