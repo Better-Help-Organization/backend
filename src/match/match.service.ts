@@ -84,6 +84,12 @@ export class MatchService {
     if (!answer) {
       throw new NotFoundException('Answer not found for this modal and client');
     }
+    
+    let answerIds :string[] = [];
+
+    answerIds = answer
+      .map(t => t.id)
+      .filter(id => id);
 
     // const therapists = await this.therapistService.findMatchingTherapists({
     //   gender: preference.gender,
@@ -125,7 +131,7 @@ export class MatchService {
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify({
-          answerData: answer,
+          answerData: answerIds,
           matchData: match,
           clientData: client,
         }),
