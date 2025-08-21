@@ -1,7 +1,8 @@
-import { Entity, Column, OneToMany, OneToOne } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { CommonEntity } from './common.entity';
 import { Preference } from './preference.entity';
+import { Therapist } from './therapist.entity';
 
 @Entity()
 export class Level extends CommonEntity{
@@ -28,6 +29,10 @@ export class Level extends CommonEntity{
   price: number;
 
   @ApiProperty({type: () => Preference})  
-  @OneToOne(() => Preference, preference => preference.level)
+  @OneToMany(() => Preference, preference => preference.level)
   preference: Preference[];
+
+  @ApiProperty({type: () => Therapist})  
+  @OneToMany(() => Therapist, therapist => therapist.level)
+  therapist: Therapist[];
 }

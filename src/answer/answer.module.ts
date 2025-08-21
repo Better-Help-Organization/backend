@@ -7,10 +7,12 @@ import { Answer } from 'src/common/entities/answer.entity';
 import { Question } from 'src/common/entities/question.entity';
 import { Option } from 'src/common/entities/option.entity';
 import { Client } from 'src/common/entities/client.entity';
+import { ModalModule } from 'src/modal/modal.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Answer, Client, Question, Option]),
+    ModalModule,
     LoggerModule,
   ],  
   controllers: [AnswerController],

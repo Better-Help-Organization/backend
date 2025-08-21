@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateModalDto {
@@ -9,6 +9,14 @@ export class CreateModalDto {
   @IsNotEmpty()
   @IsString()
   name: string;
+
+  @ApiProperty({
+    description: 'Order to display the modal',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  order: number;
 
   @ApiProperty({
     description: 'Description of the therapy type',

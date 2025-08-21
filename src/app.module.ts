@@ -5,6 +5,7 @@ import { AnswerModule } from './answer/answer.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { AvailabilityModule } from './availability/availability.module';
 import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
@@ -13,11 +14,14 @@ import { EmailModule } from './email/email.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { LanguageModule } from './language/language.module';
 import { LevelModule } from './level/level.module';
+import { LicenseModule } from './license/license.module';
 import { LoggerModule } from './logger/logger.module';
+import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
 import { OptionModule } from './option/option.module';
 import { PreferenceModule } from './preference/preference.module';
 import { QuestionModule } from './question/question.module';
+import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
 
@@ -36,8 +40,9 @@ import { TherapistModule } from './therapist/therapist.module';
     EmailModule, PreferenceModule, ModalModule, 
     QuestionModule, OptionModule, AnswerModule, 
     LanguageModule, LevelModule,
-    SessionModule, FirebaseModule, 
+    SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
     ChatModule,
+    MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

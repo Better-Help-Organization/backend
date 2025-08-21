@@ -60,6 +60,48 @@ export class TherapistService {
     }
   }
 
+  // async findMatchingTherapists(preference: {
+  //   gender: string;
+  //   level?: string;
+  //   availability: {
+  //     day: string;
+  //     day_period: string;
+  //   }[];
+  // }): Promise<Therapist[]> {
+  //   const query = this.therapistRepo.createQueryBuilder('therapist')
+  //     .leftJoinAndSelect('therapist.availability', 'availability')
+  //     .leftJoinAndSelect('therapist.level', 'level');
+
+  //   if (preference.gender) {
+  //     query.andWhere('therapist.gender = :gender', { gender: preference.gender });
+  //   }
+
+  //   if (preference.level) {
+  //     query.andWhere('level.id = :level', { level: preference.level });
+  //   }
+
+  //   if (preference.availability?.length) {
+  //     const conditions: string[] = [];
+  //     const parameters: Record<string, any> = {};
+
+  //     preference.availability.forEach((slot, i) => {
+  //       conditions.push(`(
+  //         availability.day = :day${i}
+  //         AND availability.day_period = :period${i}
+  //       )`);
+
+  //       parameters[`day${i}`] = slot.day;
+  //       parameters[`period${i}`] = slot.day_period;
+  //     });
+
+  //     query.andWhere(conditions.join(' OR '), parameters);
+  //   }
+
+  //   const therapists = await query.getMany();
+
+  //   return therapists;
+  // }
+
   async update(id: string, updateDto: UpdateTherapistDto) {
     const therapist = await this.findOne(id);
     Object.assign(therapist, updateDto);

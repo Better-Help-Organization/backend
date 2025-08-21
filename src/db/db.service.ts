@@ -106,7 +106,7 @@ export class DbService implements OnModuleInit {
 
     // Seed Modals, Questions, and Options
     for (const modalData of onboardingData) {
-        const { name, description, questions } = modalData;
+        const { name, description, questions,order } = modalData;
 
         const MODAL_NAME_MAP: Record<string, ModalName> = {
         'Individual Therapy': ModalName.INDIVIDUAL_THERAPY,
@@ -124,7 +124,7 @@ export class DbService implements OnModuleInit {
         let modal = await modalRepository.findOne({ where: { name: modalEnumValue } });
 
         if (!modal) {
-        modal = await modalRepository.save({ name: modalEnumValue, description });
+        modal = await modalRepository.save({ name: modalEnumValue, description, order });
         this.logger.log(`Created Modal: ${modalEnumValue}`);
         } else {
         this.logger.log(`Modal "${modalEnumValue}" already exists`);

@@ -1,12 +1,12 @@
-import { Entity, Column, ManyToOne, Unique, OneToMany, OneToOne, ManyToMany, JoinTable, JoinColumn } from 'typeorm';
-import { Client } from './client.entity';
-import { Modal } from './modal.entity';
-import { Language } from './language.entity';
-import { CommonEntity } from './common.entity';
-import { Gender, SessionFormat } from '../constants';
 import { ApiProperty } from '@nestjs/swagger';
-import { Level } from './level.entity';
+import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Gender } from '../constants';
 import { Availability } from './availability.entity';
+import { Client } from './client.entity';
+import { CommonEntity } from './common.entity';
+import { Language } from './language.entity';
+import { Level } from './level.entity';
+import { Modal } from './modal.entity';
 
 @Unique(['client', 'modal'])
 @Entity()
@@ -16,7 +16,7 @@ export class Preference extends CommonEntity {
   client: Client;
 
   @ApiProperty({ type: () => Modal })
-  @OneToOne(() => Modal, modal => modal.preference)
+  @ManyToOne(() => Modal, modal => modal.preference, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn()
   modal: Modal;
 
@@ -34,19 +34,14 @@ export class Preference extends CommonEntity {
   language: Language[];
 
   @ApiProperty()
-  @Column({ type: 'enum', enum: SessionFormat })
-  sessionFormat: SessionFormat;
-
-  @ApiProperty()
   @Column('text')
   goal: string;
 
   @ApiProperty({ type: () => Level })
-  @OneToOne(() => Level, level => level.preference, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn()
+  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL' })
   level: Level;
 
   @ApiProperty({type: () => Availability})
-  @OneToMany(() => Availability, availability => availability.preference)
+  @OneToMany(() => Availability, availability => availability.preference, {cascade: true})
   availability: Availability[];
 }

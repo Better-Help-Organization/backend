@@ -1,0 +1,103 @@
+import {
+  BadRequestException,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
+import { Request } from 'express';
+import * as fs from 'fs';
+import multer from 'multer';
+import * as path from 'path';
+import { Observable, from, switchMap } from 'rxjs';
+import {
+  ALLOWED_MIME_TYPES,
+  FILE_UPLOAD_KEY,
+  MAX_FILE_SIZE,
+  Tmp_Files_Dir,
+  ValidFolders,
+} from 'src/common/constants';
+import { ModalService } from 'src/modal/modal.service';
+import { v4 as uuidv4 } from 'uuid';
+
+@Injectable()
+export class UploadInterceptor implements NestInterceptor {
+  constructor(
+    private readonly modalService: ModalService,
+  ) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const ctx = context.switchToHttp();
+    const req = ctx.getRequest<Request>();
+    const folder = req.params.folder as ValidFolders;
+
+    return from(
+      new Promise<void>(async (resolve, reject) => {
+        const upload = multer({
+          storage: multer.diskStorage({
+            destination: (req, file, cb) => {
+              const dest = path.join(Tmp_Files_Dir);
+              fs.mkdirSync(dest, { recursive: true });
+              cb(null, dest);
+            },
+            filename: (req, file, cb) => {
+              (async () => {
+                try {
+                    const token = req.user as any;
+                    const uploadDir = Tmp_Files_Dir;
+                    const ext = path.extname(file.originalname);
+
+                    if (folder === ValidFolders.LICENCE) {
+                      const modalId = req.query.modalId as string;
+                      if (!modalId) {
+                        return cb(new Error('modalId is required for licence uploads'), '');
+                      }
+
+                      const modal = await this.modalService.findOne(modalId);
+                      if (!modal) {
+                        return cb(new Error('Invalid modalId'), '');
+                      }
+
+                      const uuid = uuidv4();
+                      const basePrefix = `${token.id}_${modalId}_${uuid}`;
+                      const filename = `${basePrefix}${ext}`;
+
+                      fs.mkdirSync(uploadDir, { recursive: true });
+
+                      const fullPath = path.join(uploadDir, filename);
+                      if (fs.existsSync(fullPath)) {
+                        fs.unlinkSync(fullPath);
+                      }
+
+                      cb(null, filename);
+                    } else {
+                        return cb(new Error('Unsupported folder type'), '');
+                    }
+                } catch (err: any) {
+                  cb(new Error(err.message || 'File validation error'), undefined);
+                }
+              })();
+            },
+          }),
+          fileFilter: (req, file, cb) => {
+            if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+              console.warn('Rejected file type: - upload.interceptor.ts:84', file.mimetype);
+            }
+            cb(null, true);
+          },
+          limits: {
+            fileSize: MAX_FILE_SIZE,
+          },
+        }).single(FILE_UPLOAD_KEY);
+
+        upload(req, req.res as any, (err: any) => {
+          if (err) {
+            reject(new BadRequestException(err.message));
+          } else {
+            resolve();
+          }
+        });
+      }),
+    ).pipe(switchMap(() => next.handle()));
+  }
+}

@@ -3,6 +3,7 @@ import { QuestionType } from "../constants";
 export const onboardingData = [
   {
     name: 'Individual Therapy',
+    order: 1,
     description: 'For individuals seeking one-on-one support to manage personal challenges and improve mental well-being.',
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
@@ -15,8 +16,7 @@ export const onboardingData = [
       { text: 'How would you describe your sleep?', type: QuestionType.SINGLE, option: ['I sleep well', 'Trouble falling asleep', 'Trouble staying asleep', 'Sleep too much', 'Not sure'] },
       { text: 'Have you attended therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
       { text: 'What is your main goal for therapy?', type: QuestionType.OPEN, option: [] },
-      { text: 'Therapist experience level?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
-      { text: 'What brings you to therapy today?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
+      // { text: 'Therapist experience level?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
       // { text: 'Preferred therapist gender:', type: QuestionType.SINGLE, option: ['Male', 'Female', 'No preference'] },
       // { text: 'Preferred language for sessions:', type: QuestionType.SINGLE, option: ['Amharic', 'English', 'Oromo', 'Tigrigna', 'Other'] },
       // { text: 'Preferred session format:', type: QuestionType.SINGLE, option: ['Video Call', 'Phone Call', 'Chat/Text'] },
@@ -24,8 +24,9 @@ export const onboardingData = [
     ]
   },
 
-  {
+  {      // { text: 'What brings you to therapy today?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
     name: 'Teen Therapy',
+    order: 2,
     description: 'For teens or guardians seeking support for adolescent mental health and development.',
     questions: [
       { text: 'Who is filling this out?', type: QuestionType.SINGLE, option: ['Teen', 'Parent/Guardian (on behalf of teen)'] },
@@ -38,7 +39,7 @@ export const onboardingData = [
       { text: 'How is the teen’s sleep?', type: QuestionType.SINGLE, option: ['Sleeps well', 'Can’t fall asleep', 'Wakes up often', 'Sleeps too much', 'Unknown'] },
       { text: 'Has the teen been in therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
       { text: 'What is the goal for therapy?', type: QuestionType.OPEN, option: [] },
-      { text: 'Preferred therapist experience level:', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
+      // { text: 'Preferred therapist experience level:', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
       // { text: 'Preferred therapist gender:', type: QuestionType.SINGLE, option: ['Male', 'Female', 'No preference'] },
       // { text: 'Preferred language:', type: QuestionType.SINGLE, option: ['Amharic', 'English', 'Oromo', 'Other'] },
       // { text: 'Preferred session type:', type: QuestionType.SINGLE, option: ['Video Call', 'Phone Call', 'Chat/Text'] },
@@ -48,6 +49,7 @@ export const onboardingData = [
 
   {
     name: 'Couple Therapy',
+    order: 4,
     description: 'For couples looking to improve communication, resolve conflict, and grow together.',
     questions: [
       { text: 'Which country/region do you live in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Other'] },
@@ -67,6 +69,7 @@ export const onboardingData = [
 
   {
     name: 'Group Therapy',
+    order: 3,
     description: 'For individuals looking to join a support group for shared experiences and healing.',
     questions: [
       { text: 'Which country/region do you live in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Other'] },

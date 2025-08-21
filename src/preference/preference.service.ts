@@ -11,6 +11,7 @@ import { TokenPayload } from 'src/common/constants';
 import { Modal } from 'src/common/entities/modal.entity';
 import { Language } from 'src/common/entities/language.entity';
 import { Level } from 'src/common/entities/level.entity';
+import { Availability } from 'src/common/entities/availability.entity';
 
 @Injectable()
 export class PreferenceService {
@@ -19,6 +20,7 @@ export class PreferenceService {
     @InjectRepository(Modal) private readonly modalRepository: Repository<Modal>,
     @InjectRepository(Language) private readonly languageRepository: Repository<Language>,
     @InjectRepository(Level) private readonly levelRepository: Repository<Level>,
+    @InjectRepository(Availability) private readonly availabilityRepository: Repository<Availability>,
     private readonly logger: LoggerService
   ) {}
   async create(client: TokenPayload, dto: CreatePreferenceDto) {
@@ -47,6 +49,7 @@ export class PreferenceService {
         modal: { id: dto.modalId },
         language: dto.languageIds.map(id => ({ id })),
         ...(dto.levelId ? { level: { id: dto.levelId } } : {}),
+        ...(dto.availability ? { availability: dto.availability } : {}),
       });
 
       return await this.preferenceRepository.save(preference);
@@ -108,7 +111,19 @@ export class PreferenceService {
         preference.level = level;
       }
 
-      Object.assign(preference, dto);
+      if (dto.availability) {
+        await this.availabilityRepository.delete({ preference: { id: preference.id } });
+
+        const newAvailabilities = dto.availability.map(a =>
+          this.availabilityRepository.create({
+            day: a.day,
+            day_period: a.day_period,
+            preference,
+          }),
+        );
+
+        preference.availability = newAvailabilities;
+      }
 
       return await this.preferenceRepository.save(preference);
     } catch (err) {

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Answer } from 'src/common/entities/answer.entity';
 import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
@@ -10,6 +10,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { QuestionType, TokenPayload } from 'src/common/constants';
 import { Option } from 'src/common/entities/option.entity';
 import { Question } from 'src/common/entities/question.entity';
+import { ModalService } from 'src/modal/modal.service';
 
 @Injectable()
 export class AnswerService {
@@ -18,71 +19,96 @@ export class AnswerService {
     @InjectRepository(Question) private readonly questionRepository: Repository<Question>,
     @InjectRepository(Option) private readonly optionRepository: Repository<Option>,
 
+    private readonly dataSource: DataSource,
+    private readonly modalService: ModalService,
     private readonly logger: LoggerService
   ) {}
+
   async create(client: TokenPayload, dto: CreateAnswerDto) {
-    const { answers } = dto;
+    return await this.dataSource.transaction(async (manager) => {
+      const { modalId, answers } = dto;
 
-    const savedAnswers: Answer[] = [];
+      const modal = await this.modalService.findOne(modalId);
+      if (!modal) throw new NotFoundException(`Modal ${modalId} not found`);
 
-    for (const ans of answers) {
-      const { questionId, singleOptionId, multiOptionIds, text } = ans;
+      const savedAnswers: Answer[] = [];
 
-      if (!singleOptionId && !text &&   (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0)) {
-        throw new BadRequestException(`Question ${questionId} requires either an option or text.`);
-      }
+      for (const ans of answers) {
+        const { questionId, singleOptionId, multiOptionIds, text } = ans;
 
-      const question = await this.questionRepository.findOne({ where: { id: questionId }, relations: ['option'] });
-      if (!question) throw new NotFoundException(`Question ${questionId} not found`);
+        if (!singleOptionId && !text && (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0)) {
+          throw new BadRequestException(`Question ${questionId} requires either an option or text.`);
+        }
 
-      switch (question.type) {
-        case QuestionType.SINGLE:
-          if (!singleOptionId) throw new BadRequestException(`Question ${questionId} requires a single option.`);
-          break;
-        case QuestionType.MULTIPLE:
-          if (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0) {
-            throw new BadRequestException(`Question ${questionId} requires multiple options.`);
+        const question = await manager.getRepository(Question).findOne({
+          where: { id: questionId },
+          relations: ['option', 'modal'],
+        });
+        if (!question) throw new NotFoundException(`Question ${questionId} not found`);
+
+        if (!question.modal || question.modal.id !== modalId) {
+          throw new BadRequestException(`Question ${questionId} does not belong to modal ${modalId}`);
+        }
+
+        switch (question.type) {
+          case QuestionType.SINGLE: {
+            if (!singleOptionId) throw new BadRequestException(`Question ${questionId} requires a single option.`);
+
+            const singleOption = await manager.getRepository(Option).findOne({
+              where: { id: singleOptionId },
+            });
+            if (!singleOption) throw new NotFoundException(`Option ${singleOptionId} not found`);
+
+            if (singleOption.text === 'Other' && (!text || text.trim() === '')) {
+              throw new BadRequestException(`Question ${questionId} requires text when "Other" is selected.`);
+            }
+            break;
           }
-          break;
-        case QuestionType.OPEN:
-          if (!text || text.trim() === '') throw new BadRequestException(`Question ${questionId} requires a text answer.`);
-          break;
-        default:
-          throw new BadRequestException(`Unsupported question type: ${question.type}`);
-      }
+          case QuestionType.MULTIPLE: {
+            if (!Array.isArray(multiOptionIds) || multiOptionIds.length === 0) {
+              throw new BadRequestException(`Question ${questionId} requires at least one option.`);
+            }
 
-      if(singleOptionId){
-        const option = await this.optionRepository.findOne({ where: { id: singleOptionId }, relations: ['question'] });
-        if (!option) throw new NotFoundException(`Option ${singleOptionId} not found`);
-      }
+            const multiOptions = await manager.getRepository(Option).find({
+              where: { id: In(multiOptionIds) },
+            });
 
-      if(Array.isArray(multiOptionIds) &&multiOptionIds.length > 0){
-        const options = await this.optionRepository.find({
-          where: { id: In(multiOptionIds) },
-          relations: ['question'],
+            if (multiOptions.length !== multiOptionIds.length) {
+              const foundIds = multiOptions.map(opt => opt.id);
+              const missingIds = multiOptionIds.filter(id => !foundIds.includes(id));
+              throw new NotFoundException(`Options not found: ${missingIds.join(', ')}`);
+            }
+
+            if (multiOptions.some(opt => opt.text === 'Other') && (!text || text.trim() === '')) {
+              throw new BadRequestException(`Question ${questionId} requires text when "Other" is selected.`);
+            }
+            break;
+          }
+          case QuestionType.OPEN:
+            if (!text || text.trim() === '') {
+              throw new BadRequestException(`Question ${questionId} requires a text answer.`);
+            }
+            break;
+          default:
+            throw new BadRequestException(`Unsupported question type: ${question.type}`);
+        }
+
+        const answer = manager.getRepository(Answer).create({
+          client: { id: client.id },
+          question: { id: questionId },
+          modal: { id: modalId },
+          ...(singleOptionId ? { singleOption: { id: singleOptionId } } : {}),
+          ...(Array.isArray(multiOptionIds) && multiOptionIds.length > 0
+            ? { multiOption: multiOptionIds.map(id => ({ id })) }
+            : {}),
+          ...(text ? { text } : { text: null }),
         });
 
-        if (options.length !== multiOptionIds.length) {
-          const foundIds = options.map(opt => opt.id);
-          const missingIds = multiOptionIds.filter(id => !foundIds.includes(id));
-          throw new NotFoundException(`Options not found: ${missingIds.join(', ')}`);
-        }
+        savedAnswers.push(await manager.getRepository(Answer).save(answer));
       }
 
-      const answer = this.answerRepository.create({
-        client: { id: client.id },
-        question: { id: questionId },
-        ...(singleOptionId ? { singleOption: { id: singleOptionId } } : {}),
-        ...(Array.isArray(multiOptionIds) && multiOptionIds.length > 0
-          ? { multiOption: multiOptionIds.map(id => ({ id })) }
-          : {}),
-        ...(text ? { text } : { text: null }),
-      });
-
-      savedAnswers.push(await this.answerRepository.save(answer));
-    }
-
-    return savedAnswers;
+      return savedAnswers;
+    });
   }
 
   async findAll(queryParams?: FindAllQueryParams) {
@@ -123,10 +149,33 @@ export class AnswerService {
             if (!ansDto.singleOptionId) {
               throw new BadRequestException(`Question ${question.id} requires a single option.`);
             }
+                
+            const singleOption = await this.optionRepository.findOne({
+              where: { id: ansDto.singleOptionId },
+            });
+            if (!singleOption) throw new NotFoundException(`Option ${ansDto.singleOptionId} not found`);
+
+            if (singleOption.text === 'Other' && (!ansDto.text || ansDto.text.trim() === '')) {
+              throw new BadRequestException(`Question ${ansDto.questionId} requires text when "Other" is selected.`);
+            }
             break;
           case QuestionType.MULTIPLE:
             if (!Array.isArray(ansDto.multiOptionIds) || ansDto.multiOptionIds.length === 0) {
-              throw new BadRequestException(`Question ${question.id} requires multiple options.`);
+              throw new BadRequestException(`Question ${question.id} requires at least one option.`);
+            }
+
+            const multiOptions = await this.optionRepository.find({
+              where: { id: In(ansDto.multiOptionIds) },
+            });
+
+            if (multiOptions.length !== ansDto.multiOptionIds.length) {
+              const foundIds = multiOptions.map(opt => opt.id);
+              const missingIds = ansDto.multiOptionIds.filter(id => !foundIds.includes(id));
+              throw new NotFoundException(`Options not found: ${missingIds.join(', ')}`);
+            }
+
+            if (multiOptions.some(opt => opt.text === 'Other') && (!ansDto.text || ansDto.text.trim() === '')) {
+              throw new BadRequestException(`Question ${ansDto.questionId} requires text when "Other" is selected.`);
             }
             break;
           case QuestionType.OPEN:

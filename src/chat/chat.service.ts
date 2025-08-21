@@ -9,7 +9,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
@@ -336,6 +336,50 @@ export class ChatService {
   //   }
   // }
 
+  async markMessagesAsRead(chatId: string, user: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    if (!chat) throw new NotFoundException('Chat not found');
+
+    const isClient = user.type === UserTypes.CLIENT && chat.client?.id === user.id;
+    const isTherapist = user.type === UserTypes.THERAPIST && chat.therapist?.id === user.id;
+    if (!isClient && !isTherapist) {
+      throw new BadRequestException('You are not a participant of this chat');
+    }
+
+    const qb = this.msgRepo
+      .createQueryBuilder()
+      .update(Message)
+      .set({ isRead: true })
+      .where('chatId = :chatId', { chatId })
+      .andWhere('isRead = false');
+
+    if (isClient) {
+      qb.andWhere('therapistId IS NOT NULL');
+    } else {
+      qb.andWhere('clientId IS NOT NULL');
+    }
+
+    const result = await qb.execute();
+
+    if (!result.affected || result.affected === 0) {
+      return { success: true, message: 'No unread messages' };
+    }
+
+    const readBy = { [user.type.toLowerCase()]: user.id };
+
+    const recipientToken = isClient ? chat.therapist?.firebaseToken : chat.client?.firebaseToken;
+    if (recipientToken) {
+      await this.firebaseService.sendPushNotification(
+        [recipientToken],
+        JSON.stringify({ chatId, readBy, count: result.affected }),
+        SessionNotif.MESSAGE_READ,
+        `Messages marked as read in chat ${chatId}`
+      );
+    }
+
+    return { success: true, affected: result.affected };
+  }
+
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Chat> {
   try {
     console.log({id, queryParams})
@@ -376,6 +420,40 @@ export class ChatService {
       this.logger.error(`Error finding chat for call: ${error.message}`);
       throw error;
     }
+  }
+
+  async endCall(chatId: string, caller: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    const isCallerClient = chat.client.id === caller.id;
+
+    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
+
+    await this.firebaseService.sendPushNotification(
+      [recipient.firebaseToken],
+      JSON.stringify({ chatId, callerData }),
+      SessionNotif.CALL_ENDED,
+      `Call ended by ${callerData.firstName}`
+    );
+
+    return { success: true, status: 'ended' };
+  }
+
+  async rejectCall(chatId: string, caller: TokenPayload) {
+    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
+    const isCallerClient = chat.client.id === caller.id;
+
+    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
+
+    await this.firebaseService.sendPushNotification(
+      [recipient.firebaseToken],
+      JSON.stringify({ chatId, callerData }),
+      SessionNotif.CALL_REJECTED,
+      `Call rejected by ${callerData.firstName}`
+    );
+
+    return { success: true, status: 'rejected' };
   }
 
   async addToChat(sessionId: string, dto: AddToChatDto) {
