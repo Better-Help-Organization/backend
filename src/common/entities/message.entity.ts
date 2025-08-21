@@ -33,7 +33,7 @@ export class Message extends CommonEntity {
   @Column({ type: 'text' })
   content: string;
 
-  // @ApiProperty({ default: false, description: "Whether the recipient has seen the message" })
-  // @Column({ type: 'boolean', default: false })
-  // isRead: boolean;
+  @ApiProperty({ default: false, description: "Whether the recipient has seen the message" })
+  @Column({ type: 'boolean', default: false })
+  isRead: boolean;
 }
