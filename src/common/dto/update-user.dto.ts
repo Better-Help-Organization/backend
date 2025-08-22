@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDate, IsEnum, IsOptional, IsString } from "class-validator";
+import { IsDate, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { Gender } from "src/common/constants";
 import { IsValidPhoneNumber } from "src/common/decorators/IsValidPhoneNumber";
 
@@ -22,6 +22,15 @@ export class UpdateUserDto {
     @IsOptional()
     @IsString()
     lastName: string;
+
+    @ApiProperty({
+        example: 0,
+        description: "Avatar index for the user",
+        required: false,
+    })
+    @IsOptional()
+    @IsNumber()
+    avatar: number;
 
     @ApiProperty({
         example: "john_doe99",
