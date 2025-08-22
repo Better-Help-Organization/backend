@@ -30,6 +30,10 @@ export abstract class User extends CommonEntity {
     email: string;
 
     @ApiProperty()
+    @Column({ type:'int', default: 0, nullable: true })
+    avatar: number;
+
+    @ApiProperty()
     @Column({ unique:true, nullable: true })
     phoneNumber: string;
 
