@@ -134,6 +134,7 @@ export class MatchService {
           answerData: answerIds,
           matchData: match,
           clientData: client,
+          availability: preference.availability,
         }),
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
