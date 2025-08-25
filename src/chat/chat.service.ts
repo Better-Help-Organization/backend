@@ -63,7 +63,7 @@ export class ChatService {
     this.firebaseService.sendPushNotification(
       tokens,
       `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`,
-      SessionNotif.SCHEDULED,
+      SessionNotif.CHAT,
       `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`
     );
 

@@ -98,6 +98,7 @@ export const SessionNotif: Record<string, { code: string; title: string }> = {
   INCOMING_CALL: { code: "5", title: 'Incoming Call' },
   CALL_ENDED: { code: "6", title: 'Call Ended' },
   CALL_REJECTED: { code: "7", title: 'Call Rejected' },
+  CHAT: { code: "8", title: 'Added to Chat' },
 
   // Match-related notifications
   MATCH_REQUEST: { code: '8', title: 'New match request' },
