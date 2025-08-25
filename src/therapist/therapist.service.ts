@@ -129,4 +129,18 @@ export class TherapistService {
   getRepository(): Repository<Therapist> {
     return this.therapistRepo;
   }
+
+  async setOnline(id: string) {
+    await this.therapistRepo.update(id, {
+      isOnline: true,
+      lastSeenAt: new Date(),
+    });
+  }
+
+  async setOffline(id: string) {
+    await this.therapistRepo.update(id, {
+      isOnline: false,
+      lastSeenAt: new Date(),
+    });
+  }
 }

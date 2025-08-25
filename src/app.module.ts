@@ -24,6 +24,7 @@ import { QuestionModule } from './question/question.module';
 import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
+import { PresenceModule } from './presence/presence.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { TherapistModule } from './therapist/therapist.module';
     SessionModule, FirebaseModule,  RatingModule, LicenseModule, AvailabilityModule,
     ChatModule,
     MatchModule,
+    PresenceModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

@@ -86,4 +86,12 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ default: false })
     @Column({ default: false })
     isLinked: boolean;
+
+    @ApiProperty({ default: false })
+    @Column({ default: false })
+    isOnline: boolean;
+
+    @ApiProperty({ nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
+    lastSeenAt: Date;
 }
