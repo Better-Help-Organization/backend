@@ -27,10 +27,14 @@ import { TypeOrmExceptionFilter } from './common/exception-filters/typeorm-excep
 import 'reflect-metadata';
 import { VERSION } from './common/constants';
 
+import { IoAdapter } from '@nestjs/platform-socket.io';
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix(`/api`);
+
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   app.enableVersioning({
     type: VersioningType.URI,
