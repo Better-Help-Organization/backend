@@ -89,4 +89,18 @@ export class ClientService {
   getRepository(): Repository<Client> {
     return this.clientRepo;
   }
+
+  async setOnline(id: string) {
+    await this.clientRepo.update(id, {
+      isOnline: true,
+      lastSeenAt: new Date(),
+    });
+  }
+
+  async setOffline(id: string) {
+    await this.clientRepo.update(id, {
+      isOnline: false,
+      lastSeenAt: new Date(),
+    });
+  }
 }

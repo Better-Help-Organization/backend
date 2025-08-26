@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientModule } from 'src/client/client.module';
 import { Session } from 'src/common/entities/session.entity';
@@ -17,7 +17,7 @@ import { StatusModule } from './status/status.module';
     MessageModule, 
     StatusModule,
     FirebaseModule,
-    ClientModule,
+    forwardRef(() => ClientModule),
     TherapistModule
   ],
   controllers: [SessionController],

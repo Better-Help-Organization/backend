@@ -63,7 +63,7 @@ export class ChatService {
     this.firebaseService.sendPushNotification(
       tokens,
       `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`,
-      SessionNotif.SCHEDULED,
+      SessionNotif.CHAT,
       `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`
     );
 
@@ -413,7 +413,7 @@ export class ChatService {
     const recipient = isCallerClient ? chat.therapist : chat.client;
     const callerData = isCallerClient ? chat.client : chat.therapist ;
 
-    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
+    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData, chatId: id }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
 
     return chat;
     } catch (error) {

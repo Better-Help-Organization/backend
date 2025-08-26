@@ -30,6 +30,10 @@ export abstract class User extends CommonEntity {
     email: string;
 
     @ApiProperty()
+    @Column({ type:'int', default: 0, nullable: true })
+    avatar: number;
+
+    @ApiProperty()
     @Column({ unique:true, nullable: true })
     phoneNumber: string;
 
@@ -82,4 +86,12 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ default: false })
     @Column({ default: false })
     isLinked: boolean;
+
+    @ApiProperty({ default: false })
+    @Column({ default: false })
+    isOnline: boolean;
+
+    @ApiProperty({ nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
+    lastSeenAt: Date;
 }
