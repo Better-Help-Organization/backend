@@ -6,7 +6,7 @@ import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-que
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
-import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
@@ -54,7 +54,8 @@ export class TherapistController {
   
   @Get()
   @DynamicGuards(
-    new AdminJwtAuthGuard()  
+    new AdminJwtAuthGuard(),  
+    new ClientJwtAuthGuard()  
   )
   @ApiFindAllQueryParams()
   findAll(
@@ -66,7 +67,8 @@ export class TherapistController {
   @Get(':id')
   @ApiFindOneQueryParams()
   @DynamicGuards(
-    new AdminJwtAuthGuard()
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard()
   )
   findOne(
     @Query() queryParams,

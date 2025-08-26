@@ -6,6 +6,7 @@ import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
 
@@ -13,7 +14,8 @@ import { UpdateClientDto } from './dto/update-client.dto';
 export class ClientController {
   constructor(
     private readonly clientService: ClientService,
-    private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly sessionService: SessionService
   ) {}
 
   @Get('me')
@@ -23,7 +25,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:26", user);
+    console.log("user - client.controller.ts:28", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 
@@ -46,6 +48,27 @@ export class ClientController {
     @Param('id') id: string
   ) {
     return this.chatService.findOne(id, queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/sessions')
+  @UseGuards(ClientJwtAuthGuard)
+  async findMySession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.sessionService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/sessions/:id')
+  @UseGuards(ClientJwtAuthGuard)
+  async findOneSession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.sessionService.findOne(id, queryParams);
   }
 
   @Get()
