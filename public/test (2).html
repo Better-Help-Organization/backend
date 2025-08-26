@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.IO Test</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    button { margin: 5px; padding: 10px 15px; }
+    pre { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h2>Socket.IO Test</h2>
+  <button id="connectBtn">Connect</button>
+  <button id="disconnectBtn">Disconnect</button>
+  <pre id="log"></pre>
+
+  <script>
+    const log = (msg) => {
+      const el = document.getElementById("log");
+      el.textContent += msg + "\n";
+      el.scrollTop = el.scrollHeight;
+      console.log(msg);
+    };
+
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQxMjc1ZjQyLTNmMzktNDc2ZS05ZTUyLTY0ZTI4ZjMxY2VjNiIsInR5cGUiOiJ0aGVyYXBpc3QiLCJzdGF0dXMiOiJpbmFjdGl2ZSIsImlhdCI6MTc1NjEyMjE4NSwiZXhwIjoxNzU2MTI1Nzg1fQ.XDF9IW9bXxy3ek6ADD8Mm2y2XYFYRTDBU5cwxEeINU8";
+    let socket = null;
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    const basePath = pathSegments[0]; // "dev" or "prod" or "staging", etc.
+
+
+    const connectSocket = () => {
+      if (socket && socket.connected) {
+        log("⚠️ Already connected");
+        return;
+      }
+
+      socket = io("ws://localhost", {
+        path: `/${basePath}/socket.io` ,
+        transports: ["websocket"],
+        auth: { token },
+      });
+
+      socket.on("connect", () => log("✅ Connected with id: " + socket.id));
+      socket.on("disconnect", () => log("❌ Disconnected"));
+      socket.on("connect_error", (err) => log("⚠️ Connection error: " + err.message));
+      socket.on("userStatus", (status) => log("📢 User status update: " + JSON.stringify(status)));
+    };
+
+    const disconnectSocket = () => {
+      if (!socket || !socket.connected) {
+        log("⚠️ Socket not connected");
+        return;
+      }
+      socket.disconnect();
+      log("🛑 Disconnection requested");
+    };
+
+    document.getElementById("connectBtn").addEventListener("click", connectSocket);
+    document.getElementById("disconnectBtn").addEventListener("click", disconnectSocket);
+  </script>
+</body>
+</html>
+
