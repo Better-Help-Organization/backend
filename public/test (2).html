@@ -23,11 +23,12 @@
       console.log(msg);
     };
 
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQxMjc1ZjQyLTNmMzktNDc2ZS05ZTUyLTY0ZTI4ZjMxY2VjNiIsInR5cGUiOiJ0aGVyYXBpc3QiLCJzdGF0dXMiOiJpbmFjdGl2ZSIsImlhdCI6MTc1NjEyMjE4NSwiZXhwIjoxNzU2MTI1Nzg1fQ.XDF9IW9bXxy3ek6ADD8Mm2y2XYFYRTDBU5cwxEeINU8";
+    const token = 
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY2ZTJiNjcyLTg1OGItNDU3OC04MjBlLTZiOTkyMjVlZTA2MyIsInR5cGUiOiJ0aGVyYXBpc3QiLCJzdGF0dXMiOiJpbmFjdGl2ZSIsImlhdCI6MTc1NjMxNjc0OCwiZXhwIjoxNzU2OTIxNTQ4fQ.F1dGnjjLEaoGwfR0xDVaehn7wx0b7mT_3JOhUSrESjI";
     let socket = null;
     const pathSegments = window.location.pathname.split('/').filter(Boolean);
     const basePath = pathSegments[0]; // "dev" or "prod" or "staging", etc.
-
+    console.log('Base path:', basePath);
 
     const connectSocket = () => {
       if (socket && socket.connected) {
@@ -35,7 +36,7 @@
         return;
       }
 
-      socket = io("ws://localhost", {
+      socket = io("wss://app.navigo.et", {
         path: `/${basePath}/socket.io` ,
         transports: ["websocket"],
         auth: { token },
