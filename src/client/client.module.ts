@@ -5,12 +5,14 @@ import { Client } from 'src/common/entities/client.entity';
 import { SessionModule } from 'src/session/session.module';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
+import { ModalModule } from 'src/modal/modal.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Client]),
     ChatModule,
-    SessionModule
+    SessionModule,
+    ModalModule
   ],  
   controllers: [ClientController],
   providers: [ClientService],

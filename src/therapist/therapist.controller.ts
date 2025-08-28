@@ -131,7 +131,7 @@ export class TherapistController {
     name: 'folder',
     enum: Object.values(ValidFolders),
     required: true,
-    description: 'Target folder: licence, etc.',
+    description: 'Target folder: licence, profile etc.',
   })
   @ApiQuery({
     name: 'modalId',
@@ -156,9 +156,18 @@ export class TherapistController {
   })
   @UseInterceptors(UploadInterceptor)
   async upload(
+    @CurrentUser() token: TokenPayload,
     @UploadedFile() file: Express.Multer.File,
-    @ValidatedFolder() _: ValidFolders,
+    @ValidatedFolder() folder: ValidFolders,
   ) {
+    if (folder === ValidFolders.PROFILE) {
+      const finalFileName = await this.therapistService.uploadProfile(token, file.filename);
+      return {
+        message: 'Profile updated successfully',
+        filename: finalFileName,
+      };
+    }
+
     return {
       message: 'File uploaded successfully',
       filename: file.filename,

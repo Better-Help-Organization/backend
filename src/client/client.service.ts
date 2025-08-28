@@ -1,12 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
+import * as fs from 'fs';
+import * as path from 'path';
 import { Client } from 'src/common/entities/client.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { LoggerService } from 'src/logger/logger.service';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { TokenPayload, Tmp_Files_Dir, Final_Files_Dir, ValidFolders } from 'src/common/constants';
 
 @Injectable()
 export class ClientService {
@@ -102,5 +104,41 @@ export class ClientService {
       isOnline: false,
       lastSeenAt: new Date(),
     });
+  }
+
+  async uploadProfile(token: TokenPayload, tmpFileName: string) {
+    const client = await this.findOne(token.id);
+    const ext = path.extname(tmpFileName) || '.jpg';
+    const tmpPath = path.join(Tmp_Files_Dir, tmpFileName);
+
+    if (!fs.existsSync(tmpPath)) {
+      throw new BadRequestException('Uploaded profile file not found');
+    }
+
+    const finalDir = path.join(Final_Files_Dir, ValidFolders.PROFILE);
+    fs.mkdirSync(finalDir, { recursive: true });
+
+    const existingFiles = fs
+      .readdirSync(finalDir)
+      .filter(file => file.startsWith(`${client.id}.`));
+    for (const file of existingFiles) {
+      fs.unlinkSync(path.join(finalDir, file));
+    }
+
+    const finalFileName = `${client.id}${ext}`;
+    const finalPath = path.join(finalDir, finalFileName);
+
+    client.profile = path.join(ValidFolders.PROFILE, finalFileName)
+    try {
+      await this.clientRepo.save(client);
+
+      fs.renameSync(tmpPath, finalPath);
+
+      return path.join(ValidFolders.PROFILE, finalFileName);
+    } catch (err) {
+      this.logger.error(`Failed to update therapist profile: ${err.message}`);
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      throw new BadRequestException('Profile upload failed. Please try again.');
+    }
   }
 }

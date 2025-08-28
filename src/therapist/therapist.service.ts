@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -6,6 +6,9 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
+import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class TherapistService {
@@ -142,5 +145,41 @@ export class TherapistService {
       isOnline: false,
       lastSeenAt: new Date(),
     });
+  }
+
+  async uploadProfile(token: TokenPayload, tmpFileName: string) {
+    const therapist = await this.findOne(token.id);
+    const ext = path.extname(tmpFileName) || '.jpg';
+    const tmpPath = path.join(Tmp_Files_Dir, tmpFileName);
+
+    if (!fs.existsSync(tmpPath)) {
+      throw new BadRequestException('Uploaded profile file not found');
+    }
+
+    const finalDir = path.join(Final_Files_Dir, ValidFolders.PROFILE);
+    fs.mkdirSync(finalDir, { recursive: true });
+
+    const existingFiles = fs
+      .readdirSync(finalDir)
+      .filter(file => file.startsWith(`${therapist.id}.`));
+    for (const file of existingFiles) {
+      fs.unlinkSync(path.join(finalDir, file));
+    }
+
+    const finalFileName = `${therapist.id}${ext}`;
+    const finalPath = path.join(finalDir, finalFileName);
+
+    therapist.profile = path.join(ValidFolders.PROFILE, finalFileName)
+    try {
+      await this.therapistRepo.save(therapist);
+
+      fs.renameSync(tmpPath, finalPath);
+
+      return path.join(ValidFolders.PROFILE, finalFileName);
+    } catch (err) {
+      this.logger.error(`Failed to update therapist profile: ${err.message}`);
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      throw new BadRequestException('Profile upload failed. Please try again.');
+    }
   }
 }

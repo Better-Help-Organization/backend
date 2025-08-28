@@ -94,4 +94,8 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ nullable: true })
     @Column({ type: 'timestamp', nullable: true })
     lastSeenAt: Date;
+
+    @ApiProperty({ nullable: true })
+    @Column({ nullable: true })
+    profile: string;
 }
