@@ -97,20 +97,19 @@ export enum MoodValues {
   NEUTRAL = 'neutral'
 }
 
-export const SessionNotif: Record<string, { code: string; title: string }> = {
-  SCHEDULED: { code: "1", title: 'Session scheduled' },
-  NEW_MESSAGE: { code: "2", title: 'New message' },
-  EDIT_MESSAGE: { code: "3", title: 'Edit message' },
-  MESSAGE_READ: { code: "4", title: 'Message Read' },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call' },
-  CALL_ENDED: { code: "6", title: 'Call Ended' },
-  CALL_REJECTED: { code: "7", title: 'Call Rejected' },
-  CHAT: { code: "8", title: 'Added to Chat' },
-
+export const SessionNotif: Record<string, { code: string; title: string, showNotification: boolean }> = {
+  SCHEDULED: { code: "1", title: 'Session scheduled', showNotification: true },
+  NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
+  EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
+  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
+  CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
+  CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
+  CHAT: { code: "8", title: 'Added to Chat', showNotification: true },
   // Match-related notifications
-  MATCH_REQUEST: { code: '8', title: 'New match request' },
-  MATCH_ACCEPTED: { code: '9', title: 'Match accepted' },
-  MATCH_TAKEN: { code: '10', title: 'Match already taken' },
+  MATCH_REQUEST: { code: '8', title: 'New match request', showNotification: true  },
+  MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
+  MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

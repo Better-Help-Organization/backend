@@ -9,7 +9,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
@@ -189,7 +189,7 @@ export class ChatService {
         .map(c => c.firebaseToken)
         .filter(Boolean);
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        console.log(chat.therapist.firebaseToken, "osdmksmdflsmdlsmdlkdsf")
+        console.log(chat.therapist.firebaseToken, "osdmksmdflsmdlsmdlkdsf - chat.service.ts:192")
         tokens.push(chat.therapist.firebaseToken);
       }
 
@@ -374,7 +374,6 @@ export class ChatService {
         JSON.stringify({ chatId, readBy, count: result.affected }),
         SessionNotif.MESSAGE_READ,
         `Messages marked as read in chat ${chatId}`,
-        false
       );
     }
 
