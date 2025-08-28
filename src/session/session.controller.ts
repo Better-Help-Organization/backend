@@ -46,6 +46,9 @@ export class SessionController {
   }
 
   @Get()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   @ApiFindAllQueryParams()
   findAll(
     @Query() queryparams?: FindAllQueryParams
@@ -54,6 +57,9 @@ export class SessionController {
   }
 
   @Get(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   @ApiFindOneQueryParams()
   findOne(
     @Param('id') id: string,
@@ -74,6 +80,9 @@ export class SessionController {
   }
 
   @Delete(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   remove(@Param('id') id: string) {
     return this.sessionService.remove(id);
   }
