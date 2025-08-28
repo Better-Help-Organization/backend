@@ -6,13 +6,15 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { ModalModule } from 'src/modal/modal.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
+import { SessionModule } from 'src/session/session.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Therapist]),
     forwardRef(() => ChatModule),
     ModalModule,
-    LoggerModule
+    LoggerModule,
+    SessionModule
   ],  
   controllers: [TherapistController],
   providers: [TherapistService],
