@@ -10,18 +10,19 @@ export class FirebaseService {
     private readonly logger: LoggerService
   ){}
 
-  async sendPushNotification(tokens: string[], message: string, notificationType: SessionNotifValue, body): Promise<void> {
+  async sendPushNotification(tokens: string[], message: string, notificationType: SessionNotifValue, body, showNotification: boolean =true): Promise<void> {
     try {
         const { code, title} = notificationType
       this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
+      if(!body) body = "Place Holder"
       try{
-        if(!body) body = "place holder"
+        const notification = showNotification? {
+            title,
+            body,
+        }: undefined
         await this.firebaseAdmin.messaging().sendEachForMulticast({
             tokens,
-            notification: {
-                title,
-                body,
-            },
+            notification,
             data: {
                 id: message,
                 code,
