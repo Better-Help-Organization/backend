@@ -11,6 +11,7 @@ import multer from 'multer';
 import * as path from 'path';
 import { Observable, from, switchMap } from 'rxjs';
 import {
+  ALLOWED_IMAGE_MIME_TYPES,
   ALLOWED_MIME_TYPES,
   FILE_UPLOAD_KEY,
   MAX_FILE_SIZE,
@@ -70,6 +71,23 @@ export class UploadInterceptor implements NestInterceptor {
                       }
 
                       cb(null, filename);
+                    } else if (folder === ValidFolders.PROFILE) {
+                        if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+                          return cb(new Error('Only image files are allowed for profile uploads'), '');
+                        }
+
+                        const basePrefix = `${token.id}`;
+                        const fileName = `${basePrefix}${ext}`;
+
+                        fs.mkdirSync(uploadDir, { recursive: true });
+
+                        const fullPath = path.join(uploadDir, fileName);
+
+                        if (fs.existsSync(fullPath)) {
+                          fs.unlinkSync(fullPath);
+                        }
+
+                        cb(null, fileName);
                     } else {
                         return cb(new Error('Unsupported folder type'), '');
                     }
@@ -81,7 +99,7 @@ export class UploadInterceptor implements NestInterceptor {
           }),
           fileFilter: (req, file, cb) => {
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-              console.warn('Rejected file type: - upload.interceptor.ts:84', file.mimetype);
+              console.warn('Rejected file type:', file.mimetype);
             }
             cb(null, true);
           },

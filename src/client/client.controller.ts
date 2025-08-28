@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ChatService } from 'src/chat/chat.service';
-import { TokenPayload } from 'src/common/constants';
+import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -9,6 +9,9 @@ import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindO
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { ApiConsumes, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
+import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 
 @Controller('client')
 export class ClientController {
@@ -116,5 +119,47 @@ export class ClientController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.clientService.remove(id);
+  }
+
+  @Post('me/upload/:folder')
+  @UseGuards(ClientJwtAuthGuard)
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'folder',
+    enum: [ValidFolders.PROFILE],
+    required: true,
+    description: 'Target folder: profile.',
+  })
+  @ApiBody({
+    description: 'File to upload. Folder comes from URL.',
+    schema: {
+      type: 'object',
+      properties: {
+        [FILE_UPLOAD_KEY]: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file to upload',
+        },
+      },
+    },
+  })
+  @UseInterceptors(UploadInterceptor)
+  async upload(
+    @CurrentUser() token: TokenPayload,
+    @UploadedFile() file: Express.Multer.File,
+    @ValidatedFolder() folder: ValidFolders,
+  ) {
+    if (folder === ValidFolders.PROFILE) {
+      const finalFileName = await this.clientService.uploadProfile(token, file.filename);
+      return {
+        message: 'Profile updated successfully',
+        filename: finalFileName,
+      };
+    }
+
+    return {
+      message: 'File uploaded successfully',
+      filename: file.filename,
+    };
   }
 }
