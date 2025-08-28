@@ -373,7 +373,8 @@ export class ChatService {
         [recipientToken],
         JSON.stringify({ chatId, readBy, count: result.affected }),
         SessionNotif.MESSAGE_READ,
-        `Messages marked as read in chat ${chatId}`
+        `Messages marked as read in chat ${chatId}`,
+        false
       );
     }
 
