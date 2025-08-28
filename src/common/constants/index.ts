@@ -91,6 +91,12 @@ export enum DayPeriod {
   EVENING = 'evening',
 }
 
+export enum MoodValues {
+  HAPPY= 'happy', 
+  SAD = 'sad', 
+  NEUTRAL = 'neutral'
+}
+
 export const SessionNotif: Record<string, { code: string; title: string }> = {
   SCHEDULED: { code: "1", title: 'Session scheduled' },
   NEW_MESSAGE: { code: "2", title: 'New message' },

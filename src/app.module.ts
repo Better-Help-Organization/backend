@@ -25,6 +25,7 @@ import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
 import { PresenceModule } from './presence/presence.module';
+import { MoodModule } from './mood/mood.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { PresenceModule } from './presence/presence.module';
     ChatModule,
     MatchModule,
     PresenceModule,
+    MoodModule,
   ],
   controllers: [AppController],
   providers: [AppService,    
