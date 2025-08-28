@@ -18,7 +18,7 @@ import { StatusModule } from './status/status.module';
     StatusModule,
     FirebaseModule,
     forwardRef(() => ClientModule),
-    TherapistModule
+    forwardRef(() => TherapistModule)
   ],
   controllers: [SessionController],
   providers: [SessionService],

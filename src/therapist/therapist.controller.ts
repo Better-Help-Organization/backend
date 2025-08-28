@@ -11,12 +11,14 @@ import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
+import { SessionService } from 'src/session/session.service';
 
 @Controller('therapist')
 export class TherapistController {
   constructor(
     private readonly therapistService: TherapistService,
-        private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly sessionService: SessionService
   ) {}
 
   @Get('me')
@@ -50,6 +52,28 @@ export class TherapistController {
     ) {
       return this.chatService.findOne(id, queryParams);
     }
+
+  @ApiFindAllQueryParams()
+  @Get('me/sessions')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMySession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.sessionService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/sessions/:id')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findOneSession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.sessionService.findOne(id, queryParams);
+  }
+
   
   
   @Get()
