@@ -9,9 +9,9 @@ import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { SessionService } from 'src/session/session.service';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
-import { SessionService } from 'src/session/session.service';
 
 @Controller('therapist')
 export class TherapistController {
@@ -31,27 +31,26 @@ export class TherapistController {
     return await this.therapistService.findOne(user.id,queryParams);
   }
 
+  @ApiFindAllQueryParams()
+  @Get('me/chats')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyChats(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.chatService.findAll(queryParams);
+  }
 
-    @ApiFindAllQueryParams()
-    @Get('me/chats')
-    @UseGuards(TherapistJwtAuthGuard)
-    async findMyChats(
-      @CurrentUser() _: TokenPayload,
-      @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
-    ) {
-      return this.chatService.findAll(queryParams);
-    }
-  
-    @ApiFindOneQueryParams()
-    @Get('me/chats/:id')
-    @UseGuards(TherapistJwtAuthGuard)
-    async findOneChat(
-      @CurrentUser() _: TokenPayload,
-      @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
-      @Param('id') id: string
-    ) {
-      return this.chatService.findOne(id, queryParams);
-    }
+  @ApiFindOneQueryParams()
+  @Get('me/chats/:id')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findOneChat(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.chatService.findOne(id, queryParams);
+  }
 
   @ApiFindAllQueryParams()
   @Get('me/sessions')
@@ -74,8 +73,6 @@ export class TherapistController {
     return this.sessionService.findOne(id, queryParams);
   }
 
-  
-  
   @Get()
   @DynamicGuards(
     new AdminJwtAuthGuard(),  

@@ -1,17 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
 import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { ApiConsumes, ApiParam, ApiBody } from '@nestjs/swagger';
-import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
-import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 
 @Controller('client')
 export class ClientController {
@@ -28,7 +28,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:28", user);
+    console.log("user - client.controller.ts:31", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 

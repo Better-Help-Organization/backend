@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { LicenseService } from './license.service';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { TokenPayload } from 'src/common/constants';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { CreateLicenseDto } from './dto/create-license.dto';
 import { UpdateLicenseDto } from './dto/update-license.dto';
-import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { TokenPayload } from 'src/common/constants';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { LicenseService } from './license.service';
 
 @Controller('license')
 export class LicenseController {
@@ -38,13 +38,23 @@ export class LicenseController {
   }
 
   @Patch(':id')
-  @UseGuards(TherapistJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  @DynamicGuards(
+  new AdminJwtAuthGuard(),
+)
+
   update(@CurrentUser() token: TokenPayload, @Param('id') id: string, @Body() updateLicenseDto: UpdateLicenseDto) {
     return this.licenseService.update(token, id, updateLicenseDto);
   }
 
   @Delete(':id')
-  @UseGuards(TherapistJwtAuthGuard)
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
   remove(@CurrentUser() token: TokenPayload, @Param('id') id: string) {
     return this.licenseService.remove(token, id);
   }
