@@ -1,8 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { SessionType } from 'src/common/constants';
 
 export class UpdateSessionDto {
+
+      @ApiProperty({
+        description: 'Content of the note',
+        example: 'Client reported improved mood since last session.',
+      })
+      @IsOptional()
+      @IsString()
+      note: string;
+
       @ApiProperty({
         description: 'Scheduled start date and time of the session',
         example: '2025-08-12T14:30:00Z',

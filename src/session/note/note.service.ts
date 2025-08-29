@@ -23,7 +23,7 @@ export class NoteService {
       const newNote = this.noteRepo.create({
         ...createNoteDto,
         therapist: { id },
-        session: { id: createNoteDto.session }, 
+        // session: { id: createNoteDto.session }, 
       });
       console.log('New Note: - note.service.ts:28', newNote);
       const savedNote = await this.noteRepo.save(newNote);
