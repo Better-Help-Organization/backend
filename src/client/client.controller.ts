@@ -9,6 +9,7 @@ import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { MoodService } from 'src/mood/mood.service';
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -19,7 +20,7 @@ export class ClientController {
     private readonly clientService: ClientService,
     private readonly chatService: ChatService,
     private readonly sessionService: SessionService,
-    // private readonly moodService: MoodService,
+    private readonly moodService: MoodService,
   ) {}
 
   @Get('me')
@@ -29,7 +30,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:31", user);
+    console.log("user - client.controller.ts:33", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 
@@ -75,16 +76,16 @@ export class ClientController {
     return this.sessionService.findOne(id, queryParams);
   }
 
-  // @ApiFindOneQueryParams()
-  // @Get('me/moods')
-  // @UseGuards(ClientJwtAuthGuard)
-  // async findMood(
-  //   @CurrentUser() _: TokenPayload,
-  //   @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
-  //   @Param('id') id: string
-  // ) {
-  //   return this.moodService.findOne(id, queryParams);
-  // }
+  @ApiFindOneQueryParams()
+  @Get('me/moods')
+  @UseGuards(ClientJwtAuthGuard)
+  async findMood(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.moodService.findOne(id, queryParams);
+  }
 
   @Get()
   @ApiFindAllQueryParams()

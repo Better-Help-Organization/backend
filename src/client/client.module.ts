@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
 import { Client } from 'src/common/entities/client.entity';
 import { ModalModule } from 'src/modal/modal.module';
+import { MoodModule } from 'src/mood/mood.module';
 import { SessionModule } from 'src/session/session.module';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
@@ -14,6 +15,7 @@ import { ClientService } from './client.service';
     SessionModule,
     ModalModule,
     // forwardRef(()=>MoodModule)
+    MoodModule
   ],  
   controllers: [ClientController],
   providers: [ClientService],
