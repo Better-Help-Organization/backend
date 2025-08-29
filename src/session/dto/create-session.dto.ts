@@ -4,12 +4,22 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsOptional,
+  IsString,
   IsUUID
 } from 'class-validator';
 import { SessionType } from 'src/common/constants';
 import { RequiredIfPropertyMissing } from 'src/common/validators/required-if.validator';
 
 export class CreateSessionDto {
+
+  @ApiProperty({
+    description: 'Content of the note',
+    example: 'Client reported improved mood since last session.',
+  })
+  @IsOptional()
+  @IsString()
+  note: string;
 
   @ApiProperty({
     description: 'Array of client UUIDs for group sessions',

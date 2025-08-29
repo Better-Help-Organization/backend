@@ -11,7 +11,6 @@ import {
 import { SessionType } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
-import { Note } from './note.entity';
 import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
@@ -65,12 +64,16 @@ export class Session extends CommonEntity {
   @Column({ type: 'enum', enum: SessionType })
   type: SessionType;
 
-  @ApiProperty({ type : () => Note} )
-  @OneToMany(() => Note, note => note.session, {
-    cascade: true,
-    nullable: true, // optional
-  })
-  note: Note[];
+  // @ApiProperty({ type : () => Note} )
+  // @OneToMany(() => Note, note => note.session, {
+  //   cascade: true,
+  //   nullable: true, // optional
+  // })
+  // note: Note[];
+
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text' })
+  note: string;
 
   @ApiProperty()
   @OneToMany(() => Status, status => status.session, {
