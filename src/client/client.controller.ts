@@ -18,7 +18,8 @@ export class ClientController {
   constructor(
     private readonly clientService: ClientService,
     private readonly chatService: ChatService,
-    private readonly sessionService: SessionService
+    private readonly sessionService: SessionService,
+    // private readonly moodService: MoodService,
   ) {}
 
   @Get('me')
@@ -73,6 +74,17 @@ export class ClientController {
   ) {
     return this.sessionService.findOne(id, queryParams);
   }
+
+  // @ApiFindOneQueryParams()
+  // @Get('me/moods')
+  // @UseGuards(ClientJwtAuthGuard)
+  // async findMood(
+  //   @CurrentUser() _: TokenPayload,
+  //   @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+  //   @Param('id') id: string
+  // ) {
+  //   return this.moodService.findOne(id, queryParams);
+  // }
 
   @Get()
   @ApiFindAllQueryParams()
