@@ -114,10 +114,9 @@ export class SessionService {
 
   async update(id: string, updateSessionDto: UpdateSessionDto): Promise<Session> {
     try {
-      const session = await this.findOne(id, {fields: 'client.*, therapist.*, type'});
+      const session = await this.findOne(id, {fields: 'client.*, therapist.*'});
 
-      Object.assign(session, { ...updateSessionDto, note: session.note });
-
+      Object.assign(session, { ...updateSessionDto });
       const clientToken = await this.clientService.findOne(session.client.id)
       const therapistToken = await this.therapistService.findOne(session.therapist.id)
 
@@ -127,6 +126,7 @@ export class SessionService {
       
       const savedSession = await this.sessionRepo.save(session);
       
+      if (updateSessionDto.schedule) 
       this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify(savedSession),
