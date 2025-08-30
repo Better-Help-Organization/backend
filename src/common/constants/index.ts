@@ -105,7 +105,7 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
   INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
-  CHAT: { code: "8", title: 'Added to Chat', showNotification: true },
+  CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
   // Match-related notifications
   MATCH_REQUEST: { code: '8', title: 'New match request', showNotification: true  },
   MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
