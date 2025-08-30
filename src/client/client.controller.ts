@@ -76,7 +76,7 @@ export class ClientController {
     return this.sessionService.findOne(id, queryParams);
   }
 
-  @ApiFindOneQueryParams()
+  @ApiFindAllQueryParams()
   @Get('me/moods')
   @UseGuards(ClientJwtAuthGuard)
   async findMood(
