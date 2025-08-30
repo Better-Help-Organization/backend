@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile,
 import { ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
 import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
-import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
+import { AuthEnforcedQueryParams, GroupScope } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
@@ -39,6 +39,7 @@ export class ClientController {
   @UseGuards(ClientJwtAuthGuard)
   async findMyChats(
     @CurrentUser() _: TokenPayload,
+    @GroupScope() _gs: boolean,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.chatService.findAll(queryParams);
@@ -49,6 +50,7 @@ export class ClientController {
   @UseGuards(ClientJwtAuthGuard)
   async findOneChat(
     @CurrentUser() _: TokenPayload,
+    @GroupScope() _gs: boolean,
     @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
     @Param('id') id: string
   ) {
@@ -81,10 +83,9 @@ export class ClientController {
   @UseGuards(ClientJwtAuthGuard)
   async findMood(
     @CurrentUser() _: TokenPayload,
-    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
-    @Param('id') id: string
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
-    return this.moodService.findOne(id, queryParams);
+    return this.moodService.findAll(queryParams);
   }
 
   @Get()
