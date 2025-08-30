@@ -1,8 +1,8 @@
-import { Entity, Column, OneToMany, ManyToOne } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
 import { MatchTherapist } from './match-therapist.entity';
-import { Client } from './client.entity';
 import { Therapist } from './therapist.entity';
 
 @Entity()
@@ -19,7 +19,7 @@ export class Match extends CommonEntity {
   matchedTherapist: MatchTherapist[];
 
   @ApiProperty({ type: () => Therapist, nullable: true })
-  @ManyToOne(() => Therapist, therapist => therapist.acceptedMatch, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Therapist, therapist => therapist.acceptedMatch, { nullable: true, onDelete: 'SET NULL', eager: true })
   accepted: Therapist;
 
   @ApiProperty({ required: false })

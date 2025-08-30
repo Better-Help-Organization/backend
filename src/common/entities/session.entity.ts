@@ -64,15 +64,8 @@ export class Session extends CommonEntity {
   @Column({ type: 'enum', enum: SessionType })
   type: SessionType;
 
-  // @ApiProperty({ type : () => Note} )
-  // @OneToMany(() => Note, note => note.session, {
-  //   cascade: true,
-  //   nullable: true, // optional
-  // })
-  // note: Note[];
-
   @ApiProperty({nullable:true})
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable:true })
   note: string;
 
   @ApiProperty()
