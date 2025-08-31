@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { hash } from 'bcryptjs';
-import { BaseStatus, LangCode, LevelType, ModalName, QuestionType } from 'src/common/constants';
+import { BaseStatus, LangCode, LevelType, ModalName } from 'src/common/constants';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Language } from 'src/common/entities/language.entity';
@@ -58,8 +58,9 @@ export class DbService implements OnModuleInit {
     const languages = [
         { code: LangCode.EN, name: 'English' },
         { code: LangCode.AM, name: 'Amharic' },
-        { code: LangCode.OR, name: 'Oromo' },
+        { code: LangCode.OR, name: 'Oromigna' },
         { code: LangCode.TI, name: 'Tigrigna' },
+        { code: LangCode.OTHER, name: 'Other' }
     ];
 
     for (const lang of languages) {
@@ -145,19 +146,9 @@ export class DbService implements OnModuleInit {
             }
         }
 
-        for (const questionData of questions) {
+        for (const [qIndex, questionData] of questions.entries()) {
             const { text, type, option } = questionData;
-            const typeMap: Record<string, QuestionType> = {
-                single: QuestionType.SINGLE,
-                multiple: QuestionType.MULTIPLE,
-                open: QuestionType.OPEN,
-            };
-
-            const questionType = typeMap[type];
-            if (!questionType) {
-            throw new BadRequestException("Type is not correct");
-            }
-
+            const questionType = type; // already an enum in onboardingData
             let question = await questionRepository.findOne({
                 where: { text, modal: { id: modal.id } },
                 relations: ['modal'],
@@ -165,34 +156,69 @@ export class DbService implements OnModuleInit {
 
             if (!question) {
                 question = questionRepository.create({
-                    text,
-                    type: questionType,
-                    modal,
+                text,
+                type: questionType,
+                modal,
+                order: qIndex + 1,   // ✅ set order from index
                 });
-
                 await questionRepository.save(question);
-                this.logger.log(` Created Question: ${text}`);
+                this.logger.log(`Created Question: ${text}`);
             } else {
-                this.logger.log(` Question "${text}" already exists`);
+                // ✅ update if order/type/text changed
+                let needsUpdate = false;
+                if (question.order !== qIndex + 1) {
+                question.order = qIndex + 1;
+                needsUpdate = true;
+                }
+                if (question.type !== questionType) {
+                question.type = questionType;
+                needsUpdate = true;
+                }
+                if (question.text !== text) {
+                question.text = text;
+                needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                await questionRepository.save(question);
+                this.logger.log(`Updated Question: ${text}`);
+                } else {
+                this.logger.log(`Question "${text}" already up-to-date`);
+                }
             }
 
+            // Handle Options
             if (option && option.length > 0) {
-                for (const optionText of option) {
-                    const exists = await optionRepository.findOne({
-                        where: { text: optionText, question: { id: question.id } },
-                        relations: ['question'],
+                for (const [oIndex, optionText] of option.entries()) {
+                let opt = await optionRepository.findOne({
+                    where: { text: optionText, question: { id: question.id } },
+                    relations: ['question'],
+                });
+
+                if (!opt) {
+                    opt = optionRepository.create({
+                    text: optionText,
+                    question,
+                    order: oIndex,  // ✅ set order from index
                     });
-
-                    if (!exists) {
-                        const option = optionRepository.create({
-                            text: optionText,
-                            question,
-                        });
-
-                        await optionRepository.save(option);
-                        this.logger.log(` Created Option: ${optionText}`);
+                    await optionRepository.save(opt);
+                    this.logger.log(`Created Option: ${optionText}`);
+                } else {
+                    let needsUpdate = false;
+                    if (opt.order !== oIndex + 1) {
+                        opt.order = oIndex + 1;
+                        needsUpdate = true;
+                    }
+                    if (opt.text !== optionText) {
+                        opt.text = optionText;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
+                        await optionRepository.save(opt);
+                        this.logger.log(`Updated Option: ${optionText}`);
                     } else {
-                        this.logger.log(` Option "${optionText}" already exists`);
+                    this.logger.log(`Option "${optionText}" already up-to-date`);
+                        }
                     }
                 }
             }

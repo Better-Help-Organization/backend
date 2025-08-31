@@ -1,7 +1,7 @@
-import { IsUUID, IsEnum, IsString, IsNotEmpty, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender } from 'src/common/constants';
 import { Type } from 'class-transformer';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { Gender } from 'src/common/constants';
 import { CreatePreferenceAvailabilityDto } from './create-preference-availability.dto';
 
 export class CreatePreferenceDto {
@@ -23,6 +23,14 @@ export class CreatePreferenceDto {
   @IsArray()
   @IsUUID('all', { each: true })
   languageIds?: string[];
+
+  @ApiProperty({
+    description: 'string',
+    example: 'Somalian',
+  })
+  @IsOptional()
+  @IsString()
+  otherLang?: string;
 
   @ApiProperty({ description: 'Personal goals for the session', example: 'Improve communication skills' })
   @IsNotEmpty()

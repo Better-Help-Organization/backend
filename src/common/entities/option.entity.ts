@@ -1,15 +1,21 @@
-import { Entity, Column, ManyToOne, OneToMany, ManyToMany, JoinTable, Unique } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Answer } from './answer.entity';
 import { CommonEntity } from './common.entity';
 import { Question } from './question.entity';
-import { Answer } from './answer.entity';
-import { ApiProperty } from '@nestjs/swagger';
 
 @Unique(['text', 'question'])
+@Unique(['order', 'question'])
+
 @Entity()
 export class Option extends CommonEntity {
   @ApiProperty()
   @Column({ type: 'varchar', length: 500 })
   text: string;
+
+  @ApiProperty()
+  @Column({nullable: true})
+  order: number;
 
   @ApiProperty({type: () => Question})
   @ManyToOne(() => Question, question => question.option, {

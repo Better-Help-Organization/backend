@@ -7,6 +7,7 @@ import { Modal } from './modal.entity';
 import { Option } from './option.entity';
 
 @Unique(['text', 'modal'])
+@Unique(['modal', 'order'])
 @Entity()
 export class Question extends CommonEntity {
   @ApiProperty()
@@ -19,6 +20,10 @@ export class Question extends CommonEntity {
     enum: QuestionType,
   })
   type: QuestionType;
+
+  @ApiProperty()
+  @Column({nullable: true})
+  order: number;
 
   @ApiProperty({type: () => Option})
   @OneToMany(() => Option, option => option.question, {

@@ -24,7 +24,7 @@ export const onboardingData = [
     ]
   },
 
-  {      // { text: 'What brings you to therapy today?', type: QuestionType.SINGLE, option: ['associate – 580 ETB', 'moderate – 700 ETB', 'advanced – 800 ETB'] },
+  {      
     name: 'Teen Therapy',
     order: 2,
     description: 'For teens or guardians seeking support for adolescent mental health and development.',
