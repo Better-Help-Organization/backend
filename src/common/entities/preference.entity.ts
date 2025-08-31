@@ -34,6 +34,10 @@ export class Preference extends CommonEntity {
   language: Language[];
 
   @ApiProperty()
+  @Column({type:'text', nullable: true})
+  otherLang?: string;
+
+  @ApiProperty()
   @Column('text')
   goal: string;
 

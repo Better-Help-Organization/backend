@@ -34,7 +34,8 @@ export enum LangCode {
   EN = 'en',
   AM = 'am',
   OR = 'or',
-  TI = 'ti'
+  TI = 'ti',
+  OTHER = 'other'
 }
 
 export enum ModalName {
