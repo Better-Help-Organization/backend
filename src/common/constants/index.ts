@@ -95,7 +95,9 @@ export enum DayPeriod {
 export enum MoodValues {
   HAPPY= 'happy', 
   SAD = 'sad', 
-  NEUTRAL = 'neutral'
+  NEUTRAL = 'neutral',
+  ANDGRY = 'angry',
+  TIRED = 'tired'
 }
 
 export const SessionNotif: Record<string, { code: string; title: string, showNotification: boolean }> = {
