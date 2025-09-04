@@ -9,6 +9,7 @@ import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { MatchService } from 'src/match/match.service';
 import { MoodService } from 'src/mood/mood.service';
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
@@ -21,6 +22,7 @@ export class ClientController {
     private readonly chatService: ChatService,
     private readonly sessionService: SessionService,
     private readonly moodService: MoodService,
+    private readonly matchService: MatchService,
   ) {}
 
   @Get('me')
@@ -55,6 +57,27 @@ export class ClientController {
     @Param('id') id: string
   ) {
     return this.chatService.findOne(id, queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/matches')
+  @UseGuards(ClientJwtAuthGuard)
+  async findMyMatches(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.matchService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/matches/:id')
+  @UseGuards(ClientJwtAuthGuard)
+  async findOneMatch(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.matchService.findOne(id, queryParams);
   }
 
   @ApiFindAllQueryParams()
