@@ -32,7 +32,7 @@ services:
 
     
   db:
-    image: mysql:8.0
+    image: mysql:8.0.35
     restart: always
     networks:
       - ${NODE_ENV}_default
