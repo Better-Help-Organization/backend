@@ -147,6 +147,9 @@ filter() {
         const [relation, fieldName] = field.split('.');
         // console.log([fieldName])
         if(fieldName === '') throw new BadRequestException(`Relations field name at ${relation} cannot be empty`)
+        // const limitMatch = fieldName.match(/^\*(\d+)$/);
+        // let limit: number | undefined;
+        // limit = parseInt(limitMatch[1], 10);
 
         if (fieldName === '*') {
           // If it's a '*' for a relation, we need to select all fields from that relation
@@ -159,7 +162,40 @@ filter() {
           
           // Push the relation into relations array
           selectFields.push(relation);
-        } else {
+        } 
+            // let limit: number | undefined;
+    // const limitMatch = ;
+
+
+    //     else if (limit) {
+    //       // parseInt(limitMatch[1], 10);
+
+    //   // Override the join to use subquery limiting messages
+    //   // this.query.leftJoinAndSelect(
+    //   //   `${this.tableName}.${relation}`,
+    //   //   relation,
+    //   //   `${relation}.id IN (
+    //   //     SELECT m.id
+    //   //     FROM message m
+    //   //     WHERE m.chatId = ${this.tableName}.id
+    //   //     ORDER BY m.createdAt DESC
+    //   //     LIMIT ${limit}
+    //   //   )`
+    //   // );
+    //             // Generic subquery for any relation
+    //       this.query.leftJoinAndSelect(
+    //         `${this.tableName}.${relation}`,
+    //         relation,
+    //         `${relation}.id IN (
+    //           SELECT r.id
+    //           FROM ${relation} r
+    //           WHERE r.${this.tableName.slice(0, -1)}Id = ${this.tableName}.id
+    //           ORDER BY r.createdAt DESC
+    //           LIMIT ${limit}
+    //         )`
+    //       );
+    // }
+        else {
           // If it's not '*', then select the specific field for the relation
           if (!this.joinedRelations.has(relation)) {
             this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);

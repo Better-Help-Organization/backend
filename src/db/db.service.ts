@@ -194,12 +194,12 @@ export class DbService implements OnModuleInit {
                     where: { text: optionText, question: { id: question.id } },
                     relations: ['question'],
                 });
-
+                return;
                 if (!opt) {
                     opt = optionRepository.create({
                     text: optionText,
                     question,
-                    order: oIndex,  // ✅ set order from index
+                    order: oIndex + 1,  // ✅ set order from index
                     });
                     await optionRepository.save(opt);
                     this.logger.log(`Created Option: ${optionText}`);
