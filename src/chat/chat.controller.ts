@@ -29,7 +29,7 @@ export class ChatController {
   ) {}
 
   @DynamicGuards(
-    new ClientJwtAuthGuard(),
+    // new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
   @Post()
