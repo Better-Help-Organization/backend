@@ -141,7 +141,6 @@ export class ChatService {
   try {
     // Step 1: get chats with API features
     const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
-
     // Step 2: extract chat IDs
     const ids = chats.data.map(c => c.id);
     if (!ids.length) return chats;
@@ -162,11 +161,12 @@ export class ChatService {
       return acc;
     }, {});
 
-    // Step 5: attach unreadCount to each chat
-    return chats.data.map(chat => ({
+    // Step 5: attach unreadCount to each chat`
+    let data = chats.data.map(chat => ({
       ...chat,
       unreadCount: countsMap[chat.id] || 0,
     }));
+    return {data, pagination:chats.pagination}
   } catch (error) {
     this.logger.error(`Error finding chats with unread counts: ${error.message}`);
     return error;
