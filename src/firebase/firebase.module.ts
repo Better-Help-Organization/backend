@@ -1,7 +1,10 @@
-import * as dotenv from 'dotenv';
 import { Module } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import * as dotenv from 'dotenv';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
+import { Notification } from 'src/common/entities/notification.entity';
 import { FirebaseService } from './firebase.service';
 
 dotenv.config();
@@ -12,6 +15,9 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
 const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
 
 @Module({
+  imports:[
+    TypeOrmModule.forFeature([Notification])
+  ],
   providers: [
     {
       provide: 'FIREBASE_ADMIN',
@@ -25,7 +31,8 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
       },
     },
     FirebaseService,
+    JwtService
   ],
-  exports: ['FIREBASE_ADMIN', FirebaseService],
+  exports: ['FIREBASE_ADMIN', FirebaseService, JwtService],
 })
 export class FirebaseModule {}
