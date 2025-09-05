@@ -206,7 +206,7 @@ export class DbService implements OnModuleInit {
                     where: { text: optionText, question: { id: question.id } },
                     relations: ['question'],
                 });
-                // return;
+                return;
                 if (!opt) {
                     opt = optionRepository.create({
                     text: optionText,
