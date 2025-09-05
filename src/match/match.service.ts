@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
 import { SessionNotif, TokenPayload } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
+import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
 import { Match } from 'src/common/entities/match.entity';
 import { Preference } from 'src/common/entities/preference.entity';
@@ -14,7 +15,6 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
-import { Client } from 'src/common/entities/client.entity';
 
 @Injectable()
 export class MatchService {
@@ -213,6 +213,7 @@ export class MatchService {
           [match.client.firebaseToken],
           JSON.stringify({
             AcceptedTherapist: match.accepted,
+            therapist
           }),
           SessionNotif.MATCH_ACCEPTED,
           'Your match request has been accepted!'
