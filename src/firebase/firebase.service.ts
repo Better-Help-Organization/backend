@@ -1,9 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as admin from 'firebase-admin';
 import { SessionNotifValue } from 'src/common/constants';
 import { Notification } from 'src/common/entities/notification.entity';
+import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { SaveNotificationDto } from './dto/save-notification.dto';
@@ -30,8 +32,8 @@ export class FirebaseService {
         if (showNotification) {
           notification = { title, body }
           for (const token of tokens) {
-            let clientId: string | undefined;
-            let therapistId: string | undefined;
+            let clientId: string | null;
+            let therapistId: string | null;
 
             try {
               const decoded: any = this.jwtService.decode(token); // decode without verifying signature
@@ -86,4 +88,34 @@ export class FirebaseService {
       await this.notifRepo.save(notification);
   }
 
+    async findOne(id: string, queryParams?: FindOneQueryParams<Notification>) {
+      try {
+        this.logger.log(`Finding notification with ID: ${id}`);
+        const notification = await new APIFeatures(this.notifRepo, queryParams).getOne(id);
+  
+        if (!notification) {
+          this.logger.warn(`NOtification not found with ID: ${id}`);
+          throw new NotFoundException('Notification not found');
+        }
+  
+        this.logger.log(`Client found with ID: ${id}`);
+        return notification;
+      } catch (error) {
+        this.logger.error(`Error finding client: ${error.message}`);
+        throw error;
+      }
+    }
+
+    async findAll(queryParams?: FindAllQueryParams<Notification>) {
+      try {
+        console.log({queryParams})
+        this.logger.log(`Fetching all notification`);
+        const result = await new APIFeatures(this.notifRepo, queryParams).getMany();
+        this.logger.log(`Found ${result.data.length} notification`);
+        return result;
+      } catch (error) {
+        this.logger.error(`Error fetching notification: ${error.message}`);
+        throw error;
+      }
+    }
 }

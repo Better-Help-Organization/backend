@@ -10,6 +10,7 @@ import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
 import { MatchService } from 'src/match/match.service';
 import { MoodService } from 'src/mood/mood.service';
 import { SessionService } from 'src/session/session.service';
@@ -24,6 +25,7 @@ export class ClientController {
     private readonly sessionService: SessionService,
     private readonly moodService: MoodService,
     private readonly matchService: MatchService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   @Get('me')
@@ -33,7 +35,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:36", user);
+    console.log("user - client.controller.ts:38", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 
@@ -58,6 +60,29 @@ export class ClientController {
     @Param('id') id: string
   ) {
     return this.chatService.findOne(id, queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/notifications')
+  @UseGuards(ClientJwtAuthGuard)
+  async findMyNotifications(
+    @CurrentUser() _: TokenPayload,
+    @GroupScope() _gs: boolean,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.firebaseService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/notifications/:id')
+  @UseGuards(ClientJwtAuthGuard)
+  async findOneNotification(
+    @CurrentUser() _: TokenPayload,
+    @GroupScope() _gs: boolean,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.firebaseService.findOne(id, queryParams);
   }
 
   @ApiFindAllQueryParams()
