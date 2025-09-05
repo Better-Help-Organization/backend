@@ -6,6 +6,7 @@ import { AuthEnforcedQueryParams, GroupScope } from 'src/common/decorators/auth-
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
+import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -198,5 +199,11 @@ export class ClientController {
       message: 'File uploaded successfully',
       filename: file.filename,
     };
+  }
+
+  @UseGuards(AdminJwtAuthGuard)
+  @Patch('/toggleStatus/:id')
+  toggleStatus(@Param('id') id: string, @Body() statusDto: StatusDto ){
+    return this.clientService.toggleStatus(id, statusDto)
   }
 }

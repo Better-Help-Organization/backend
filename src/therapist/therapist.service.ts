@@ -1,14 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
+import { StatusDto } from 'src/common/dto/status.dto';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
-import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class TherapistService {
@@ -16,6 +18,7 @@ export class TherapistService {
     private readonly logger: LoggerService,
     @InjectRepository(Therapist)
     private readonly therapistRepo: Repository<Therapist>,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   async create(data: Partial<Therapist>) {
@@ -182,4 +185,23 @@ export class TherapistService {
       throw new BadRequestException('Profile upload failed. Please try again.');
     }
   }
+
+    async toggleStatus(id: string, status: StatusDto) {
+      this.logger.log(`Toggling status for client with ID ${id}`);
+      try {
+        await this.therapistRepo.update(id, status);
+        const {firebaseToken} = await this.findOne(id)
+        console.log(firebaseToken,status.status.toLocaleUpperCase())
+        const message = `${status.status}`
+        const body = `Your account is now ${status.status}`
+        await this.firebaseService.sendPushNotification([firebaseToken], message.toString(),SessionNotif.STATUS_CHAGNED, body);
+  
+        this.logger.log(`Status for client with ID ${id} updated successfully`);
+        return 'successfully updated';
+      } catch (error) {
+        this.logger.error(`Error toggling status for client with ID ${id}: ${error.message}`);
+        throw error;
+      }
+    }
+  
 }
