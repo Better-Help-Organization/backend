@@ -31,7 +31,7 @@ export const onboardingData = [
     questions: [
       { text: 'Who is filling this out?', type: QuestionType.SINGLE, option: ['Teen', 'Parent/Guardian (on behalf of teen)'] },
       { text: 'What is the teen’s age?', type: QuestionType.SINGLE, option: ['13', '14', '15', '16', '17', '18'] },
-      { text: 'Teen’s gender:', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
+      // { text: 'Teen’s gender:', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
       { text: 'How did you hear about us?', type: QuestionType.SINGLE, option: ['Tiktok', 'Instagram', 'LinkedIn', 'Telegram', 'Facebook', 'YouTube', 'Referred by a school or parent', 'Online search', 'Therapist referral', 'Other'] },
       { text: 'Main concerns', type: QuestionType.MULTIPLE, option: ['Anxiety', 'Depression', 'Peer pressure', 'Trauma', 'Self-esteem/confidence issue', 'Academic stress', 'Family issues', 'Behavioral change', 'Bullying', 'Social isolation', 'Other'] },
@@ -49,7 +49,7 @@ export const onboardingData = [
 
   {
     name: 'Couple Therapy',
-    order: 4,
+    order: 3,
     description: 'For couples looking to improve communication, resolve conflict, and grow together.',
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
@@ -69,14 +69,14 @@ export const onboardingData = [
 
   {
     name: 'Group Therapy',
-    order: 3,
+    order: 4,
     description: 'For individuals looking to join a support group for shared experiences and healing.',
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
       { text: 'What is your age?', type: QuestionType.SINGLE, option: ['18–24', '25–34', '35–44', '45–54', '55+'] },
       { text: 'What gender do you identify with?', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
       { text: 'How did you hear about us?', type: QuestionType.SINGLE, option: ['Tiktok', 'Instagram', 'LinkedIn', 'Telegram', 'Facebook', 'YouTube', 'Friend or family referral', 'Online search', 'Therapist referral', 'Other'] },
-      { text: 'What type of group therapy are you interested in?', type: QuestionType.SINGLE, option: ['Anxiety support', 'Depression support', 'Stress management', 'Grief/loss support', 'Parenting support', 'Other'] },
+      { text: 'What type of group therapy are you interested in?', type: QuestionType.MULTIPLE, option: ['Anxiety support', 'Depression support', 'Stress management', 'Grief/loss support', 'Parenting support', 'Other'] },
       { text: 'Have you attended group therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
       { text: 'Are you comfortable sharing in a group setting?', type: QuestionType.SINGLE, option: ['Yes', 'No', 'Unsure'] },
       { text: 'What are your goals for joining group therapy?', type: QuestionType.OPEN, option: [] },

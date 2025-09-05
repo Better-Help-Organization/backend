@@ -127,10 +127,22 @@ export class DbService implements OnModuleInit {
         if (!modal) {
         modal = await modalRepository.save({ name: modalEnumValue, description, order });
         this.logger.log(`Created Modal: ${modalEnumValue}`);
-        } else {
-        this.logger.log(`Modal "${modalEnumValue}" already exists`);
+        } 
+        else {
+            // ✅ update if order/type/text changed
+            let needsUpdate = false;
+            if (modal.order !== order) {
+            modal.order = order;
+            needsUpdate = true;
+            }
+            if (needsUpdate) {
+                await modalRepository.save(modal);
+                this.logger.log(`Updated modal: ${modalEnumValue}`);
+            } 
+            else {
+                this.logger.log(`Modal "${modalEnumValue}" already exists`);
+            }
         }
-
         // 🗑 Remove questions in DB that are not in the current data
         const currentQuestionTexts = questions.map(q => q.text);
         const existingQuestions = await questionRepository.find({
@@ -194,7 +206,7 @@ export class DbService implements OnModuleInit {
                     where: { text: optionText, question: { id: question.id } },
                     relations: ['question'],
                 });
-                return;
+                // return;
                 if (!opt) {
                     opt = optionRepository.create({
                     text: optionText,
