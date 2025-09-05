@@ -33,7 +33,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:33", user);
+    console.log("user - client.controller.ts:35", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 

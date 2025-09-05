@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { getMetadataArgsStorage, SelectQueryBuilder } from 'typeorm';
+import { Message } from '../entities/message.entity';
 import { FindAllQueryParams, FindOneQueryParams } from './api-features.dto';
 
 export class APIFeatures {
@@ -147,9 +148,10 @@ filter() {
         const [relation, fieldName] = field.split('.');
         // console.log([fieldName])
         if(fieldName === '') throw new BadRequestException(`Relations field name at ${relation} cannot be empty`)
-        // const limitMatch = fieldName.match(/^\*(\d+)$/);
-        // let limit: number | undefined;
-        // limit = parseInt(limitMatch[1], 10);
+        const limitMatch = fieldName.match(/^\*(\d+)$/);
+        let limit: number | undefined;
+
+        if (limitMatch) limit = parseInt(limitMatch[1], 10);
 
         if (fieldName === '*') {
           // If it's a '*' for a relation, we need to select all fields from that relation
@@ -163,38 +165,81 @@ filter() {
           // Push the relation into relations array
           selectFields.push(relation);
         } 
-            // let limit: number | undefined;
-    // const limitMatch = ;
+        else if (limit) {
+          console.log({limit})
+          // Generic subquery for any relation
+          this.query.leftJoinAndSelect(
+            qb => qb
+              .subQuery()
+              .select("ranked.*")
+              .from(subQb => {
+                return subQb
+                  .select("m.*")
+                  .addSelect(
+                    `ROW_NUMBER() OVER (PARTITION BY m.chatId ORDER BY m.createdAt DESC)`,
+                    "rn"
+                  )
+                  .from(Message, "m")
+                  .where("m.deletedAt IS NULL");
+              }, "ranked")
+              .where("ranked.rn <= :limit", { limit }),
+            "message",
+            "message.chatId = chat.id"
+          );
 
+          
+          // this.query.leftJoin(
+          //   qb => qb
+          //     .subQuery()
+          //     .select("r.*")
+          //     .from(relation, "r"),
+          //   relation,
+          //   `${relation}.${this.tableName}Id = ${this.tableName}.id`
+          // );
 
-    //     else if (limit) {
-    //       // parseInt(limitMatch[1], 10);
+          // this.query.leftJoinAndSelect(
+          //     qb => qb
+          //       .subQuery()
+          //       .select("ranked.*")
+          //       .from(subQb => {
+          //         return subQb
+          //           .select("r.*")
+          //           .addSelect(
+          //             `ROW_NUMBER() OVER (PARTITION BY r.${this.tableName}Id)`,
+          //             "rn"
+          //           )
+          //           .from(relation, "r")
+          //           // .where("r.deletedAt IS NULL");
+          //       }, "ranked")
+          //       // .where("ranked.rn <= :limit", { limit })
+          //       ,relation,
+          //     `${relation}.${this.tableName}Id = ${this.tableName}.id`,
+          //     { limit }
+          //   );
 
-    //   // Override the join to use subquery limiting messages
-    //   // this.query.leftJoinAndSelect(
-    //   //   `${this.tableName}.${relation}`,
-    //   //   relation,
-    //   //   `${relation}.id IN (
-    //   //     SELECT m.id
-    //   //     FROM message m
-    //   //     WHERE m.chatId = ${this.tableName}.id
-    //   //     ORDER BY m.createdAt DESC
-    //   //     LIMIT ${limit}
-    //   //   )`
-    //   // );
-    //             // Generic subquery for any relation
-    //       this.query.leftJoinAndSelect(
-    //         `${this.tableName}.${relation}`,
-    //         relation,
-    //         `${relation}.id IN (
-    //           SELECT r.id
-    //           FROM ${relation} r
-    //           WHERE r.${this.tableName.slice(0, -1)}Id = ${this.tableName}.id
-    //           ORDER BY r.createdAt DESC
-    //           LIMIT ${limit}
-    //         )`
-    //       );
-    // }
+            // this.query.leftJoinAndSelect(
+            //         qb => qb
+            //           .subQuery()
+            //           .from(relation, "r")
+            //           .select("r.*")
+            //           .from(subQb => {
+            //             return subQb
+            //               .select("r.*")
+            //               .addSelect(
+            //                 `ROW_NUMBER() OVER (
+            //                   PARTITION BY r.${this.tableName}Id
+            //                   ORDER BY r.createdAt DESC
+            //                 )`,
+            //                 "rn"
+            //               )
+            //           }, "ranked")
+            //           .where("ranked.rn <= :limit", { limit }),
+            //         relation,
+            //         `${relation}.${this.tableName}Id = ${this.tableName}.id`
+            //       );
+
+                  // this.joinedRelations.add(relation);
+        }
         else {
           // If it's not '*', then select the specific field for the relation
           if (!this.joinedRelations.has(relation)) {
