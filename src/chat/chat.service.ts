@@ -138,12 +138,39 @@ export class ChatService {
     // }
 
   async findAll(queryParams?: FindAllQueryParams) {
-    try {
-      return await new APIFeatures(this.chatRepo, queryParams).getMany();
-    } catch (error) {
-      this.logger.error(`Error finding all chats: ${error.message}`);
-      return error;
-    }
+  try {
+    // Step 1: get chats with API features
+    const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
+
+    // Step 2: extract chat IDs
+    const ids = chats.data.map(c => c.id);
+    if (!ids.length) return chats;
+
+    // Step 3: count unread messages grouped by chatId
+    const counts = await this.msgRepo
+      .createQueryBuilder('m')
+      .select('m.chatId', 'chatId')
+      .addSelect('COUNT(*)', 'unreadCount')
+      .where('m.isRead = false')
+      .andWhere('m.chatId IN (:...ids)', { ids })
+      .groupBy('m.chatId')
+      .getRawMany();
+
+    // Step 4: put counts into a map for quick lookup
+    const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
+      acc[row.chatId] = parseInt(row.unreadCount, 10);
+      return acc;
+    }, {});
+
+    // Step 5: attach unreadCount to each chat
+    return chats.data.map(chat => ({
+      ...chat,
+      unreadCount: countsMap[chat.id] || 0,
+    }));
+  } catch (error) {
+    this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+    return error;
+  }
   }
 
   async getMessages(id: string, queryParams?: FindAllQueryParams){
@@ -189,7 +216,6 @@ export class ChatService {
         .map(c => c.firebaseToken)
         .filter(Boolean);
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        console.log(chat.therapist.firebaseToken, "osdmksmdflsmdlsmdlkdsf - chat.service.ts:192")
         tokens.push(chat.therapist.firebaseToken);
       }
 

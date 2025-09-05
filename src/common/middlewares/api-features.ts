@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import { getMetadataArgsStorage, SelectQueryBuilder } from 'typeorm';
-import { Message } from '../entities/message.entity';
 import { FindAllQueryParams, FindOneQueryParams } from './api-features.dto';
 
 export class APIFeatures {
@@ -164,83 +163,7 @@ filter() {
           
           // Push the relation into relations array
           selectFields.push(relation);
-        } 
-        else if (limit) {
-          console.log({limit})
-          // Generic subquery for any relation
-          this.query.leftJoinAndSelect(
-            qb => qb
-              .subQuery()
-              .select("ranked.*")
-              .from(subQb => {
-                return subQb
-                  .select("m.*")
-                  .addSelect(
-                    `ROW_NUMBER() OVER (PARTITION BY m.chatId ORDER BY m.createdAt DESC)`,
-                    "rn"
-                  )
-                  .from(Message, "m")
-                  .where("m.deletedAt IS NULL");
-              }, "ranked")
-              .where("ranked.rn <= :limit", { limit }),
-            "message",
-            "message.chatId = chat.id"
-          );
-
-          
-          // this.query.leftJoin(
-          //   qb => qb
-          //     .subQuery()
-          //     .select("r.*")
-          //     .from(relation, "r"),
-          //   relation,
-          //   `${relation}.${this.tableName}Id = ${this.tableName}.id`
-          // );
-
-          // this.query.leftJoinAndSelect(
-          //     qb => qb
-          //       .subQuery()
-          //       .select("ranked.*")
-          //       .from(subQb => {
-          //         return subQb
-          //           .select("r.*")
-          //           .addSelect(
-          //             `ROW_NUMBER() OVER (PARTITION BY r.${this.tableName}Id)`,
-          //             "rn"
-          //           )
-          //           .from(relation, "r")
-          //           // .where("r.deletedAt IS NULL");
-          //       }, "ranked")
-          //       // .where("ranked.rn <= :limit", { limit })
-          //       ,relation,
-          //     `${relation}.${this.tableName}Id = ${this.tableName}.id`,
-          //     { limit }
-          //   );
-
-            // this.query.leftJoinAndSelect(
-            //         qb => qb
-            //           .subQuery()
-            //           .from(relation, "r")
-            //           .select("r.*")
-            //           .from(subQb => {
-            //             return subQb
-            //               .select("r.*")
-            //               .addSelect(
-            //                 `ROW_NUMBER() OVER (
-            //                   PARTITION BY r.${this.tableName}Id
-            //                   ORDER BY r.createdAt DESC
-            //                 )`,
-            //                 "rn"
-            //               )
-            //           }, "ranked")
-            //           .where("ranked.rn <= :limit", { limit }),
-            //         relation,
-            //         `${relation}.${this.tableName}Id = ${this.tableName}.id`
-            //       );
-
-                  // this.joinedRelations.add(relation);
-        }
-        else {
+        } else {
           // If it's not '*', then select the specific field for the relation
           if (!this.joinedRelations.has(relation)) {
             this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
