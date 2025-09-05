@@ -113,6 +113,7 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
   MATCH_REQUEST: { code: '8', title: 'New match request', showNotification: true  },
   MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
   MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
+  STATUS_CHAGNED: { code: '11', title: 'Status Update', showNotification: true  },
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
