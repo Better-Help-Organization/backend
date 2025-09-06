@@ -150,10 +150,9 @@ export class ClientService {
     try {
       await this.clientRepo.update(id, status);
       const {firebaseToken} = await this.findOne(id)
-      console.log(firebaseToken,status.status.toLocaleUpperCase())
       const message = `${status.status}`
       const body = `Your account is now ${status.status}`
-      await this.firebaseService.sendPushNotification([firebaseToken], message.toString(),SessionNotif.STATUS_CHAGNED, body);
+      await this.firebaseService.sendPushNotification({client:[firebaseToken]}, message.toString(),SessionNotif.STATUS_CHAGNED, body);
 
       this.logger.log(`Status for client with ID ${id} updated successfully`);
       return 'successfully updated';

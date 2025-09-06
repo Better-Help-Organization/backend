@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif } from 'src/common/constants';
+import { SessionNotif, Tokens } from 'src/common/constants';
 import { Session } from 'src/common/entities/session.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -79,7 +79,7 @@ export class SessionService {
 
       const savedSession = await this.sessionRepo.save(newSession);
       
-      const tokens: string[] = []
+      const tokens: Tokens  = null
       let clientToken: string[] = []
       if (createSessionDto.client != null) {
         const client = await this.clientService.findOne(createSessionDto.client)
@@ -94,7 +94,8 @@ export class SessionService {
 
       const therapistToken = await this.therapistService.findOne(id)
       console.log('Therapist token: - session.service.ts:96', therapistToken.firebaseToken);
-      tokens.push(...clientToken, therapistToken.firebaseToken);
+      tokens.client.push(...clientToken, );
+      tokens.therapist.push(therapistToken?.firebaseToken);
 
       this.firebaseService.sendPushNotification(
         tokens,
@@ -120,9 +121,10 @@ export class SessionService {
       const clientToken = await this.clientService.findOne(session.client.id)
       const therapistToken = await this.therapistService.findOne(session.therapist.id)
 
-      const tokens: string[] = [];
+      const tokens: Tokens = null
       
-      tokens.push(clientToken?.firebaseToken, therapistToken?.firebaseToken);
+      tokens.client.push(clientToken?.firebaseToken);
+      tokens.therapist.push(therapistToken?.firebaseToken);
       
       const savedSession = await this.sessionRepo.save(session);
       

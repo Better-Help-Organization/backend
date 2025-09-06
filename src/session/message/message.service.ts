@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionNotif, TokenPayload, UserTypes } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -67,31 +67,29 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
     const senderId = sender.id;
 
     // Collect all potential recipients
-    let tokens: string[] = [];
+    let tokens: Tokens = null;
 
     if (session.group.length > 0) {
-      tokens = session.group
+      tokens.client = session.group
         .filter(g => g.firebaseToken && g.id !== senderId)
         .map(g => g.firebaseToken);
     } else {
       // 1-on-1 session fallback
       if (sender.type === UserTypes.CLIENT && session.therapist.firebaseToken && session.therapist.id !== senderId) {
-        tokens.push(session.therapist.firebaseToken);
+        tokens.therapist.push(session.therapist.firebaseToken);
       }
 
       if (sender.type === UserTypes.THERAPIST && session.client.firebaseToken && session.client.id !== senderId) {
-        tokens.push(session.client.firebaseToken);
+        tokens.client.push(session.client.firebaseToken);
       }
     }
 
-    if (tokens.length > 0) {
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify(msg),
         SessionNotif.NEW_MESSAGE,
         content
       );
-    }
 
     } catch (error) {
       this.logger.error(`Unable to send message: ${error.message}`);

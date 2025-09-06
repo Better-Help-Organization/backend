@@ -5,7 +5,6 @@ import { Chat } from 'src/common/entities/chat.entity';
 import { Message } from 'src/common/entities/message.entity';
 import { Notification } from 'src/common/entities/notification.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
-import { FirebaseService } from 'src/firebase/firebase.service';
 import { TherapistModule } from 'src/therapist/therapist.module';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
@@ -18,7 +17,7 @@ import { ChatService } from './chat.service';
     FirebaseModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, FirebaseService],
+  providers: [ChatService],
   exports: [ChatService],
 })
 export class ChatModule {}

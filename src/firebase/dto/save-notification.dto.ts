@@ -5,6 +5,6 @@ export class SaveNotificationDto {
   body: string;
   message: string;
   code: string;
-  clientId?: string;
-  therapistId?: string;
+  clientTokens?: string[];
+  therapistTokens?: string[];
 }

@@ -194,7 +194,7 @@ export class TherapistService {
         console.log(firebaseToken,status.status.toLocaleUpperCase())
         const message = `${status.status}`
         const body = `Your account is now ${status.status}`
-        await this.firebaseService.sendPushNotification([firebaseToken], message.toString(),SessionNotif.STATUS_CHAGNED, body);
+        await this.firebaseService.sendPushNotification({therapist:[firebaseToken]}, message.toString(),SessionNotif.STATUS_CHAGNED, body);
   
         this.logger.log(`Status for client with ID ${id} updated successfully`);
         return 'successfully updated';
