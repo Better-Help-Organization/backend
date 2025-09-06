@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, CreateDateColumn, Entity, ManyToOne } from 'typeorm';
+import { Column, Entity, ManyToOne } from 'typeorm';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
 import { Therapist } from './therapist.entity';
@@ -27,6 +27,4 @@ export class Notification extends CommonEntity {
   @ManyToOne(() => Therapist, { nullable: true })
   therapist?: Therapist;
 
-  @CreateDateColumn()
-  createdAt: Date;
 }
