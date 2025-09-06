@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, TokenPayload } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
@@ -189,15 +189,16 @@ export class MatchService {
 
       const otherTherapists = match.matchedTherapist.filter(
         mt => mt.therapist.id !== therapist.id,
-      );
-
-      const otherTokens = otherTherapists
+      );  
+      const otherTokens: Tokens = null
+      
+      otherTokens.therapist = otherTherapists
         .map(mt => mt.therapist.firebaseToken)
         .filter((token): token is string => Boolean(token)); // type-safe non-null filter
 
-      console.log("other tokens: - match.service.ts:193", otherTokens)
-      console.log("other tokens: - match.service.ts:194", otherTokens)
-      if (otherTokens.length > 0) {
+      console.log("other tokens: - match.service.ts:199", otherTokens)
+      console.log("other tokens: - match.service.ts:200", otherTokens)
+
         await this.firebaseService.sendPushNotification(
           otherTokens,
           JSON.stringify({ match: match }),
@@ -206,11 +207,11 @@ export class MatchService {
         );
 
         this.logger.log(`Sent notification letting others know`);
-      }
+
 
       if (match.client?.firebaseToken) {
         await this.firebaseService.sendPushNotification(
-          [match.client.firebaseToken],
+          {client:[match.client.firebaseToken]},
           JSON.stringify({
             AcceptedTherapist: match.accepted,
             therapist

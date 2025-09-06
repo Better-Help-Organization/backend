@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, MethodNotAllowedException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, TokenPayload, UserTypes } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Chat } from 'src/common/entities/chat.entity';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -14,7 +14,6 @@ import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
-
 
 
 @Injectable()
@@ -53,12 +52,10 @@ export class ChatService {
     });
 
     const savedChat = await this.chatRepo.save(newChat);
-
+    const tokens: Tokens = null
     // Collect tokens
-    const tokens = [
-      ...clients.map(c => c.firebaseToken).filter(Boolean),
-      therapist.firebaseToken
-    ];
+    tokens.client = [...clients.map(c => c.firebaseToken).filter(Boolean)]
+    tokens.therapist= [therapist?.firebaseToken]
 
     this.firebaseService.sendPushNotification(
       tokens,
@@ -259,31 +256,29 @@ export class ChatService {
     if (!msg) throw new BadRequestException("Unable to send message");
 
     // Build list of firebase tokens for all recipients except sender
-    let tokens: string[] = [];
+    let tokens: Tokens = null;
 
     if (chat.group?.length) {
       // Group chat: send to all group clients except sender
-      tokens = chat.group
+      tokens.client = chat.group
         .filter(c => c.id !== sender.id)
         .map(c => c.firebaseToken)
         .filter(Boolean);
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat.therapist.firebaseToken);
       }
 
     } else {
       // One-to-one chat
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat.therapist.firebaseToken);
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
-        tokens.push(chat.client.firebaseToken);
+        tokens.client.push(chat.client.firebaseToken);
       }
     }
 
-    if (tokens.length > 0) {
       await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content);
-    }
 
   } catch (error) {
     this.logger.error(`Error sending message: ${error.message}`);
@@ -348,25 +343,23 @@ export class ChatService {
     if (!editedMsg) throw new BadRequestException("Error while editing the message");
 
     // Build token list for notifications
-    let tokens: string[] = [];
+    let tokens: Tokens = null;
 
     if (chat.group?.length) {
-      tokens = chat.group
+      tokens.client = chat.group
         .filter(c => c.id !== sender.id)
         .map(c => c.firebaseToken)
         .filter(Boolean);
     } else {
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat.therapist.firebaseToken);
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
-        tokens.push(chat.client.firebaseToken);
+        tokens.client.push(chat.client.firebaseToken);
       }
     }
 
-    if (tokens.length > 0) {
       await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content);
-    }
 
   } catch (error) {
     throw error;
@@ -444,16 +437,17 @@ export class ChatService {
     }
 
     const readBy = { [user.type.toLowerCase()]: user.id };
+    const token: Tokens = null
 
-    const recipientToken = isClient ? chat.therapist?.firebaseToken : chat.client?.firebaseToken;
-    if (recipientToken) {
-      await this.firebaseService.sendPushNotification(
-        [recipientToken],
+    isClient ? token.therapist = [chat.therapist?.firebaseToken] : token.client = [chat.client?.firebaseToken];
+
+    await this.firebaseService.sendPushNotification(
+        token,
         JSON.stringify({ chatId, readBy, count: result.affected }),
         SessionNotif.MESSAGE_READ,
         `Messages marked as read in chat ${chatId}`,
       );
-    }
+
 
     return { success: true, affected: result.affected };
   }
@@ -486,12 +480,14 @@ export class ChatService {
   async call(id: string, caller: TokenPayload, room: string) {
     try {
 
+    const tokens:Tokens = null;
     const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
     const isCallerClient = chat.client.id === caller.id;
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    // const recipient = 
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist ;
 
-    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData, chatId: id }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
+    await this.firebaseService.sendPushNotification(tokens, JSON.stringify({ room, callerData, chatId: id }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
 
     return chat;
     } catch (error) {
@@ -503,12 +499,13 @@ export class ChatService {
   async endCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
-
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const tokens:Tokens = null
+    // const recipient = 
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist;
 
     await this.firebaseService.sendPushNotification(
-      [recipient.firebaseToken],
+      tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_ENDED,
       `Call ended by ${callerData.firstName}`
@@ -520,12 +517,15 @@ export class ChatService {
   async rejectCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
+    
+    const tokens:Tokens = null;
 
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
+    
     const callerData = isCallerClient ? chat.client : chat.therapist;
 
     await this.firebaseService.sendPushNotification(
-      [recipient.firebaseToken],
+      tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_REJECTED,
       `Call rejected by ${callerData.firstName}`

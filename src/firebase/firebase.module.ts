@@ -4,7 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
+import { Client } from 'src/common/entities/client.entity';
 import { Notification } from 'src/common/entities/notification.entity';
+import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseService } from './firebase.service';
 
 dotenv.config();
@@ -16,7 +18,7 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
 
 @Module({
   imports:[
-    TypeOrmModule.forFeature([Notification])
+    TypeOrmModule.forFeature([Notification, Client, Therapist])
   ],
   providers: [
     {
@@ -33,6 +35,6 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
     FirebaseService,
     JwtService
   ],
-  exports: ['FIREBASE_ADMIN', FirebaseService, JwtService],
+  exports: ['FIREBASE_ADMIN', FirebaseService],
 })
 export class FirebaseModule {}

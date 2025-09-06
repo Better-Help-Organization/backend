@@ -1,5 +1,12 @@
 import { join } from "path";
 
+export interface Tokens {
+    client?: string[];
+    admin?: string[];
+    therapist?: string[];
+}
+
+
 export enum UserTypes {
     ADMIN = "admin",
     CLIENT = "client",
