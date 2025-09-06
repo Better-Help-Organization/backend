@@ -43,11 +43,11 @@ export class ClientController {
   @Get('me/chats')
   @UseGuards(ClientJwtAuthGuard)
   async findMyChats(
-    @CurrentUser() _: TokenPayload,
+    @CurrentUser() client: TokenPayload,
     @GroupScope() _gs: boolean,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
-    return this.chatService.findAll(queryParams);
+    return this.chatService.findAll(queryParams,client );
   }
 
   @ApiFindOneQueryParams()
