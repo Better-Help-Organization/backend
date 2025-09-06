@@ -10,6 +10,7 @@ import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
 import { SessionService } from 'src/session/session.service';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
@@ -19,7 +20,8 @@ export class TherapistController {
   constructor(
     private readonly therapistService: TherapistService,
     private readonly chatService: ChatService,
-    private readonly sessionService: SessionService
+    private readonly sessionService: SessionService,
+    private readonly firebaseService: FirebaseService
   ) {}
 
   @Get('me')
@@ -40,6 +42,17 @@ export class TherapistController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.chatService.findAll(queryParams, therapist);
+  }
+
+
+  @ApiFindAllQueryParams()
+  @Get('me/notifications')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyNotifications(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.firebaseService.findAll(queryParams);
   }
 
   @ApiFindOneQueryParams()

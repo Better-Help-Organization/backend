@@ -52,7 +52,11 @@ export class ChatService {
     });
 
     const savedChat = await this.chatRepo.save(newChat);
-    const tokens: Tokens = null
+    const tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
     // Collect tokens
     tokens.client = [...clients.map(c => c.firebaseToken).filter(Boolean)]
     tokens.therapist= [therapist?.firebaseToken]
@@ -134,7 +138,7 @@ export class ChatService {
     //   }
     // }
 
-    async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
+  async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
   try {
     console.log({ user });
 
@@ -249,14 +253,18 @@ export class ChatService {
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
 
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
-
+    console.log({chat})
     const { content } = createMessageDto;
     const msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
     if (!msg) throw new BadRequestException("Unable to send message");
 
     // Build list of firebase tokens for all recipients except sender
-    let tokens: Tokens = null;
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (chat.group?.length) {
       // Group chat: send to all group clients except sender
@@ -265,7 +273,7 @@ export class ChatService {
         .map(c => c.firebaseToken)
         .filter(Boolean);
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.therapist.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat?.therapist?.firebaseToken);
       }
 
     } else {
@@ -274,10 +282,10 @@ export class ChatService {
         tokens.therapist.push(chat.therapist.firebaseToken);
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
-        tokens.client.push(chat.client.firebaseToken);
+        tokens.client.push(chat?.client?.firebaseToken);
       }
     }
-
+    console.log({tk:tokens})
       await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content);
 
   } catch (error) {
@@ -343,7 +351,11 @@ export class ChatService {
     if (!editedMsg) throw new BadRequestException("Error while editing the message");
 
     // Build token list for notifications
-    let tokens: Tokens = null;
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (chat.group?.length) {
       tokens.client = chat.group
@@ -437,7 +449,11 @@ export class ChatService {
     }
 
     const readBy = { [user.type.toLowerCase()]: user.id };
-    const token: Tokens = null
+    const token: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     isClient ? token.therapist = [chat.therapist?.firebaseToken] : token.client = [chat.client?.firebaseToken];
 
@@ -480,7 +496,11 @@ export class ChatService {
   async call(id: string, caller: TokenPayload, room: string) {
     try {
 
-    const tokens:Tokens = null;
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
     const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
     const isCallerClient = chat.client.id === caller.id;
     // const recipient = 
@@ -499,7 +519,11 @@ export class ChatService {
   async endCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
-    const tokens:Tokens = null
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
     // const recipient = 
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist;
@@ -518,7 +542,11 @@ export class ChatService {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
     
-    const tokens:Tokens = null;
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     

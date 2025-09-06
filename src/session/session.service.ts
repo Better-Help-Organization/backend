@@ -79,7 +79,11 @@ export class SessionService {
 
       const savedSession = await this.sessionRepo.save(newSession);
       
-      const tokens: Tokens  = null
+      const tokens: Tokens  = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
       let clientToken: string[] = []
       if (createSessionDto.client != null) {
         const client = await this.clientService.findOne(createSessionDto.client)
@@ -121,7 +125,11 @@ export class SessionService {
       const clientToken = await this.clientService.findOne(session.client.id)
       const therapistToken = await this.therapistService.findOne(session.therapist.id)
 
-      const tokens: Tokens = null
+      const tokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
       
       tokens.client.push(clientToken?.firebaseToken);
       tokens.therapist.push(therapistToken?.firebaseToken);
