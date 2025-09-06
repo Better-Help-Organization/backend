@@ -100,7 +100,7 @@ export class SessionService {
         tokens,
         JSON.stringify(savedSession),
         SessionNotif.SCHEDULED,
-        `Your session has been scheduled for ${new Date(createSessionDto.schedule).toLocaleString("en-US", { timeZone: "UTC" })}`,
+        `Your session has been scheduled for ${new Date(createSessionDto.schedule).toLocaleString()}`,
       );
   
       this.logger.log('Session created successfully');
