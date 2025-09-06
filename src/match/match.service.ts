@@ -121,11 +121,17 @@ export class MatchService {
 
     await this.matchTherapistRepository.save(matchTherapists);
 
-    const tokens = therapists
+    const tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
+    
+    tokens.therapist = therapists
       .map(t => t.firebaseToken)
       .filter(token => token);
 
-    if (tokens?.length > 0) {
+    // if (tokens?.length > 0) {
       const client: Pick<Client, 'firstName' | 'lastName' | 'gender' | 'dob'> = await this.clientService.findOne(token.id);
 
       await this.firebaseService.sendPushNotification(
@@ -139,9 +145,9 @@ export class MatchService {
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
       );
-    }
+    // }
 
-    this.logger.log(`Sent match request to ${tokens.length} therapists`);
+    this.logger.log(`Sent match request to ${tokens.therapist.length} therapists`);
 
     return { message: 'Match request created successfully' };
   }
@@ -190,7 +196,11 @@ export class MatchService {
       const otherTherapists = match.matchedTherapist.filter(
         mt => mt.therapist.id !== therapist.id,
       );  
-      const otherTokens: Tokens = null
+      const otherTokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
       
       otherTokens.therapist = otherTherapists
         .map(mt => mt.therapist.firebaseToken)

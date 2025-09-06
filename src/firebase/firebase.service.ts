@@ -26,7 +26,7 @@ export class FirebaseService {
 
   async sendPushNotification(tokens: Tokens, message: string, notificationType: SessionNotifValue, body ): Promise<void> {
     try {
-        const { code, title, showNotification } = notificationType
+      const { code, title, showNotification } = notificationType
       this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
       if(!body) body = "Place Holder"
 
@@ -37,9 +37,13 @@ export class FirebaseService {
           notification = { title, body }
 
         // Handle client tokens
-        await this.saveNotification({ title,body, message, code, clientTokens:tokens.client,therapistTokens: null }).catch((err)=>{});
+        await this.saveNotification({ title,body, message, code, clientTokens:tokens.client,therapistTokens: null }).catch((err)=>{
+          console.log({err})
+        });
       // Handle therapist tokens
-        await this.saveNotification({ title,body, message, code, clientTokens: null,therapistTokens:tokens.therapist }).catch((err)=>{});
+        await this.saveNotification({ title,body, message, code, clientTokens: null,therapistTokens:tokens.therapist }).catch((err)=>{
+          console.log({err})
+        });
         
         this.logger.log(`Notifications processed successfully`);
         
@@ -47,9 +51,9 @@ export class FirebaseService {
 
         // Flatten all tokens into one array for Firebase
         const allTokens = [
-          ...tokens.client,
-          ...tokens.therapist,
-          ...tokens.admin,
+          ...tokens.client || '',
+          ...tokens.therapist || '',
+          ...tokens.admin || '',
         ];
         
         await this.firebaseAdmin.messaging().sendEachForMulticast({
@@ -76,12 +80,12 @@ export class FirebaseService {
         
         const {body, code, message, title, clientTokens, therapistTokens} = dto
         // Fetch all clients in one query
-        const clients = clientTokens.length > 0
+        const clients = clientTokens?.length > 0
           ? await this.clientRepo.find({ where: { firebaseToken: In(clientTokens) } })
           : [];
 
         // Fetch all therapists in one query
-        const therapists = therapistTokens.length > 0
+        const therapists = therapistTokens?.length > 0
           ? await this.therapistRepo.find({ where: { firebaseToken: In(therapistTokens) } })
           : [];
 
@@ -98,7 +102,7 @@ export class FirebaseService {
           ...therapists.map(therapist => this.notifRepo.create({
             title,
             body,
-            message,
+            message: JSON.parse(message),
             code,
             client: null,
             therapist: therapist,
@@ -131,7 +135,6 @@ export class FirebaseService {
 
     async findAll(queryParams?: FindAllQueryParams<Notification>) {
       try {
-        console.log({queryParams})
         this.logger.log(`Fetching all notification`);
         const result = await new APIFeatures(this.notifRepo, queryParams).getMany();
         this.logger.log(`Found ${result.data.length} notification`);

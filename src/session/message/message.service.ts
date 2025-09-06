@@ -67,7 +67,11 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
     const senderId = sender.id;
 
     // Collect all potential recipients
-    let tokens: Tokens = null;
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (session.group.length > 0) {
       tokens.client = session.group
