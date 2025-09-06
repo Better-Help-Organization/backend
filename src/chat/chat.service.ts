@@ -137,41 +137,93 @@ export class ChatService {
     //   }
     // }
 
-  async findAll(queryParams?: FindAllQueryParams) {
+    async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
   try {
-    // Step 1: get chats with API features
-    const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
-    // Step 2: extract chat IDs
-    const ids = chats.data.map(c => c.id);
-    if (!ids.length) return chats;
+    console.log({ user });
 
-    // Step 3: count unread messages grouped by chatId
-    const counts = await this.msgRepo
+    // Step 1: get chats
+    const { data, pagination } = await new APIFeatures(this.chatRepo, queryParams).getMany();
+
+    const ids = data.map(c => c.id);
+    if (!ids.length) return { data, pagination };
+
+    // Step 2: build query for unread counts
+    const qb = this.msgRepo
       .createQueryBuilder('m')
       .select('m.chatId', 'chatId')
       .addSelect('COUNT(*)', 'unreadCount')
       .where('m.isRead = false')
-      .andWhere('m.chatId IN (:...ids)', { ids })
-      .groupBy('m.chatId')
-      .getRawMany();
+      .andWhere('m.chatId IN (:...ids)', { ids });
 
-    // Step 4: put counts into a map for quick lookup
+    // Step 3: add role-specific condition
+    if (user?.type === 'client') {
+      // count messages sent by therapists (ignore messages from same client)
+      qb.andWhere('m.therapistId IS NOT NULL');
+      qb.andWhere('m.clientId != :clientId', { clientId: user.id });
+    } else if (user?.type === 'therapist') {
+      // count messages sent by clients (ignore messages from same therapist)
+      qb.andWhere('m.clientId IS NOT NULL');
+      qb.andWhere('m.therapistId != :therapistId', { therapistId: user.id });
+    }
+
+    const counts = await qb.groupBy('m.chatId').getRawMany();
+
+    // Step 4: map counts
     const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
       acc[row.chatId] = parseInt(row.unreadCount, 10);
       return acc;
     }, {});
 
-    // Step 5: attach unreadCount to each chat`
-    let data = chats.data.map(chat => ({
+    // Step 5: attach unreadCount to each chat
+    const datas = data.map(chat => ({
       ...chat,
       unreadCount: countsMap[chat.id] || 0,
     }));
-    return {data, pagination:chats.pagination}
+
+    return { data: datas, pagination };
   } catch (error) {
     this.logger.error(`Error finding chats with unread counts: ${error.message}`);
-    return error;
+    throw error;
   }
-  }
+}
+
+  // async findAll(queryParams?: FindAllQueryParams, user?:TokenPayload ) {
+  // try {
+  //   console.log({user})
+  //   // Step 1: get chats with API features
+  //   const {data, pagination} = await new APIFeatures(this.chatRepo, queryParams).getMany();
+  //   // Step 2: extract chat IDs
+  //   const ids = data.map(c => c.id);
+  //   if (!ids.length) return data;
+
+  //   // Step 3: count unread messages grouped by chatId
+  //   const counts = await this.msgRepo
+  //     .createQueryBuilder('m')
+  //     .select('m.chatId', 'chatId')
+  //     .addSelect('COUNT(*)', 'unreadCount')
+  //     .where('m.isRead = false')
+  //     .andWhere('m.chatId IN (:...ids)', { ids })
+  //     // .andWhere('m.senderId != :currentUserId', { currentUserId }) // exclude current user
+  //     .groupBy('m.chatId')
+  //     .getRawMany();
+
+  //   // Step 4: put counts into a map for quick lookup
+  //   const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
+  //     acc[row.chatId] = parseInt(row.unreadCount, 10);
+  //     return acc;
+  //   }, {});
+
+  //   // Step 5: attach unreadCount to each chat`
+  //   let datas = data.map(chat => ({
+  //     ...chat,
+  //     unreadCount: countsMap[chat.id] || 0,
+  //   }));
+  //   return {data:datas, pagination}
+  // } catch (error) {
+  //   this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+  //   return error;
+  // }
+  // }
 
   async getMessages(id: string, queryParams?: FindAllQueryParams){
     try {

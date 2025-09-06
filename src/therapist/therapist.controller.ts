@@ -36,10 +36,10 @@ export class TherapistController {
   @Get('me/chats')
   @UseGuards(TherapistJwtAuthGuard)
   async findMyChats(
-    @CurrentUser() _: TokenPayload,
+    @CurrentUser() therapist: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
-    return this.chatService.findAll(queryParams);
+    return this.chatService.findAll(queryParams, therapist);
   }
 
   @ApiFindOneQueryParams()
