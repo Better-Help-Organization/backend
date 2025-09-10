@@ -1,16 +1,16 @@
+import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import {
-  WebSocketGateway,
-  WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
-import { Logger } from '@nestjs/common';
-import { TokenPayload, UserTypes } from 'src/common/constants';
-import { ClientService } from 'src/client/client.service';
-import { TherapistService } from 'src/therapist/therapist.service';
 import { AuthService } from 'src/auth/auth.service';
+import { ClientService } from 'src/client/client.service';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { TherapistService } from 'src/therapist/therapist.service';
 
 @WebSocketGateway({ cors: { origin: '*' }})
 export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect {
