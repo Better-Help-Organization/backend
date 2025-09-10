@@ -18,14 +18,15 @@ import { LicenseModule } from './license/license.module';
 import { LoggerModule } from './logger/logger.module';
 import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
+import { MoodModule } from './mood/mood.module';
 import { OptionModule } from './option/option.module';
 import { PreferenceModule } from './preference/preference.module';
+import { PresenceModule } from './presence/presence.module';
 import { QuestionModule } from './question/question.module';
 import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
-import { PresenceModule } from './presence/presence.module';
-import { MoodModule } from './mood/mood.module';
+// import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { MoodModule } from './mood/mood.module';
     MatchModule,
     PresenceModule,
     MoodModule,
+    // SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

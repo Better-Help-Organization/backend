@@ -99,6 +99,21 @@ export enum DayPeriod {
   EVENING = 'evening',
 }
 
+// export enum SubscriptionStatus {
+//   PENDING = 'pending',
+//   ACTIVE = 'active',
+//   PAUSED = 'paused',
+//   CANCELED = 'canceled',
+// }
+
+// export enum SubscriptionType {
+//   TRIAL = 0,
+//   MONTHLY = 1,
+//   QUARTERLY = 3,
+//   SEMI_ANNUAL = 6,
+//   YEARLY = 12,
+// }
+
 export enum MoodValues {
   HAPPY= 'happy', 
   SAD = 'sad', 
