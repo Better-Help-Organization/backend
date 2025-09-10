@@ -12,7 +12,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsString()
-    firstName: string;
+    firstName?: string;
 
     @ApiProperty({
         example: "Doe",
@@ -21,7 +21,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsString()
-    lastName: string;
+    lastName?: string;
 
     @ApiProperty({
         example: 0,
@@ -30,7 +30,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsNumber()
-    avatar: number;
+    avatar?: number;
 
     @ApiProperty({
         example: "john_doe99",
@@ -39,7 +39,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsString()
-    username: string;
+    username?: string;
 
     @ApiProperty({
         example: "+251911234567",
@@ -48,7 +48,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsValidPhoneNumber()
-    emergencyContact: string;
+    emergencyContact?: string;
 
     @ApiProperty({
         enum: Gender,
@@ -58,7 +58,7 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsEnum(Gender)
-    gender: Gender;
+    gender?: Gender;
 
     @ApiProperty({
         example: "1990-05-15T00:00:00.000Z",
@@ -68,5 +68,5 @@ export class UpdateUserDto {
     })
     @IsOptional()
     @IsDate()
-    dob: Date;
+    dob?: Date;
 }

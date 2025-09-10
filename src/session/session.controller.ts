@@ -5,7 +5,7 @@ import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AddToSessionDto } from './dto/add-session.dto';
-import { CreateSessionDto } from './dto/create-session.dto';
+import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
@@ -22,7 +22,6 @@ export class SessionController {
 
   @Post()
   @DynamicGuards(
-    new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard()
   )
   bookASession(
@@ -30,6 +29,17 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);
+  }
+
+  @Post()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
+  bookAGroupSession(
+    @CurrentUser() user: TokenPayload,
+    @Body() createGroupSessionDto: CreateGroupSession
+  ) {
+    return this.sessionService.create(user.id, createGroupSessionDto);
   }
 
   @Post(":sessionId/add-to-session")

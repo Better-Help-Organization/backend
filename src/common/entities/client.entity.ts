@@ -22,6 +22,10 @@ export class Client extends User {
   @Column({ default: false })
   isVisible: boolean;
 
+  @ApiProperty()
+  @Column({ default: false })
+  isInGroup: boolean;
+
   @ApiProperty({ type: () => Preference })
   @OneToMany(() => Preference, preference => preference.client)
   preference: Preference[];
@@ -42,6 +46,4 @@ export class Client extends User {
   @OneToMany(() => Mood, mood => mood.client)
   moods: Mood[];
 
-
-  // @ApiProperty({ type: () => Session })
 }
