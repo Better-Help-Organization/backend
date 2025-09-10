@@ -96,16 +96,16 @@ export class FirebaseService {
             body,
             message,
             code,
-            client: client,
+            client: {id: client.id},
             therapist: null,
           })),
           ...therapists.map(therapist => this.notifRepo.create({
             title,
             body,
-            message: JSON.parse(message),
+            message: message,
             code,
             client: null,
-            therapist: therapist,
+            therapist: {id: therapist.id},
           })),
         ];
 
