@@ -52,6 +52,10 @@ export class Session extends CommonEntity {
   })
   therapist: Therapist;
 
+  @ApiProperty({ default: false })
+  @Column({default: false })
+  hasclientAttended: boolean;
+
   @ApiProperty()
   @Column({ type: 'timestamp' })
   schedule: Date;
