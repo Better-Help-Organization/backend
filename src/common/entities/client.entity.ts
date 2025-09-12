@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, OneToMany } from 'typeorm';
 import { Answer } from './answer.entity';
+import { Diary } from './diary.entity';
 import { Match } from './match.entity';
 import { Mood } from './mood.entity';
 import { Preference } from './preference.entity';
@@ -46,5 +47,9 @@ export class Client extends User {
   @ApiProperty({ type: () => Mood })
   @OneToMany(() => Mood, mood => mood.client)
   moods: Mood[];
+
+  @ApiProperty({ type: () => Diary })
+  @OneToMany(() => Diary, diary => diary.client)
+  diary: Diary[];
 
 }

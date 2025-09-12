@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
 import { DatabaseModule } from './db/db.module';
+import { DiaryModule } from './diary/diary.module';
 import { EmailModule } from './email/email.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { LanguageModule } from './language/language.module';
@@ -49,6 +50,7 @@ import { TherapistModule } from './therapist/therapist.module';
     PresenceModule,
     MoodModule,
     // SubscriptionModule,
+    DiaryModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

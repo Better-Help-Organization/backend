@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Modal } from 'src/common/entities/modal.entity';
+import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { Repository } from 'typeorm';
 import { CreateModalDto } from './dto/create-modal.dto';
 import { UpdateModalDto } from './dto/update-modal.dto';
-import { LoggerService } from 'src/logger/logger.service';
-import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { APIFeatures } from 'src/common/middlewares/api-features';
 
 @Injectable()
 export class ModalService {
@@ -14,6 +14,7 @@ export class ModalService {
     @InjectRepository(Modal) private readonly modalRepository: Repository<Modal>,
     private readonly logger: LoggerService
   ) {}
+  
   async create(dto: CreateModalDto) {
     try {
       const modal = this.modalRepository.create(dto);
