@@ -8,7 +8,7 @@ export const onboardingData = [
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
       { text: 'What is your age?', type: QuestionType.SINGLE, option: ['18–24', '25–34', '35–44', '45–54', '55+'] },
-      { text: 'What gender do you identify with?', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
+      // { text: 'What gender do you identify with?', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
       { text: 'What is your relationship status?', type: QuestionType.SINGLE, option: ['single', 'In a relationship', 'Married', 'Divorced', 'Widowed'] },
       { text: 'How did you hear about us?', type: QuestionType.SINGLE, option: ['Tiktok', 'Instagram', 'LinkedIn', 'Telegram', 'Facebook', 'YouTube', 'Referred by a friend', 'Online search', 'Therapist referral', 'Other'] },
       { text: 'What brings you to therapy today?', type: QuestionType.MULTIPLE, option: ['Anxiety', 'Depression', 'Stress', 'Trauma', 'Grief/Loss', 'Relationship problems', 'Self-esteem', 'Anger issues', 'Other'] },
@@ -74,7 +74,7 @@ export const onboardingData = [
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
       { text: 'What is your age?', type: QuestionType.SINGLE, option: ['18–24', '25–34', '35–44', '45–54', '55+'] },
-      { text: 'What gender do you identify with?', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
+      // { text: 'What gender do you identify with?', type: QuestionType.SINGLE, option: ['Male', 'Female'] },
       { text: 'How did you hear about us?', type: QuestionType.SINGLE, option: ['Tiktok', 'Instagram', 'LinkedIn', 'Telegram', 'Facebook', 'YouTube', 'Friend or family referral', 'Online search', 'Therapist referral', 'Other'] },
       { text: 'What type of group therapy are you interested in?', type: QuestionType.MULTIPLE, option: ['Anxiety support', 'Depression support', 'Stress management', 'Grief/loss support', 'Parenting support', 'Other'] },
       { text: 'Have you attended group therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
