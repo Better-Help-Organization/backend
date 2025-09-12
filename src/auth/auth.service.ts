@@ -7,6 +7,7 @@ import * as speakeasy from 'speakeasy';
 import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
 import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { User } from 'src/common/entities/user.entity';
@@ -19,7 +20,6 @@ import { ClientSignupDto } from './dto/ client-signup.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { TherapistSignupDto } from './dto/therapist-signup.dto';
-import { Admin } from 'src/common/entities/admin.entity';
 
 @Injectable()
 export class AuthService {
@@ -63,7 +63,7 @@ export class AuthService {
     }
   }
 
-  private _generateTokens({ id, type, status }: TokenPayload): [string, string, Date, Date] {
+  private _generateTokens({ id, type, status, name }: TokenPayload): [string, string, Date, Date] {
     
     const expiresAccessToken = new Date();
     
@@ -87,7 +87,7 @@ export class AuthService {
       ),
     );
   
-    const tokenPayload: TokenPayload = { id, type, status };
+    const tokenPayload: TokenPayload = { id, type, status, name };
   
     const accessTokenSecret = this._getAccessTokenSecret(type);
     const refreshTokenSecret = this._getRefreshTokenSecret(type);
@@ -221,6 +221,7 @@ export class AuthService {
           id: client.id,
           type: UserTypes.CLIENT,
           status: client.status,
+          name: client.firstName,
       });
     
     client.refreshToken = refreshToken;
@@ -251,6 +252,7 @@ export class AuthService {
           id: therapist.id,
           type: UserTypes.THERAPIST,
           status: therapist.status,
+          name: therapist.firstName
       });
     
     therapist.refreshToken = refreshToken;
@@ -280,6 +282,7 @@ export class AuthService {
           id: admin.id,
           type: UserTypes.ADMIN,
           status: admin.status,
+          name: admin.firstName
       });
     
     admin.refreshToken = refreshToken;
@@ -324,6 +327,7 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
+          name: user.firstName
       });
 
       user.refreshToken = refreshToken;
@@ -359,6 +363,7 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
+          name: user.firstName
       });
 
       user.refreshToken = refreshToken;
@@ -378,6 +383,7 @@ export class AuthService {
         id: user.id,
         type,
         status: user.status,
+        name: user.firstName,
       });
 
     user.refreshToken = refreshToken;
@@ -491,6 +497,7 @@ export class AuthService {
         id: user.id,
         type,
         status: user.status,
+        name: user.firstName,
       });
 
       user.refreshToken = refreshToken;

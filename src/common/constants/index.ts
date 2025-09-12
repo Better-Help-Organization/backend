@@ -54,6 +54,7 @@ export enum ModalName {
 
 export interface TokenPayload {
     id: string
+    name: string
     status: BaseStatus,
     type: UserTypes
 }
