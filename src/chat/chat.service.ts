@@ -346,7 +346,7 @@ export class ChatService {
       }
     }
     console.log({tk:tokens})
-      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content);
+      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), {...SessionNotif.NEW_MESSAGE, title:sender.name}, content);
 
   } catch (error) {
     this.logger.error(`Error sending message: ${error.message}`);
