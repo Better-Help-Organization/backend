@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -30,7 +30,7 @@ export class MessageController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.messageService.findOne(+id);
+    return this.messageService.findOne(id);
   }
 
   @Get(':sessionId')
@@ -52,8 +52,8 @@ export class MessageController {
   //   return this.messageService.update(+id, updateDto);
   // }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.messageService.remove(+id);
-  // }
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.messageService.remove(id);
+  }
 }

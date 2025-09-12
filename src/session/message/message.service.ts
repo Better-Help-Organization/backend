@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
-import { FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
@@ -26,12 +26,32 @@ export class MessageService {
   //   return 'This action adds a new ';
   // }
 
-  findAll() {
-    return `This action returns all `;
+  // findAll() {
+  //   return `This action returns all `;
+  // }
+
+  // findOne(id: number) {
+  //   return `This action returns a #${id} `;
+  // }
+  async findAll(queryParams?: FindAllQueryParams) {
+    try {
+      return await new APIFeatures(this.messageRepo, queryParams).getMany();
+    } catch (error) {
+      this.logger.error(`Error finding all msgs: ${error.message}`);
+      return error;
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} `;
+  async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Message> {
+  try {
+    console.log({id, queryParams})
+      const msg = await new APIFeatures(this.messageRepo, queryParams).getOne(id);
+      if (!msg) throw new NotFoundException('msg not found');
+      return msg
+    } catch (error) {
+      this.logger.error(`Error finding msg: ${error.message}`);
+      throw error;
+    }
   }
 
 async findAllBySession(id: string, queryParams?: FindAllQueryParams){
@@ -102,7 +122,14 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
   }
 
 
-  remove(id: number) {
-    return `This action removes a #${id} `;
+  async remove(id: string) {
+    try {
+      const msg = await this.findOne(id);
+      await this.messageRepo.remove(msg);
+    } catch (err) {
+      this.logger.error(`Delete message error: ${err.message}`);
+      throw err;
+    }
   }
+
 }
