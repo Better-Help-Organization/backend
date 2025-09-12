@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
 import { DatabaseModule } from './db/db.module';
+import { DiaryModule } from './diary/diary.module';
 import { EmailModule } from './email/email.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { LanguageModule } from './language/language.module';
@@ -18,15 +19,15 @@ import { LicenseModule } from './license/license.module';
 import { LoggerModule } from './logger/logger.module';
 import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
+import { MoodModule } from './mood/mood.module';
 import { OptionModule } from './option/option.module';
 import { PreferenceModule } from './preference/preference.module';
+import { PresenceModule } from './presence/presence.module';
 import { QuestionModule } from './question/question.module';
 import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
-import { PresenceModule } from './presence/presence.module';
-import { MoodModule } from './mood/mood.module';
-import { DiaryModule } from './diary/diary.module';
+// import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { DiaryModule } from './diary/diary.module';
     MatchModule,
     PresenceModule,
     MoodModule,
+    // SubscriptionModule,
     DiaryModule,
   ],
   controllers: [AppController],

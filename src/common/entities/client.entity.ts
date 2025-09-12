@@ -7,6 +7,7 @@ import { Mood } from './mood.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
 import { User } from './user.entity';
+// import { Subscription } from './subscription.entity';
 
 @Entity()
 export class Client extends User {

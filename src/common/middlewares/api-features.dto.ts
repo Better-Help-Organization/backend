@@ -65,8 +65,8 @@ export class FindAllQueryParams<T=any> {
     description:
       'Comma-separated list of IDs to filter by. Example: uuid1,uuid2,uuid3',
     required: false,
-    example:
-      '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    // example:
+    //   '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
   })
   @IsOptional()
   @IsString()
@@ -191,8 +191,8 @@ export function ApiFindAllQueryParams(guards: any[] = []) {
     ApiQuery({
       name: 'ids',
       description: 'Comma-separated list of IDs to filter by',
-      example:
-        '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
+      // example:
+      //   '550e8400-e29b-41d4-a716-446655440000,7c9e6679-7425-40de-944b-e07fc1f90ae7',
       required: false,
     }),
   );

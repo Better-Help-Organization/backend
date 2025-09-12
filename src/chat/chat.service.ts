@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
+import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
 
 
@@ -141,20 +142,44 @@ export class ChatService {
   async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
   try {
     // Step 1: get chats with API features
-    const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
+    let updatedFilters = queryParams?.filters || '';
+
+    // Add client or therapist filter
+    if (user?.type === UserTypes.CLIENT) {
+      if (updatedFilters) updatedFilters += ', ';
+      updatedFilters += `clientId:=${user.id}`;
+    } else if (user?.type === UserTypes.THERAPIST) {
+      if (updatedFilters) updatedFilters += ', ';
+      updatedFilters += `therapistId:=${user.id}`;
+    }
+
+    // Then pass it to APIFeatures
+    const updatedQueryParams: FindAllQueryParams = {
+      ...queryParams,
+      filters: updatedFilters,
+    };
+
+    // Then call APIFeatures with the updated queryParams
+    const chats = await new APIFeatures(this.chatRepo, updatedQueryParams).getMany();
     // Step 2: extract chat IDs
     const ids = chats.data.map(c => c.id);
     if (!ids.length) return chats;
 
     // Step 3: count unread messages grouped by chatId
-    const counts = await this.msgRepo
+    const qb = this.msgRepo
       .createQueryBuilder('m')
       .select('m.chatId', 'chatId')
       .addSelect('COUNT(*)', 'unreadCount')
       .where('m.isRead = false')
-      .andWhere('m.chatId IN (:...ids)', { ids })
-      .groupBy('m.chatId')
-      .getRawMany();
+      .andWhere('m.chatId IN (:...ids)', { ids });
+
+      if (user?.type === UserTypes.CLIENT) {
+        qb.andWhere('m.therapistId IS NOT NULL') // must be from therapist
+      } else if (user?.type === UserTypes.THERAPIST) {
+        qb.andWhere('m.clientId IS NOT NULL') // must be from client
+      }
+
+    const counts = await qb.groupBy('m.chatId').getRawMany();
 
     // Step 4: put counts into a map for quick lookup
     const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
@@ -528,7 +553,7 @@ export class ChatService {
     }
   }
 
-  async call(id: string, caller: TokenPayload, room: string) {
+  async call(id: string, caller: TokenPayload, createCallDto: CreateCallDto) {
     try {
 
     const tokens:Tokens = {
@@ -542,7 +567,9 @@ export class ChatService {
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist ;
 
-    await this.firebaseService.sendPushNotification(tokens, JSON.stringify({ room, callerData, chatId: id }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
+    const room = createCallDto.room;
+    const isVideoCall = createCallDto.isVideoCall;
+    await this.firebaseService.sendPushNotification(tokens, JSON.stringify({ room, callerData, chatId: id, isVideoCall }), SessionNotif.INCOMING_CALL, `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`)
 
     return chat;
     } catch (error) {
