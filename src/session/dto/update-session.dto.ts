@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { SessionType } from 'src/common/constants';
 
 export class UpdateSessionDto {
@@ -36,4 +36,13 @@ export class UpdateSessionDto {
       @IsOptional()
       @IsEnum(SessionType)
       type: SessionType;
+
+      @ApiProperty({
+        description: 'Indicates whether the client attended the session',
+        example: false,
+        default: false,
+      })
+      @IsOptional()
+      @IsBoolean()
+      hasclientAttended: boolean;
 }
