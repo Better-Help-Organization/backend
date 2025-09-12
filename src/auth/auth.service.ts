@@ -7,6 +7,7 @@ import * as speakeasy from 'speakeasy';
 import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
 import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { User } from 'src/common/entities/user.entity';
@@ -19,7 +20,6 @@ import { ClientSignupDto } from './dto/ client-signup.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { TherapistSignupDto } from './dto/therapist-signup.dto';
-import { Admin } from 'src/common/entities/admin.entity';
 
 @Injectable()
 export class AuthService {
