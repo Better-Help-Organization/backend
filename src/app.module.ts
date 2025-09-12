@@ -26,6 +26,7 @@ import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
 import { PresenceModule } from './presence/presence.module';
 import { MoodModule } from './mood/mood.module';
+import { DiaryModule } from './diary/diary.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { MoodModule } from './mood/mood.module';
     MatchModule,
     PresenceModule,
     MoodModule,
+    DiaryModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

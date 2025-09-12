@@ -10,6 +10,7 @@ import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { DiaryService } from 'src/diary/diary.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { MatchService } from 'src/match/match.service';
 import { MoodService } from 'src/mood/mood.service';
@@ -26,6 +27,7 @@ export class ClientController {
     private readonly moodService: MoodService,
     private readonly matchService: MatchService,
     private readonly firebaseService: FirebaseService,
+    private readonly diaryService: DiaryService,
   ) {}
 
   @Get('me')
@@ -35,7 +37,7 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:38", user);
+    console.log("user - client.controller.ts:40", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 
@@ -135,6 +137,27 @@ export class ClientController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.moodService.findAll(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/diary')
+  @UseGuards(ClientJwtAuthGuard)
+  async findDiary(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.diaryService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/diary/:id')
+  @UseGuards(ClientJwtAuthGuard)
+  async findOneDiary(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.diaryService.findOne(id, queryParams);
   }
 
   @Get()
