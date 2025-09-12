@@ -28,6 +28,7 @@ import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { TherapistModule } from './therapist/therapist.module';
 // import { SubscriptionModule } from './subscription/subscription.module';
+import { QuoteModule } from './quote/quote.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { TherapistModule } from './therapist/therapist.module';
     MoodModule,
     // SubscriptionModule,
     DiaryModule,
+    QuoteModule,
   ],
   controllers: [AppController],
   providers: [AppService,    

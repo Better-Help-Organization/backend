@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateMoodDto } from './dto/create-mood.dto';
 import { MoodService } from './mood.service';
@@ -21,6 +22,10 @@ export class MoodController {
 
   @Get()
   @ApiFindAllQueryParams()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
   findAll(
     @Query() queryParams,
   ) {
@@ -29,6 +34,10 @@ export class MoodController {
 
   @Get(':id')
   @ApiFindOneQueryParams()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
   findOne(
     @Query() queryParams,
     @Param('id') id: string) {
