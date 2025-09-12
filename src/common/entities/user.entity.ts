@@ -54,7 +54,7 @@ export abstract class User extends CommonEntity {
 
     @Exclude()
     @ApiProperty({ nullable: true })
-    @Column({ nullable: true })
+    @Column({ type: 'text',nullable: true })
     refreshToken: string;
 
     @Exclude()

@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { DiaryService } from './diary.service';
 import { CreateDiaryDto } from './dto/create-diary.dto';
 import { UpdateDiaryDto } from './dto/update-diary.dto';
@@ -23,13 +24,20 @@ export class DiaryController {
   }
 
   @Get()
-  findAll() {
-    return this.diaryService.findAll();
+  @ApiFindAllQueryParams()
+  findAll(
+    @Query() queryparams?: FindAllQueryParams
+  ) {
+    return this.diaryService.findAll(queryparams);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.diaryService.findOne(id);
+  @ApiFindOneQueryParams()
+  findOne(
+    @Param('id') id: string,
+    @Query() queryParams: FindOneQueryParams,
+  ) {
+    return this.diaryService.findOne(id, queryParams);
   }
 
   @Patch(':id')

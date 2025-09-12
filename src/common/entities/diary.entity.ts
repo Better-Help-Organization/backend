@@ -7,7 +7,7 @@ import { CommonEntity } from "./common.entity";
 export class Diary extends CommonEntity {
 
 @ApiProperty({ nullable: true })
-@Column({ type: 'text' })
+@Column()
 title: string;
 
 @ApiProperty({ nullable: true })

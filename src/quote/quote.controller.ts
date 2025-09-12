@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { QuoteService } from './quote.service';
@@ -16,23 +17,30 @@ export class QuoteController {
   }
 
   @Get()
+  @ApiFindAllQueryParams()
   @DynamicGuards(
     new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
     new ClientJwtAuthGuard()
   )
-  findAll() {
-    return this.quoteService.findAll();
+  findAll(
+    @Query() queryparams?: FindAllQueryParams
+  ) {
+    return this.quoteService.findAll(queryparams);
   }
 
   @Get(':id')
+  @ApiFindOneQueryParams()
     @DynamicGuards(
     new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
     new ClientJwtAuthGuard()
   )
-  findOne(@Param('id') id: string) {
-    return this.quoteService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Query() queryParams: FindOneQueryParams,
+  ) {
+    return this.quoteService.findOne(id, queryParams);
   }
 
   @Patch(':id')
