@@ -60,6 +60,7 @@ export class SessionService {
         ...createSessionDto,
         client: clientEntity,
         therapist: therapistEntity,
+        modal: {id: createSessionDto.modal}
       });
 
       const savedSession = await this.sessionRepo.save(newSession);
@@ -71,12 +72,12 @@ export class SessionService {
       };
       let clientToken: string[] = []
       const client = await this.clientService.findOne(createSessionDto.client)
-      console.log('Client token: - session.service.ts:74', client); 
+      console.log('Client token: - session.service.ts:75', client); 
       clientToken.push(client.firebaseToken);     
 
 
       const therapistToken = await this.therapistService.findOne(id)
-      console.log('Therapist token: - session.service.ts:79', therapistToken.firebaseToken);
+      console.log('Therapist token: - session.service.ts:80', therapistToken.firebaseToken);
       tokens.client.push(...clientToken, );
       tokens.therapist.push(therapistToken?.firebaseToken);
 
@@ -102,7 +103,7 @@ export class SessionService {
     const groupEntities = await this.clientService.findAll({
       ids: `${createSessionDto.groupClients.join(',')}`,
     });
-    console.log('Group entities: - session.service.ts:105', groupEntities);
+    console.log('Group entities: - session.service.ts:106', groupEntities);
 
     // 2. Ensure isInGroup is marked true
     if (groupEntities?.data?.length) {
@@ -124,6 +125,7 @@ export class SessionService {
       ...createSessionDto,
       therapist: therapistEntity,
       group: groupEntities?.data || null,
+      modal: {id: createSessionDto.modal}
     });
 
     const savedSession = await this.sessionRepo.save(newSession);
@@ -136,7 +138,7 @@ export class SessionService {
     });
     const clientTokens = clients.data.map((c) => c.firebaseToken).filter(Boolean);
 
-    console.log('Group client tokens: - session.service.ts:139', clientTokens);
+    console.log('Group client tokens: - session.service.ts:141', clientTokens);
 
     const therapistToken = await this.therapistService.findOne(
       createSessionDto.therapist,

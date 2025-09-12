@@ -16,6 +16,7 @@ import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
 import { Message } from './message.entity';
+import { Modal } from './modal.entity';
 
 @Unique('UQ_therapist_schedule', ['therapist','schedule'])
 @Unique('UQ_client_schedule', ['client', 'schedule'])
@@ -82,6 +83,10 @@ export class Session extends CommonEntity {
   @ApiProperty({ type: () => Message, isArray: true })
   @OneToMany(() => Message, (message) => message.session, {onDelete: 'CASCADE'})
   message: Message[];
+
+  @ApiProperty({type : () => Modal})
+  @ManyToOne(() => Modal, (modal) => modal.session, { onDelete: 'RESTRICT' })
+  modal: Modal;
 
   async addMessage(
     msgRepo: Repository<Message>,
