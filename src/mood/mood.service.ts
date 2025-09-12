@@ -51,7 +51,6 @@ export class MoodService {
 
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Mood> {
   try {
-    console.log({id, queryParams})
       const mood = await new APIFeatures(this.mooodRepo, queryParams).getOne(id);
       if (!mood) throw new NotFoundException('Mood not found');
       return mood

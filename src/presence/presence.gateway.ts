@@ -22,6 +22,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
     Track active socket IDs per userId. 
     Key: userId (string), Value: Set of socket IDs.
    */
+  // TODO: Move to redis
   private readonly activeSockets = new Map<string, Set<string>>();
 
   constructor(
@@ -140,4 +141,13 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.logger.warn(`Unsupported user type "${userType}" when marking offline`);
     }
   }
+
+  async notifyProfilePictureChange(userId: string, userType: UserTypes, profilePicture: string | null) {
+  this.server.emit('userProfileUpdated', {
+    userId,
+    type: userType,
+    profilePicture,
+  });
+}
+
 }
