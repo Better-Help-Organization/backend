@@ -20,6 +20,18 @@ export class SessionController {
   //   return this.sessionService.create(createSessionDto);
   // }
 
+
+  @Post("group")
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
+  bookAGroupSession(
+    @CurrentUser() user: TokenPayload,
+    @Body() createGroupSessionDto: CreateGroupSession
+  ) {
+    return this.sessionService.createGroup(user.id, createGroupSessionDto);
+  }
+
   @Post()
   @DynamicGuards(
     new TherapistJwtAuthGuard()
@@ -29,17 +41,6 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);
-  }
-
-  @Post()
-  @DynamicGuards(
-    new AdminJwtAuthGuard(),
-  )
-  bookAGroupSession(
-    @CurrentUser() user: TokenPayload,
-    @Body() createGroupSessionDto: CreateGroupSession
-  ) {
-    return this.sessionService.create(user.id, createGroupSessionDto);
   }
 
   @Post(":sessionId/add-to-session")

@@ -58,7 +58,7 @@ export class CreateSessionDto extends baseSession {
 }
 
 export class CreateGroupSession extends baseSession {
-    @ApiProperty({
+  @ApiProperty({
     description: 'Array of client UUIDs for group sessions',
     example: [
       'a7e6d68a-3931-4b90-b9d3-bbd3d40813b1',
