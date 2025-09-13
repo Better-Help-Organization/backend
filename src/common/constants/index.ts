@@ -83,6 +83,11 @@ export enum SessionType {
   AUDIO = "audio",
 }
 
+export enum ApprovalStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed'
+}
+
 export enum DayOfWeek {
   MONDAY = 'Monday',
   TUESDAY = 'Tuesday',
@@ -99,20 +104,20 @@ export enum DayPeriod {
   EVENING = 'evening',
 }
 
-// export enum SubscriptionStatus {
-//   PENDING = 'pending',
-//   ACTIVE = 'active',
-//   PAUSED = 'paused',
-//   CANCELED = 'canceled',
-// }
+export enum SubscriptionStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  CANCELED = 'canceled',
+}
 
-// export enum SubscriptionType {
-//   TRIAL = 0,
-//   MONTHLY = 1,
-//   QUARTERLY = 3,
-//   SEMI_ANNUAL = 6,
-//   YEARLY = 12,
-// }
+export enum SubscriptionType {
+  TRIAL = 0,
+  MONTHLY = 1,
+  QUARTERLY = 3,
+  SEMI_ANNUAL = 6,
+  YEARLY = 12,
+}
 
 export enum MoodValues {
   HAPPY= 'happy', 
@@ -124,18 +129,19 @@ export enum MoodValues {
 
 export const SessionNotif: Record<string, { code: string; title: string, showNotification: boolean }> = {
   SCHEDULED: { code: "1", title: 'Session scheduled', showNotification: true },
-  NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
-  EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
-  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
-  CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
-  CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
-  CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
+  TAKEN: { code: "2", title: 'Session slot is no longer available', showNotification: true },
+  NEW_MESSAGE: { code: "3", title: 'New message', showNotification: true },
+  EDIT_MESSAGE: { code: "4", title: 'Edit message', showNotification: true },
+  MESSAGE_READ: { code: "5", title: 'Message Read', showNotification: false },
+  INCOMING_CALL: { code: "6", title: 'Incoming Call', showNotification: true },
+  CALL_ENDED: { code: "7", title: 'Call Ended', showNotification: true },
+  CALL_REJECTED: { code: "8", title: 'Call Rejected', showNotification: true },
+  CHAT: { code: "9", title: 'Added to Chat', showNotification: false },
   // Match-related notifications
-  MATCH_REQUEST: { code: '8', title: 'New match request', showNotification: true  },
-  MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
-  MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
-  STATUS_CHAGNED: { code: '11', title: 'Status Update', showNotification: true  },
+  MATCH_REQUEST: { code: '10', title: 'New match request', showNotification: true  },
+  MATCH_ACCEPTED: { code: '11', title: 'Match accepted', showNotification: true  },
+  MATCH_TAKEN: { code: '12', title: 'Match already taken', showNotification: true  },
+  STATUS_CHAGNED: { code: '13', title: 'Status Update', showNotification: true  },
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

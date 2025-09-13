@@ -5,8 +5,8 @@ import { Match } from './match.entity';
 import { Mood } from './mood.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
+import { Subscription } from './subscription.entity';
 import { User } from './user.entity';
-// import { Subscription } from './subscription.entity';
 
 @Entity()
 export class Client extends User {
@@ -43,8 +43,8 @@ export class Client extends User {
   @OneToMany(() => Mood, mood => mood.client)
   moods: Mood[];
 
-  // @ApiProperty({ type: () => Subscription })
-  // @OneToMany(() => Subscription, subscription => subscription.client)
-  // subscription: Subscription[];
+  @ApiProperty({ type: () => Subscription })
+  @OneToMany(() => Subscription, subscription => subscription.client)
+  subscription: Subscription[];
   // @ApiProperty({ type: () => Session })
 }

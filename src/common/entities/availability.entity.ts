@@ -1,9 +1,9 @@
-import { Entity, Column, ManyToOne, Unique } from 'typeorm';
-import { Therapist } from './therapist.entity';
-import { Preference } from './preference.entity';
 import { ApiProperty } from '@nestjs/swagger';
-import { CommonEntity } from './common.entity';
+import { Column, Entity, ManyToOne, Unique } from 'typeorm';
 import { DayOfWeek, DayPeriod } from '../constants';
+import { CommonEntity } from './common.entity';
+import { Preference } from './preference.entity';
+import { Therapist } from './therapist.entity';
 
 @Unique(['therapist', 'day', 'day_period'])
 @Unique(['preference', 'day', 'day_period'])
@@ -23,7 +23,7 @@ export class Availability extends CommonEntity {
   })
   preference?: Preference;
 
-  @Column({ type: 'enum', enum: DayOfWeek })
+  @Column({ type: 'enum', enum: DayOfWeek, nullable: true})
   @ApiProperty({
     example: 'Monday',
     description: 'Day of the week',
@@ -31,11 +31,19 @@ export class Availability extends CommonEntity {
   })
   day: DayOfWeek;
 
-  @Column({ type: 'enum', enum: DayPeriod })
+  @Column({ type: 'enum', enum: DayPeriod, nullable: true})
   @ApiProperty({
     example: 'morning',
     description: 'Time period of the Day',
     enum: DayPeriod,
   })
   day_period: DayPeriod;
+
+  @ApiProperty()
+  @Column({ type: 'timestamp', nullable: true})
+  schedule: Date;
+
+  @ApiProperty()
+  @Column({ type: 'int', comment: 'Duration in minutes', nullable: true})
+  duration: number;
 }
