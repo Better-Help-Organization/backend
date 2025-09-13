@@ -57,7 +57,18 @@ export class DiaryService {
     return `This action updates a #${id} diary`;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} diary`;
+  async remove(id: string) {
+    try {
+      this.logger.log(`Removing diary with ID: ${id}`);
+      const result = await this.diaryRepo.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`diary with ID ${id} not found`);
+      }
+      this.logger.log(`diary with ID ${id} removed`);
+      return `diary removed`;
+    } catch (error) {
+      this.logger.error(`Error removing diary: ${error.message}`);
+      throw error;
+    }
   }
 }

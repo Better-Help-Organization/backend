@@ -56,7 +56,19 @@ export class QuoteService {
     return `This action updates a #${id} quote`;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} quote`;
+  async remove(id: string) {
+    try {
+      this.logger.log(`Removing quote with ID: ${id}`);
+      const result = await this.quoteRepo.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`quote with ID ${id} not found`);
+      }
+      this.logger.log(`quote with ID ${id} removed`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error removing quote: ${error.message}`);
+      throw error;
+    }
   }
+
 }
