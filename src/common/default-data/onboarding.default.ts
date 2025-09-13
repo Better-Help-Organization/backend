@@ -50,7 +50,7 @@ export const onboardingData = [
   {
     name: 'Couple Therapy',
     order: 3,
-    description: 'For couples looking to improve communication, resolve conflict, and grow together.',
+    description: 'For couples, including married partners, looking to improve communication, resolve conflicts, and grow together in their relationship.',
     questions: [
       { text: 'Which country/region are you in?', type: QuestionType.SINGLE, option: ['Addis Ababa', 'Oromia', 'Tigray', 'Amhara', 'Other'] },
       { text: 'What are your ages?', type: QuestionType.SINGLE, option: ['18–24', '25–34', '35–44', '45–54', '55+'] },
