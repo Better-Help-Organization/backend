@@ -123,12 +123,18 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
 
 
   async remove(id: string) {
+    console.log(id)
     try {
-      const msg = await this.findOne(id);
-      await this.messageRepo.remove(msg);
-    } catch (err) {
-      this.logger.error(`Delete message error: ${err.message}`);
-      throw err;
+      this.logger.log(`Removing message with ID: ${id}`);
+      const result = await this.messageRepo.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`message with ID ${id} not found`);
+      }
+      this.logger.log(`message with ID ${id} removed`);
+      return `message removed`;
+    } catch (error) {
+      this.logger.error(`Error removing message: ${error.message}`);
+      throw error;
     }
   }
 
