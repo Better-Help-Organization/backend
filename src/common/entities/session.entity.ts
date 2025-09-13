@@ -5,8 +5,7 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
-  Repository,
-  Unique
+  Repository
 } from 'typeorm';
 import { ApprovalStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
@@ -18,8 +17,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
 
-@Unique('UQ_therapist_schedule', ['therapist','schedule'])
-@Unique('UQ_client_schedule', ['client', 'schedule'])
 @Entity('session')
 export class Session extends CommonEntity {
 
