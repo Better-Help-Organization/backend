@@ -61,7 +61,12 @@ export interface TokenPayload {
 
 export enum ValidFolders {
   LICENCE = "licence",
-  PROFILE = "profile"
+  PROFILE = "profile",
+  DEGREE = "degree",
+  GOV_ID = "gov_id",
+  PROFESSIONAL_LICENSE = "professional_license",
+  WORK_EXPERIENCE = "work_experience",
+  SPECIAL_TRAINING = "special_training"
 }
 
 export enum VERSION {

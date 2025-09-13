@@ -88,7 +88,24 @@ export class UploadInterceptor implements NestInterceptor {
                         }
 
                         cb(null, fileName);
-                    } else {
+                    } 
+                    else if (folder === ValidFolders.DEGREE) {
+                        const filename = `${token.id}_degree${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.GOV_ID) {
+                        const filename = `${token.id}_govid${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.PROFESSIONAL_LICENSE) {
+                        const filename = `${token.id}_prolicense${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.WORK_EXPERIENCE) {
+                        const filename = `${token.id}_cv${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.SPECIAL_TRAINING) {
+                        const filename = `${token.id}_training${ext}`;
+                        cb(null, filename);
+                      }
+                    else {
                         return cb(new Error('Unsupported folder type'), '');
                     }
                 } catch (err: any) {
@@ -99,7 +116,7 @@ export class UploadInterceptor implements NestInterceptor {
           }),
           fileFilter: (req, file, cb) => {
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-              console.warn('Rejected file type:', file.mimetype);
+              console.warn('Rejected file type: - upload.interceptor.ts:119', file.mimetype);
             }
             cb(null, true);
           },

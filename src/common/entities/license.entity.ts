@@ -16,15 +16,15 @@ export class License extends CommonEntity {
   therapist: Therapist;
 
   @ApiProperty({ example: '1234-ABCD', description: 'Unique license number' })
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   license_number: string;
 
   @ApiProperty({ example: 'California' })
-  @Column()
+  @Column({ nullable: true })
   region: string;
 
   @ApiProperty({ example: '2025-12-31', type: String, format: 'date' })
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true  })
   expiration_date: Date;
 
   @ApiProperty({ example: false, default: false })
@@ -38,4 +38,27 @@ export class License extends CommonEntity {
   })
   @Column({ nullable: true })
   filename: string;
+
+    // ============= NEW FILE FIELDS =============
+
+  @ApiProperty({ description: 'Degree certificate filename', required: true })
+  @Column({ nullable: true })
+  degree_certificate: string;
+
+  @ApiProperty({ description: 'Government-issued ID filename', required: true })
+  @Column({ nullable: true })
+  government_id: string;
+
+  @ApiProperty({ description: 'Professional license/certification file', required: false })
+  @Column({ nullable: true })
+  professional_license: string;
+
+  @ApiProperty({ description: 'Work experience CV or reference file', required: false })
+  @Column({ nullable: true })
+  work_experience: string;
+
+  @ApiProperty({ description: 'Special training certificate file', required: false })
+  @Column({ nullable: true })
+  special_training: string;
+
 }

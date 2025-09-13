@@ -143,11 +143,11 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   async notifyProfilePictureChange(userId: string, userType: UserTypes, profilePicture: string | null) {
-  this.server.emit('userProfileUpdated', {
-    userId,
-    type: userType,
-    profilePicture,
-  });
-}
+    this.server.emit('userProfileUpdated', {
+        userId,
+        type: userType,
+        profilePicture,
+      });
+    }
 
 }

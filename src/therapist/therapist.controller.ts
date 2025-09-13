@@ -142,7 +142,7 @@ export class TherapistController {
     name: 'folder',
     enum: Object.values(ValidFolders),
     required: true,
-    description: 'Target folder: licence, profile etc.',
+    description: 'Target folder: licence, profile, degree, gov_id, professional_license, work_experience, special_training.',
   })
   @ApiQuery({
     name: 'modalId',
@@ -170,18 +170,22 @@ export class TherapistController {
     @CurrentUser() token: TokenPayload,
     @UploadedFile() file: Express.Multer.File,
     @ValidatedFolder() folder: ValidFolders,
+    @Query('modalId') modalId?: string,
   ) {
     if (folder === ValidFolders.PROFILE) {
+      console.log({file})
       const finalFileName = await this.therapistService.uploadProfile(token, file.filename);
       return {
         message: 'Profile updated successfully',
         filename: finalFileName,
       };
     }
+    // Handle all therapist documents mapped to License entity
+    const finalFileName = await this.therapistService.saveDocument(token, file.filename, folder, modalId);
 
     return {
       message: 'File uploaded successfully',
-      filename: file.filename,
+      filename: finalFileName,
     };
   }
 

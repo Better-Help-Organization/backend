@@ -9,6 +9,7 @@ import { Session } from './session.entity';
 
 @Entity()
 export class Modal extends CommonEntity {
+  
   @ApiProperty()
   @Column({unique: true})
   name: string;
@@ -17,7 +18,7 @@ export class Modal extends CommonEntity {
   @Column({unique: true, nullable: true})
   order: number;
 
-@ApiProperty() 
+  @ApiProperty() 
   @Column('text')
   description: string;
 
