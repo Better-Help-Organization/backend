@@ -1,25 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsIn, IsInt, Min, IsOptional } from 'class-validator';
-import { DayOfWeek, DayPeriod } from 'src/common/constants';
+import { IsDateString, IsInt, IsOptional } from 'class-validator';
+import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
 
 export class UpdateAvailabilityDto {
   @ApiProperty({
-    example: 'Monday',
-    description: 'Day of the week',
-    enum: DayOfWeek,
+    description: 'Scheduled start date and time of the session',
+    example: '2025-08-12T14:30:00Z',
   })
   @IsOptional()
-  @IsString()
-  @IsIn(Object.values(DayOfWeek))
-  day: DayOfWeek;
-
+  @IsDateString()
+  @IsFutureDateOrDateTime({ message: 'Session must be in the future' })
+  schedule: Date;
+    
   @ApiProperty({
-    example: 'morning',
-    description: 'Time Period of the day',
-    enum: DayPeriod,
+    description: 'Duration of the session in minutes',
+    example: 60,
   })
   @IsOptional()
-  @IsString()
-  @IsIn(Object.values(DayPeriod))
-  day_period: DayPeriod;
+  @IsInt()
+  duration: number;
 }

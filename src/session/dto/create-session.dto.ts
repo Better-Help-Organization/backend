@@ -7,9 +7,11 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID
+  IsUUID,
+  Matches
 } from 'class-validator';
 import { SessionType } from 'src/common/constants';
+import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
 
 export class baseSession {
 
@@ -22,11 +24,23 @@ export class baseSession {
   note: string;
 
   @ApiProperty({
-    description: 'Scheduled start date and time of the session',
-    example: '2025-08-12T14:30:00Z',
+    description: 'Date of the session',
+    example: '2025-08-12',
   })
   @IsDateString()
-  schedule: string;
+  @IsFutureDateOrDateTime({ message: 'Session must be in the future' })
+  date: string;
+
+  @ApiProperty({
+    description: 'Array of start times (24h format) for the session',
+    example: ['09:00', '11:00', '15:00'],
+  })
+  @IsArray()
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    each: true,
+    message: 'Each start time must be in HH:mm format',
+  })
+  startTimes: string[];
 
   @ApiProperty({
     description: 'Duration of the session in minutes',

@@ -2,10 +2,11 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
+import { SelectSessionDto } from './dto/select-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
@@ -29,7 +30,7 @@ export class SessionController {
     @CurrentUser() user: TokenPayload,
     @Body() createGroupSessionDto: CreateGroupSession
   ) {
-    return this.sessionService.createGroup(user.id, createGroupSessionDto);
+    return this.sessionService.create(user.id, createGroupSessionDto);
   }
 
   @Post()
@@ -41,6 +42,15 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);
+  }
+
+  @Post('select')
+  @DynamicGuards(new ClientJwtAuthGuard())
+  selectSession(
+    @CurrentUser() user: TokenPayload,
+    @Body() dto: SelectSessionDto
+  ) {
+    return this.sessionService.selectSession(user, dto);
   }
 
   @Post(":sessionId/add-to-session")

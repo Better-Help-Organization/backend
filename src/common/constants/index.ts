@@ -89,6 +89,11 @@ export enum SessionType {
   AUDIO = "audio",
 }
 
+export enum ApprovalStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed'
+}
+
 export enum DayOfWeek {
   MONDAY = 'Monday',
   TUESDAY = 'Tuesday',
@@ -105,20 +110,20 @@ export enum DayPeriod {
   EVENING = 'evening',
 }
 
-// export enum SubscriptionStatus {
-//   PENDING = 'pending',
-//   ACTIVE = 'active',
-//   PAUSED = 'paused',
-//   CANCELED = 'canceled',
-// }
+export enum SubscriptionStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  CANCELED = 'canceled',
+}
 
-// export enum SubscriptionType {
-//   TRIAL = 0,
-//   MONTHLY = 1,
-//   QUARTERLY = 3,
-//   SEMI_ANNUAL = 6,
-//   YEARLY = 12,
-// }
+export enum SubscriptionType {
+  TRIAL = 0,
+  MONTHLY = 1,
+  QUARTERLY = 3,
+  SEMI_ANNUAL = 6,
+  YEARLY = 12,
+}
 
 export enum MoodValues {
   HAPPY= 'happy', 
@@ -142,6 +147,8 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
   MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
   STATUS_CHAGNED: { code: '11', title: 'Status Update', showNotification: true  },
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
+  TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
+
 } as const;
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

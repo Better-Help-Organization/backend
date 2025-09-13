@@ -5,10 +5,9 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
-  Repository,
-  Unique
+  Repository
 } from 'typeorm';
-import { SessionType } from '../constants';
+import { ApprovalStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
 import { Status } from './status.entity';
@@ -18,8 +17,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
 
-@Unique('UQ_therapist_schedule', ['therapist','schedule'])
-@Unique('UQ_client_schedule', ['client', 'schedule'])
 @Entity('session')
 export class Session extends CommonEntity {
 
@@ -72,6 +69,10 @@ export class Session extends CommonEntity {
   @ApiProperty({nullable:true})
   @Column({ type: 'text', nullable:true })
   note: string;
+
+  @ApiProperty()
+  @Column({ type: 'enum', enum: ApprovalStatus, default: ApprovalStatus.PENDING })
+  approvalStatus: ApprovalStatus;
 
   @ApiProperty()
   @OneToMany(() => Status, status => status.session, {

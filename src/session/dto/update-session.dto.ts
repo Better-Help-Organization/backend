@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { SessionType } from 'src/common/constants';
+import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
 
 export class UpdateSessionDto {
 
@@ -18,6 +19,7 @@ export class UpdateSessionDto {
       })
       @IsOptional()
       @IsDateString()
+      @IsFutureDateOrDateTime({ message: 'Session must be in the future' })
       schedule: Date;
     
       @ApiProperty({

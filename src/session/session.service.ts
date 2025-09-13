@@ -1,16 +1,19 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, Tokens } from 'src/common/constants';
+import { ApprovalStatus, SessionNotif, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
+import { Availability } from 'src/common/entities/availability.entity';
 import { Session } from 'src/common/entities/session.entity';
+import { Subscription } from 'src/common/entities/subscription.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Repository } from 'typeorm';
+import { Between, In, Not, Repository } from 'typeorm';
 import { AddToSessionDto } from './dto/add-session.dto';
-import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
+import { CreateSessionDto } from './dto/create-session.dto';
+import { SelectSessionDto } from './dto/select-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 
 @Injectable()
@@ -18,6 +21,7 @@ export class SessionService {
 
   constructor (
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
+    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
     private readonly logger: LoggerService,
     private readonly firebaseService: FirebaseService,  
     private readonly clientService: ClientService,  
@@ -46,180 +50,242 @@ export class SessionService {
     }
   }
 
-  async create(id:string, createSessionDto : CreateSessionDto ) {
-    this.logger.log('Creating a new session');
-    try {
-
+  async create(id:string, createSessionDto: CreateSessionDto) {
+    return await this.sessionRepo.manager.transaction(async (manager) => {
+      this.logger.log('Creating new session(s)');
       let clientEntity = null;
-      
-      clientEntity = await this.clientService.findOne(createSessionDto.client);
-      console.log({clientEntity});
+      let groupEntities = null;
+      if(createSessionDto.client) {
+        clientEntity = await this.clientService.findOne(createSessionDto.client);
+        console.log({clientEntity});
+      }
+
+      if(createSessionDto.groupClients?.length) {
+        groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
+        console.log('Group entities: - session.service.ts:65', groupEntities);
+      }
       const therapistEntity = await this.therapistService.findOne(id);
 
-      const newSession = this.sessionRepo.create({
-        ...createSessionDto,
-        client: clientEntity,
-        therapist: therapistEntity,
-        modal: {id: createSessionDto.modal}
-      });
+      const { date, startTimes, duration } = createSessionDto;
+      const baseDate = new Date(date);
 
-      const savedSession = await this.sessionRepo.save(newSession);
-      
-      const tokens: Tokens  = {
-        client: [],
-        therapist: [],
-        admin: [],
-      };
-      let clientToken: string[] = []
-      const client = await this.clientService.findOne(createSessionDto.client)
-      console.log('Client token: - session.service.ts:75', client); 
-      clientToken.push(client.firebaseToken);     
+      // CLIENT DAILY CONFLICT CHECK
+      if (clientEntity) {
+        const startOfDay = new Date(baseDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(baseDate);
+        endOfDay.setHours(23, 59, 59, 999);
 
+        const clientConflict = await manager.findOne(Session, {
+          where: {
+            client: clientEntity,
+            schedule: Between(startOfDay, endOfDay),
+          },
+        });
 
-      const therapistToken = await this.therapistService.findOne(id)
-      console.log('Therapist token: - session.service.ts:80', therapistToken.firebaseToken);
-      tokens.client.push(...clientToken, );
-      tokens.therapist.push(therapistToken?.firebaseToken);
-
-      this.firebaseService.sendPushNotification(
-        tokens,
-        JSON.stringify(savedSession),
-        SessionNotif.SCHEDULED,
-        `Your session has been scheduled for ${new Date(createSessionDto.schedule).toLocaleString()}`,
-      );
-  
-      this.logger.log('Session created successfully');
-      return savedSession;
-    } catch (error) {
-      this.logger.error(`Error creating session: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async createGroup(id: string, createSessionDto: CreateGroupSession) {
-  this.logger.log('Creating a new Group session');
-  try {
-    // 1. Get all clients for this group
-    const groupEntities = await this.clientService.findAll({
-      ids: `${createSessionDto.groupClients.join(',')}`,
-    });
-    console.log('Group entities: - session.service.ts:106', groupEntities);
-
-    // 2. Ensure isInGroup is marked true
-    if (groupEntities?.data?.length) {
-      for (const client of groupEntities.data) {
-        if (!client.isInGroup) {
-          client.isInGroup = true;
-          await this.clientService.update(client.id, { isInGroup: true });
+        if (clientConflict) {
+          throw new BadRequestException(
+            'Client already has a pending session on this date',
+          );
         }
       }
-    }
 
-    // 3. Fetch therapist
-    const therapistEntity = await this.therapistService.findOne(
-      createSessionDto.therapist,
-    );
+      const sessions: Session[] = [];
+      const sessionIds: string[] = [];
 
-    // 4. Create new session
-    const newSession = this.sessionRepo.create({
-      ...createSessionDto,
-      therapist: therapistEntity,
-      group: groupEntities?.data || null,
-      modal: {id: createSessionDto.modal}
+      for (const startTime of startTimes) {
+        const [hours, minutes] = startTime.split(':').map(Number);
+
+        const schedule = new Date(baseDate);
+        schedule.setHours(hours, minutes, 0, 0);
+
+        const sessionEnd = new Date(schedule.getTime() + duration * 60 * 1000);
+
+        const therapistConflict = await manager.findOne(Session, {
+          where: {
+            therapist: therapistEntity,
+            approvalStatus: Not(ApprovalStatus.PENDING),
+            schedule: Between(
+              new Date(schedule.getTime() - duration * 60 * 1000),
+              new Date(sessionEnd.getTime()),
+            ),
+          },
+        });
+
+        if (therapistConflict) {
+          // Skip creating this hour slot, or notify if needed
+          this.logger.log(`Therapist already has a session at ${schedule.toLocaleString()}`);
+          continue;
+        }
+
+        const newSession = manager.create(Session, {
+          ...createSessionDto,
+          schedule,
+          client: clientEntity,
+          therapist: therapistEntity,
+          group: groupEntities?.data || null,
+        });
+
+        const savedSession = await manager.save(newSession);
+        sessions.push(savedSession);
+        sessionIds.push(savedSession.id);
+      }
+
+      if (sessions.length > 0) {
+        // Collect tokens only once
+        const tokens: Tokens = { client: [], therapist: [], admin: [] };
+        if (clientEntity?.firebaseToken) tokens.client.push(clientEntity.firebaseToken);
+        if (groupEntities)
+          tokens.client.push(...groupEntities.data.map((c) => c.firebaseToken));
+        if (therapistEntity?.firebaseToken)
+          tokens.therapist.push(therapistEntity.firebaseToken);
+
+        // Send one notification with all session IDs
+        this.firebaseService.sendPushNotification(
+          tokens,
+          JSON.stringify({ sessionIds }), // Payload contains only IDs
+          SessionNotif.SCHEDULED,
+          `Your sessions have been scheduled: ${sessions
+            .map((s) => s.schedule.toLocaleString())
+            .join(', ')}`,
+        );
+      }
+
+      this.logger.log(`Created ${sessions.length} session(s) successfully`);
+      return sessions;
     });
-
-    const savedSession = await this.sessionRepo.save(newSession);
-
-    // 5. Collect tokens
-    const tokens: Tokens = { client: [], therapist: [], admin: [] };
-
-    const clients = await this.clientService.findAll({
-      ids: `${createSessionDto.groupClients.join(',')}`,
-    });
-    const clientTokens = clients.data.map((c) => c.firebaseToken).filter(Boolean);
-
-    console.log('Group client tokens: - session.service.ts:141', clientTokens);
-
-    const therapistToken = await this.therapistService.findOne(
-      createSessionDto.therapist,
-    );
-    console.log(
-      'Therapist token:',
-      therapistToken.firebaseToken,
-    );
-
-    tokens.client.push(...clientTokens);
-    if (therapistToken?.firebaseToken) {
-      tokens.therapist.push(therapistToken.firebaseToken);
-    }
-
-    // 6. Send notifications
-    this.firebaseService.sendPushNotification(
-      tokens,
-      JSON.stringify(savedSession),
-      SessionNotif.SCHEDULED,
-      `Your session has been scheduled for ${new Date(
-        createSessionDto.schedule,
-      ).toLocaleString()}`,
-    );
-
-    this.logger.log('Session created successfully');
-    return savedSession;
-  } catch (error) {
-    this.logger.error(`Error creating session: ${error.message}`);
-    throw error;
   }
-}
 
-  // async createGroup(id:string, createSessionDto : CreateGroupSession ) {
-  //   this.logger.log('Creating a new Group session');
-  //   try {
+  async selectSession(token: TokenPayload, dto: SelectSessionDto) {
+    return await this.sessionRepo.manager.transaction(async (manager) => {
+      const { selectedId, unselectedIds } = dto;
 
-  //     let groupEntities = null;
-  //       groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
-  //       console.log('Group entities: - session.service.ts:104', groupEntities);
+      // Fetch selected session
+      const selected = await this.sessionRepo.findOne({
+        where: { id: selectedId },
+        relations: ['therapist', 'client'],
+      });
 
-  //     const therapistEntity = await this.therapistService.findOne(createSessionDto.therapist);
+      if (!selected) {
+        throw new BadRequestException('Selected session does not exist');
+      }
 
-  //     const newSession = this.sessionRepo.create({
-  //       ...createSessionDto,
-  //       therapist: therapistEntity,
-  //       group: groupEntities?.data || null,
-  //     });
+      if (selected.client.id !== token.id) {
+        throw new BadRequestException('Unauthorized selection');
+      }
 
-  //     const savedSession = await this.sessionRepo.save(newSession);
-      
-  //     const tokens: Tokens  = {
-  //       client: [],
-  //       therapist: [],
-  //       admin: [],
-  //     };
-  //     let clientToken: string[] = []
+      // HANDLE PENDING CONFLICTS
+      if (selected.approvalStatus !== ApprovalStatus.PENDING) {
+        throw new BadRequestException('This session slot is no longer available');
+      }
 
-  //     const clients = (await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`}))
-  //     clientToken.push(clients.data.map(c => c.firebaseToken));
-  //     console.log('Group client tokens: - session.service.ts:125', ...clientToken);
-      
-  //     const therapistToken = await this.therapistService.findOne(createSessionDto.therapist)
-  //     console.log('Therapist token: - session.service.ts:128', therapistToken.firebaseToken);
-  //     tokens.client.push(...clientToken, );
-  //     tokens.therapist.push(therapistToken?.firebaseToken);
+      // Validate unselected IDs
+      const validUnselectedIds = (unselectedIds || []).filter(
+        (id) => id !== selectedId,
+      );
 
-  //     this.firebaseService.sendPushNotification(
-  //       tokens,
-  //       JSON.stringify(savedSession),
-  //       SessionNotif.SCHEDULED,
-  //       `Your session has been scheduled for ${new Date(createSessionDto.schedule).toLocaleString()}`,
-  //     );
-  
-  //     this.logger.log('Session created successfully');
-  //     return savedSession;
-  //   } catch (error) {
-  //     this.logger.error(`Error creating session: ${error.message}`);
-  //     throw error;
-  //   }
-  // }
+      if (validUnselectedIds.length > 0) {
+        const unselectedSessions = await manager.find(Session, {
+          where: { 
+            id: In(validUnselectedIds),
+            client: { id: token.id }
+          },
+        });
 
+        const foundIds = unselectedSessions.map((s) => s.id);
+        const invalidIds = validUnselectedIds.filter((id) => !foundIds.includes(id));
+        if (invalidIds.length) {
+          throw new BadRequestException(`Some unselected sessions are invalid: ${invalidIds.join(', ')}`);
+        }
+
+        // Delete valid unselected sessions
+        await manager.delete(Session, foundIds);
+      }
+
+      selected.approvalStatus = ApprovalStatus.CONFIRMED;
+      const confirmed = await manager.save(selected);
+
+      // Add to therapist availability
+      const availability = manager.create(Availability, {
+        therapist: confirmed.therapist,
+        schedule: confirmed.schedule,
+        duration: confirmed.duration,
+      });
+      await manager.save(availability);
+
+      // Notify other clients with same schedule
+      const duplicates = await manager.find(Session, {
+        where: {
+          schedule: confirmed.schedule,
+          therapist: confirmed.therapist,
+          approvalStatus: ApprovalStatus.PENDING,
+          id: Not(confirmed.id),
+        },
+        relations: ['client'],
+      });
+
+      for (const dup of duplicates) {
+        if (dup.client?.firebaseToken) {
+          this.firebaseService.sendPushNotification(
+            { client: [dup.client.firebaseToken], therapist: [], admin: [] },
+            JSON.stringify(dup),
+            SessionNotif.TAKEN,
+            `The slot at ${confirmed.schedule.toLocaleString()} is no longer available.`,
+          );
+        }
+      }
+      const allSessions: Session[] = [confirmed];
+
+      // Subscription-based recurring sessions
+      const subscription = await this.subscriptionRepo.findOne({
+        where: { client: { id: token.id }, status: SubscriptionStatus.ACTIVE },
+        order: { start_date: 'DESC' },
+      });
+
+      if (subscription) {
+        const weeks = subscription.type * 4;
+
+        for (let i = 1; i < weeks; i++) {
+          const schedule = new Date(selected.schedule);
+          schedule.setDate(schedule.getDate() + i * 7);
+
+          // Check if client already has a confirmed session in this week
+          const startOfWeek = new Date(schedule);
+          startOfWeek.setDate(schedule.getDate() - schedule.getDay());
+          startOfWeek.setHours(0, 0, 0, 0);
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          endOfWeek.setHours(23, 59, 59, 999);
+
+          const conflict = await manager.findOne(Session, {
+            where: {
+              client: selected.client,
+              approvalStatus: Not(ApprovalStatus.PENDING),
+              schedule: Between(startOfWeek, endOfWeek),
+            },
+          });
+
+          if (conflict) continue; // skip this week
+
+          const newSession = this.sessionRepo.create({
+            therapist: selected.therapist,
+            client: selected.client,
+            schedule,
+            duration: selected.duration,
+            type: selected.type
+          });
+
+          const saved = await manager.save(newSession);
+          allSessions.push(saved);
+        }
+
+        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
+      }
+
+      return allSessions;
+    });
+  }
 
   async update(id: string, updateSessionDto: UpdateSessionDto): Promise<Session> {
     try {
