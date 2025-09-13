@@ -12,7 +12,6 @@ import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, In, Not, Repository } from 'typeorm';
 import { AddToSessionDto } from './dto/add-session.dto';
-import { CreateSessionDto } from './dto/create-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 
@@ -50,7 +49,7 @@ export class SessionService {
     }
   }
 
-  async create(id:string, createSessionDto: CreateSessionDto) {
+  async create(id:string, createSessionDto: any) {
     return await this.sessionRepo.manager.transaction(async (manager) => {
       this.logger.log('Creating new session(s)');
       let clientEntity = null;
@@ -62,7 +61,7 @@ export class SessionService {
 
       if(createSessionDto.groupClients?.length) {
         groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
-        console.log('Group entities: - session.service.ts:65', groupEntities);
+        console.log('Group entities: - session.service.ts:64', groupEntities);
       }
       const therapistEntity = await this.therapistService.findOne(id);
 
