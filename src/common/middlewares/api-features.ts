@@ -41,7 +41,7 @@ export class APIFeatures {
     return raw; // fallback: string
   }
 
-    filter() {
+  filter() {
     if (this.queryParams?.filters) {
       const filters = this.queryParams.filters.split(',').map((f: string) => f.trim());
 
@@ -83,16 +83,23 @@ export class APIFeatures {
               return `${fieldPath} IS NULL`;
             }
 
-            // Handle dates with range
+            // Handle dates
             if (queryValue instanceof Date) {
-              const nextDay = new Date(queryValue);
-              nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+              if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+                // YYYY-MM-DD → full-day range
+                const nextDay = new Date(queryValue);
+                nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-              clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
-              this.query.setParameter(`${paramName}Start`, queryValue);
-              this.query.setParameter(`${paramName}End`, nextDay);
+                clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
+                this.query.setParameter(`${paramName}Start`, queryValue);
+                this.query.setParameter(`${paramName}End`, nextDay);
+              } else {
+                // Full ISO timestamp → use operator
+                clause = `${fieldPath} ${operator} :${paramName}`;
+                this.query.setParameter(paramName, queryValue);
+              }
             }
-            // Handle strings with LIKE or exact match
+            // Strings / numbers / others
             else if (operator === '=') {
               clause = `${fieldPath} LIKE :${paramName}`;
               queryValue = `%${queryValue}%`;
@@ -149,14 +156,21 @@ export class APIFeatures {
           } else if (rawValue === 'null') {
             clause = `${fieldPath} IS NULL`;
           }
-          // date range
+          // date handling
           else if (queryValue instanceof Date) {
-            const nextDay = new Date(queryValue);
-            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+              // YYYY-MM-DD → full-day range
+              const nextDay = new Date(queryValue);
+              nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-            clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
-            this.query.setParameter(`${paramName}Start`, queryValue);
-            this.query.setParameter(`${paramName}End`, nextDay);
+              clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
+              this.query.setParameter(`${paramName}Start`, queryValue);
+              this.query.setParameter(`${paramName}End`, nextDay);
+            } else {
+              // Full ISO timestamp → use operator
+              clause = `${fieldPath} ${operator} :${paramName}`;
+              this.query.setParameter(paramName, queryValue);
+            }
           }
           // string/other operators
           else if (operator === '=') {
@@ -177,10 +191,8 @@ export class APIFeatures {
         }
       });
     }
-
     return this;
   }
-
   // Done
   field() {
     // console.log(this.queryParams?.fields)
