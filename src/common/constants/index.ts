@@ -151,6 +151,11 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
 
 } as const;
 
+export enum DefaultParameters {
+  VAT="vat",
+  NOTIFICATION_EXPIRY="notification expiry"
+}
+
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
 
 export const MIN_RATING = 1;

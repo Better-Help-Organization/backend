@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'bcryptjs';
 import { BaseStatus, LangCode, LevelType, ModalName } from 'src/common/constants';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
@@ -8,8 +9,10 @@ import { Language } from 'src/common/entities/language.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Modal } from 'src/common/entities/modal.entity';
 import { Option } from 'src/common/entities/option.entity';
+import { Parameter } from 'src/common/entities/parameter.entity';
 import { Question } from 'src/common/entities/question.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { defaultParams } from './default-params';
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -18,10 +21,27 @@ export class DbService implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    @InjectRepository(Parameter)
+    private parameterRepository: Repository<Parameter>,
   ) {}
 
   async onModuleInit() {
     this.logger.log('DbService module initialized');
+  }
+
+
+  async seedParameters() {
+    this.logger.log('Seeding parameters...');
+    for (const parameter of defaultParams) {
+      const exists = await this.parameterRepository.findOne({ where: { name: parameter.name } });
+      
+      if (!exists) {
+      await this.parameterRepository.save(parameter);
+      this.logger.log(`Parameter ${parameter.name} saved`);
+      } else {
+      this.logger.log(`Parameter ${parameter.name} already exists`);
+      }
+    }
   }
 
   async seedAdmin(){
