@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { UpdateUserDto } from 'src/common/dto/update-user.dto';
 
 export class UpdateTherapistDto extends UpdateUserDto {
@@ -12,5 +12,14 @@ export class UpdateTherapistDto extends UpdateUserDto {
     @IsOptional()
     @IsString()
     bio: string;
+
+    @ApiProperty({
+    example: 10,
+    description: "Short biography of the therapist",
+    required: false,
+    })
+    @IsOptional()
+    @IsNumber()
+    hoursDedicatedPerWeek: number;
 
 }

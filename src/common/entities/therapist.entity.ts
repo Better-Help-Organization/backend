@@ -45,4 +45,12 @@ export class Therapist extends User {
     onDelete: 'SET NULL',
   })
   acceptedMatch: Match[];
+
+  @ApiProperty({ example: 0 })
+  @Column('int', { 
+    nullable: true,
+    default: 0
+  })
+  hoursDedicatedPerWeek: number;
+
 }

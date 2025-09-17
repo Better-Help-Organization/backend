@@ -29,6 +29,7 @@ import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { TherapistModule } from './therapist/therapist.module';
 // import { SubscriptionModule } from './subscription/subscription.module';
+import { ParameterModule } from './parameter/parameter.module';
 import { QuoteModule } from './quote/quote.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { QuoteModule } from './quote/quote.module';
     DiaryModule,
     QuoteModule,
     SubscriptionModule,
+    ParameterModule
   ],
   controllers: [AppController],
   providers: [AppService,    
