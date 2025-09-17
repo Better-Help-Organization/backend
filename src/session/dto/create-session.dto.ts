@@ -61,7 +61,7 @@ export class baseSession {
     description: 'UUID of the modal of the  session',
     example: 'f5a2b60a-d9a4-4f3b-96f1-7f4b68d3dce9',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID()
   modal?: string;
 
