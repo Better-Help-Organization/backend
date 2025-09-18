@@ -1,10 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { SessionType } from 'src/common/constants';
 import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
 
 export class UpdateSessionDto {
 
+      @ApiProperty({
+        description: 'UUID of the therapist assigned to the session',
+        example: 'f5a2b60a-d9a4-4f3b-96f1-7f4b68d3dce9',
+      })
+      @IsNotEmpty()
+      @IsUUID()
+      therapist?: string;
+      
       @ApiProperty({
         description: 'Content of the note',
         example: 'Client reported improved mood since last session.',
@@ -47,4 +55,15 @@ export class UpdateSessionDto {
       @IsOptional()
       @IsBoolean()
       hasclientAttended: boolean;
+}
+
+export class AssignSessionDto {
+
+      @ApiProperty({
+        description: 'UUID of the therapist assigned to the session',
+        example: 'f5a2b60a-d9a4-4f3b-96f1-7f4b68d3dce9',
+      })
+      @IsNotEmpty()
+      @IsUUID()
+      therapist?: string;
 }

@@ -13,7 +13,7 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, In, Not, Repository } from 'typeorm';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, UpdateSessionDto } from './dto/update-session.dto';
 
 @Injectable()
 export class SessionService {
@@ -286,7 +286,7 @@ export class SessionService {
     });
   }
 
-  async update(id: string, updateSessionDto: UpdateSessionDto): Promise<Session> {
+  async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto): Promise<Session> {
     try {
       const session = await this.findOne(id, {fields: 'client.*, therapist.*'});
 
@@ -305,7 +305,9 @@ export class SessionService {
       
       const savedSession = await this.sessionRepo.save(session);
       
-      if (updateSessionDto.schedule) 
+      const schedule = (updateSessionDto as UpdateSessionDto).schedule;
+
+      if (schedule) 
       this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify(savedSession),
