@@ -23,6 +23,21 @@ export class UpdateUserDto {
     @IsString()
     lastName?: string;
 
+
+    @ApiProperty({
+        example: "skdnfl@gmail.com",
+        description: "new email of the user",
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    email?: string;
+
+   @ApiProperty({ description: 'Phone Number', example: '911123456' })
+   @IsOptional()
+   @IsValidPhoneNumber()
+   phoneNumber?: string;
+
     @ApiProperty({
         example: 0,
         description: "Avatar index for the user",

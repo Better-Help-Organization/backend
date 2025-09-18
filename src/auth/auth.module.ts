@@ -25,7 +25,7 @@ import { TherapistModule } from 'src/therapist/therapist.module';
     ,PassportModule
     ,forwardRef(() =>ClientModule)
     ,forwardRef(() =>TherapistModule)
-    ,AdminModule
+    ,forwardRef(() =>AdminModule)
     ,EmailModule
     ,TypeOrmModule.forFeature([Admin, Client, Therapist])
   ],

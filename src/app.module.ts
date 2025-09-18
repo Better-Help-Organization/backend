@@ -56,7 +56,8 @@ import { QuoteModule } from './quote/quote.module';
     DiaryModule,
     QuoteModule,
     SubscriptionModule,
-    ParameterModule
+    ParameterModule,
+    PresenceModule
   ],
   controllers: [AppController],
   providers: [AppService,    

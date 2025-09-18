@@ -122,20 +122,78 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
   }
 
 
-  async remove(id: string) {
-    console.log(id)
-    try {
+  async remove(id: string, sender: TokenPayload) {
       this.logger.log(`Removing message with ID: ${id}`);
+
+      // Step 1: find the message with its session
+      const message = await this.messageRepo.findOne({
+        where: { id },
+        relations: ['chat', 'chat.client', 'chat.therapist', 'chat.group'],
+      });
+
+      if (!message) {
+        throw new NotFoundException(`Message with ID ${id} not found`);
+      }
+
+      // Step 2: delete the message
       const result = await this.messageRepo.delete(id);
       if (result.affected === 0) {
-        throw new NotFoundException(`message with ID ${id} not found`);
+        throw new BadRequestException(`Unable to remove message with ID ${id}`);
       }
-      this.logger.log(`message with ID ${id} removed`);
-      return `message removed`;
-    } catch (error) {
-      this.logger.error(`Error removing message: ${error.message}`);
-      throw error;
+
+      this.logger.log(`Message with ID ${id} removed`);
+
+      // Step 3: prepare push notification
+      const senderId = sender.id;
+      const session = message.chat; // your chat/session
+
+      let tokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
+
+      if (session.group?.length > 0) {
+        tokens.client = session.group
+          .filter(g => g.firebaseToken && g.id !== senderId)
+          .map(g => g.firebaseToken);
+      } else {
+        // 1-on-1 session
+        if (sender.type === UserTypes.CLIENT && session.therapist?.firebaseToken && session.therapist.id !== senderId) {
+          tokens.therapist.push(session.therapist.firebaseToken);
+        }
+
+        if (sender.type === UserTypes.THERAPIST && session.client?.firebaseToken && session.client.id !== senderId) {
+          tokens.client.push(session.client.firebaseToken);
+        }
+      }
+
+      // Step 4: send notification
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ id, removed: true }),
+        SessionNotif.MESSAGE_REMOVED,
+        `A message was deleted`
+      );
+
+      return `Message removed`;
     }
-  }
+
+
+  // async remove(id: string) {
+  //   console.log(id)
+  //   try {
+  //     this.logger.log(`Removing message with ID: ${id}`);
+  //     const result = await this.messageRepo.delete(id);
+  //     if (result.affected === 0) {
+  //       throw new NotFoundException(`message with ID ${id} not found`);
+  //     }
+  //     this.logger.log(`message with ID ${id} removed`);
+  //     return `message removed`;
+  //   } catch (error) {
+  //     this.logger.error(`Error removing message: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
 
 }

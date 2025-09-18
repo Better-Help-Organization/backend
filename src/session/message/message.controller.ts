@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/commo
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateMessageDto } from '../dto/message/create-message.dto';
 import { MessageService } from './message.service';
@@ -52,8 +52,14 @@ export class MessageController {
   //   return this.messageService.update(+id, updateDto);
   // }
 
+  @DynamicGuards(
+  new ClientJwtAuthGuard(),
+  new TherapistJwtAuthGuard(),
+  )
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.messageService.remove(id);
+  remove(
+    @CurrentUser() sender:TokenPayload,
+    @Param('id') id: string) {
+    return this.messageService.remove(id, sender);
   }
 }

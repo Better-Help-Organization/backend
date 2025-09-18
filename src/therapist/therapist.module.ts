@@ -6,6 +6,7 @@ import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { LoggerModule } from 'src/logger/logger.module';
 import { ModalModule } from 'src/modal/modal.module';
+import { PresenceGateway } from 'src/presence/presence.gateway';
 import { SessionModule } from 'src/session/session.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
@@ -20,7 +21,8 @@ import { TherapistService } from './therapist.service';
     ModalModule,
     LoggerModule,
     SessionModule,
-    FirebaseModule
+    FirebaseModule,
+    PresenceGateway
   ],  
   controllers: [TherapistController],
   providers: [TherapistService],

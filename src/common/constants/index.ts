@@ -148,6 +148,7 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
   STATUS_CHAGNED: { code: '11', title: 'Status Update', showNotification: true  },
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
+  MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: false },
 
 } as const;
 

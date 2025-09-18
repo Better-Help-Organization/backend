@@ -30,8 +30,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly authService: AuthService,
     private readonly clientService: ClientService,
     private readonly therapistService: TherapistService,
-  ) {
-  }
+  ) {}
 
   //Safely extract JWT from handshake
   private extractToken(user: Socket): string | undefined {
