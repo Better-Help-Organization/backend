@@ -9,7 +9,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
-import { PresenceGateway } from 'src/presence/presence.gateway';
+import { PresenceService } from 'src/presence/presence.service';
 import { Repository } from 'typeorm';
 import { UpdateClientDto } from './dto/update-client.dto';
 
@@ -20,7 +20,7 @@ export class ClientService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
-    private readonly presenceGateway: PresenceGateway
+    private readonly presenceService: PresenceService
   ) {}
 
   async create(data: Partial<Client>) {
@@ -138,7 +138,7 @@ export class ClientService {
       await this.clientRepo.save(client);
 
       fs.renameSync(tmpPath, finalPath);
-      this.presenceGateway.notifyProfilePictureChange(token.id, UserTypes.CLIENT, client.profile);
+      this.presenceService.notifyProfilePictureChange(token.id, UserTypes.CLIENT, client.profile);
       
       return path.join(ValidFolders.PROFILE, finalFileName);
     } catch (err) {

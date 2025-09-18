@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,7 +10,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
-import { PresenceGateway } from 'src/presence/presence.gateway';
+import { PresenceService } from 'src/presence/presence.service';
 import { Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 
@@ -23,7 +23,8 @@ export class TherapistService {
     @InjectRepository(License)
     private readonly licenseRepo: Repository<License>,
     private readonly firebaseService: FirebaseService,
-    private readonly presenceGateway: PresenceGateway
+    @Inject(forwardRef(() => PresenceService))
+    private readonly presenceService: PresenceService
   ) {}
 
   async create(data: Partial<Therapist>) {
@@ -183,7 +184,7 @@ export class TherapistService {
       await this.therapistRepo.save({ id: therapist.id, profile: therapist.profile });
 
       fs.renameSync(tmpPath, finalPath);
-      this.presenceGateway.notifyProfilePictureChange(token.id, UserTypes.THERAPIST, therapist.profile);
+      this.presenceService.notifyProfilePictureChange(token.id, UserTypes.THERAPIST, therapist.profile);
       return path.join(ValidFolders.PROFILE, finalFileName);
     } catch (err) {
       this.logger.error(`Failed to update therapist profile: ${err.message}`);

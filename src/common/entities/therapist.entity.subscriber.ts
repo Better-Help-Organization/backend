@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PresenceGateway } from 'src/presence/presence.gateway';
 import {
   EntitySubscriberInterface,
   EventSubscriber,
@@ -11,7 +10,7 @@ import { Therapist } from './therapist.entity';
 @Injectable()
 @EventSubscriber()
 export class TherapistSubscriber implements EntitySubscriberInterface<Therapist> {
-  constructor(private readonly presenceGateway: PresenceGateway) {}
+  // constructor(private readonly presenceGateway: PresenceGateway) {}
 
   listenTo() {
     return Therapist;
@@ -24,7 +23,7 @@ export class TherapistSubscriber implements EntitySubscriberInterface<Therapist>
     if (newProfile !== undefined && newProfile !== oldProfile) {
       const userId = event.entity.id;
       const userType = UserTypes.THERAPIST; // if you store type in base class
-      this.presenceGateway.notifyProfilePictureChange(userId, userType, newProfile);
+      // this.presenceGateway.notifyProfilePictureChange(userId, userType, newProfile);
     }
   }
 }

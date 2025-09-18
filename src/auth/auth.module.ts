@@ -1,4 +1,4 @@
-import { forwardRef, Global, Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -18,7 +18,6 @@ import { AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy } from 'src/c
 import { EmailModule } from 'src/email/email.module';
 import { TherapistModule } from 'src/therapist/therapist.module';
 
-@Global()
 @Module({
   imports: [
     PassportModule

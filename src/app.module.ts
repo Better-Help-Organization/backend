@@ -43,7 +43,7 @@ import { QuoteModule } from './quote/quote.module';
       ]
     }),
     JwtModule.register({
-          global: true,   // ✅ makes JwtService available app-wide
+        global: true,   // make JwtService available app-wide
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),

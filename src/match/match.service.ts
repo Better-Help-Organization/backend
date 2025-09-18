@@ -206,8 +206,8 @@ export class MatchService {
         .map(mt => mt.therapist.firebaseToken)
         .filter((token): token is string => Boolean(token)); // type-safe non-null filter
 
-      console.log("other tokens: - match.service.ts:199", otherTokens)
-      console.log("other tokens: - match.service.ts:200", otherTokens)
+      console.log("other tokens: - match.service.ts:209", otherTokens)
+      console.log("other tokens: - match.service.ts:210", otherTokens)
 
         await this.firebaseService.sendPushNotification(
           otherTokens,

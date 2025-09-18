@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { forwardRef, Inject, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   OnGatewayConnection,
@@ -8,9 +8,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { ClientService } from 'src/client/client.service';
 import { TokenPayload, UserTypes } from 'src/common/constants';
-import { TherapistService } from 'src/therapist/therapist.service';
+import { PresenceService } from './presence.service';
 
 @WebSocketGateway({ cors: { origin: '*' }})
 export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -27,10 +26,16 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   constructor(
     private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
-    private readonly clientService: ClientService,
-    private readonly therapistService: TherapistService,
+    @Inject(forwardRef(() => PresenceService))
+    private readonly presenceService: PresenceService,
   ) {}
+
+  afterInit() {
+    // Hand over the socket.io server instance to the service
+    this.presenceService.setServer(this.server);
+  }
 
   //Safely extract JWT from handshake
   private extractToken(user: Socket): string | undefined {
@@ -81,12 +86,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
 
       // If this is the first active connection for this user, mark online and broadcast
       if (socketSet.size === 1) {
-        await this.markOnline(user.data.userId, userType);
-        this.server.emit('userStatus', {
-          userId: user.data.userId,
-          type: userType,
-          isOnline: true,
-        });
+        await this.presenceService.markOnline(user.data.userId, userType);
       }
 
       this.logger.log(`${userType} ${user.data.userId} connected (sockets: ${socketSet.size})`);
@@ -112,41 +112,12 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (socketSet.size === 0) {
         // Last socket closed → mark offline and notify
         this.activeSockets.delete(userId);
-        await this.markOffline(userId, userType);
-        this.server.emit('userStatus', { userId, type: userType, isOnline: false });
+        await this.presenceService.markOffline(user.data.userId, userType);
         this.logger.log(`${userType} ${userId} disconnected (last socket)`);
       } else {
         this.logger.log(`${userType} ${userId} disconnected (remaining sockets: ${socketSet.size})`);
       }
     }
   }
-
-  private async markOnline(userId: string, userType: UserTypes) {
-    if (userType === UserTypes.CLIENT) {
-      await this.clientService.setOnline(userId);
-    } else if (userType === UserTypes.THERAPIST) {
-      await this.therapistService.setOnline(userId);
-    } else {
-      this.logger.warn(`Unsupported user type "${userType}" when marking online`);
-    }
-  }
-
-  private async markOffline(userId: string, userType: UserTypes) {
-    if (userType === UserTypes.CLIENT) {
-      await this.clientService.setOffline(userId);
-    } else if (userType === UserTypes.THERAPIST) {
-      await this.therapistService.setOffline(userId);
-    } else {
-      this.logger.warn(`Unsupported user type "${userType}" when marking offline`);
-    }
-  }
-
-  async notifyProfilePictureChange(userId: string, userType: UserTypes, profilePicture: string | null) {
-    this.server.emit('userProfileUpdated', {
-        userId,
-        type: userType,
-        profilePicture,
-      });
-    }
 
 }
