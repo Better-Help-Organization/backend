@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
 import { License } from 'src/common/entities/license.entity';
@@ -11,6 +11,7 @@ import { SessionModule } from 'src/session/session.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([

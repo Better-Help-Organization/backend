@@ -29,6 +29,7 @@ import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { TherapistModule } from './therapist/therapist.module';
 // import { SubscriptionModule } from './subscription/subscription.module';
+import { JwtModule } from '@nestjs/jwt';
 import { ParameterModule } from './parameter/parameter.module';
 import { QuoteModule } from './quote/quote.module';
 
@@ -40,6 +41,9 @@ import { QuoteModule } from './quote/quote.module';
         `.env`,
         `.env${process.env.NODE_ENV || ''}`, // Load environment-specific variables
       ]
+    }),
+    JwtModule.register({
+          global: true,   // ✅ makes JwtService available app-wide
     }),
     DatabaseModule,    
     LoggerModule.forRoot(),
@@ -57,7 +61,6 @@ import { QuoteModule } from './quote/quote.module';
     QuoteModule,
     SubscriptionModule,
     ParameterModule,
-    PresenceModule
   ],
   controllers: [AppController],
   providers: [AppService,    

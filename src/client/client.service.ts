@@ -2,13 +2,14 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
+import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
 import { StatusDto } from 'src/common/dto/status.dto';
 import { Client } from 'src/common/entities/client.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { PresenceGateway } from 'src/presence/presence.gateway';
 import { Repository } from 'typeorm';
 import { UpdateClientDto } from './dto/update-client.dto';
 
@@ -19,6 +20,7 @@ export class ClientService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
+    private readonly presenceGateway: PresenceGateway
   ) {}
 
   async create(data: Partial<Client>) {
@@ -136,7 +138,8 @@ export class ClientService {
       await this.clientRepo.save(client);
 
       fs.renameSync(tmpPath, finalPath);
-
+      this.presenceGateway.notifyProfilePictureChange(token.id, UserTypes.CLIENT, client.profile);
+      
       return path.join(ValidFolders.PROFILE, finalFileName);
     } catch (err) {
       this.logger.error(`Failed to update therapist profile: ${err.message}`);
