@@ -9,6 +9,7 @@ import { ModalModule } from 'src/modal/modal.module';
 import { MoodModule } from 'src/mood/mood.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { SessionModule } from 'src/session/session.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
 
@@ -20,6 +21,7 @@ import { ClientService } from './client.service';
     ModalModule,
     FirebaseModule,
     DiaryModule,
+    SubscriptionModule,
     forwardRef(() => ChatModule),
     forwardRef(() => SessionModule),
     forwardRef(() => MoodModule),

@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
 import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
 import { AuthEnforcedQueryParams, GroupScope } from 'src/common/decorators/auth-enforced-query-decorator';
@@ -212,9 +212,17 @@ export class ClientController {
   @ApiConsumes('multipart/form-data')
   @ApiParam({
     name: 'folder',
-    enum: [ValidFolders.PROFILE],
+    enum: [ValidFolders.PROFILE, ValidFolders.PAYMENT],
     required: true,
-    description: 'Target folder: profile.',
+    description: 'Target folder: profile, payment.',
+  })
+  @ApiQuery({
+    name: 'subscriptionId',
+    type: 'string',
+    required: false,
+    description:
+      'Required when folder is "payment". Associates the uploaded payment with a specific subscription.',
+    example: '4be8f40a-123b-4e0a-b3f2-7767c64a88a6',
   })
   @ApiBody({
     description: 'File to upload. Folder comes from URL.',
@@ -224,17 +232,22 @@ export class ClientController {
         [FILE_UPLOAD_KEY]: {
           type: 'string',
           format: 'binary',
-          description: 'Image file to upload',
+          description: 'Image or PDF file to upload',
         },
       },
+      required: [FILE_UPLOAD_KEY], 
     },
   })
   @UseInterceptors(UploadInterceptor)
   async upload(
     @CurrentUser() token: TokenPayload,
     @UploadedFile() file: Express.Multer.File,
-    @ValidatedFolder() folder: ValidFolders,
+    @ValidatedFolder() folder: ValidFolders
   ) {
+    if (!file) {
+      throw new BadRequestException('File upload is required');
+    }
+
     if (folder === ValidFolders.PROFILE) {
       const finalFileName = await this.clientService.uploadProfile(token, file.filename);
       return {

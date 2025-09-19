@@ -9,6 +9,7 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { ModalModule } from 'src/modal/modal.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { SessionModule } from 'src/session/session.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
 
@@ -22,6 +23,7 @@ import { TherapistService } from './therapist.service';
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),
     ModalModule,
+    SubscriptionModule,
     LoggerModule,
     SessionModule,
     FirebaseModule,

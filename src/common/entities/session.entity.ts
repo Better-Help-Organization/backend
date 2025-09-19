@@ -79,6 +79,10 @@ export class Session extends CommonEntity {
   approvalStatus: ApprovalStatus;
 
   @ApiProperty()
+  @Column({ nullable: true })
+  commonId: string;
+
+  @ApiProperty()
   @OneToMany(() => Status, status => status.session, {
     cascade: true,
     nullable: true, // optional

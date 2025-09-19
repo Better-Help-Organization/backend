@@ -19,12 +19,14 @@ import {
   ValidFolders,
 } from 'src/common/constants';
 import { ModalService } from 'src/modal/modal.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UploadInterceptor implements NestInterceptor {
   constructor(
     private readonly modalService: ModalService,
+    private readonly subscriptionService: SubscriptionService
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -103,6 +105,28 @@ export class UploadInterceptor implements NestInterceptor {
                         cb(null, filename);
                       } else if (folder === ValidFolders.SPECIAL_TRAINING) {
                         const filename = `${token.id}_training${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.PAYMENT) {
+                        const subscriptionId = req.query.subscriptionId as string;
+                        if (!subscriptionId) {
+                          return cb(new Error('subscriptionId is required for payment uploads'), '');
+                        }
+
+                        const subscription = await this.subscriptionService.findOne(subscriptionId);
+                        if (!subscription) {
+                          return cb(new Error('Invalid subscriptionId'), '');
+                        }
+
+                        const uuid = uuidv4();
+                        const filename = `${token.id}_${subscriptionId}_${uuid}${ext}`;
+
+                        fs.mkdirSync(uploadDir, { recursive: true });
+
+                        const fullPath = path.join(uploadDir, filename);
+                        if (fs.existsSync(fullPath)) {
+                          fs.unlinkSync(fullPath);
+                        }
+
                         cb(null, filename);
                       }
                     else {
