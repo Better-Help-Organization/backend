@@ -31,6 +31,7 @@ import { TherapistModule } from './therapist/therapist.module';
 // import { SubscriptionModule } from './subscription/subscription.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ParameterModule } from './parameter/parameter.module';
+import { PaymentModule } from './payment/payment.module';
 import { QuoteModule } from './quote/quote.module';
 
 @Module({
@@ -61,6 +62,7 @@ import { QuoteModule } from './quote/quote.module';
     QuoteModule,
     SubscriptionModule,
     ParameterModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService,    

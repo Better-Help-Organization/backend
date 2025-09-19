@@ -105,7 +105,7 @@ export class ParameterService {
   async update(id: string, updateData: UpdateParameterDto, user: TokenPayload): Promise<Parameter> {
     this.logger.log(`Updating parameter with id: ${id}`);
     try {
-      const parameter = await this.findOne(id, { fields: "permissions.*, name, value" });
+      const parameter = await this.findOne(id, { fields: "name, value" });
       const { name, value } = updateData;
       // await this.verifyPermissions(
       //   user?.type,
@@ -145,7 +145,7 @@ export class ParameterService {
   async remove(id: string) {
     this.logger.log(`Removing parameter with id: ${id}`);
     try {
-      const parameter = await this.findOne(id, { fields: "permissions.*" });
+      const parameter = await this.findOne(id, { fields: "" });
 
       // const hasSystemPermission = this.hasSystemLevelPermissions(parameter);
 

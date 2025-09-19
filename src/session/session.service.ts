@@ -11,6 +11,7 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, In, Not, Repository } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
 import { AssignSessionDto, UpdateSessionDto } from './dto/update-session.dto';
@@ -54,16 +55,20 @@ export class SessionService {
       this.logger.log('Creating new session(s)');
       let clientEntity = null;
       let groupEntities = null;
-      if(createSessionDto.client) {
+      if (createSessionDto.client) {
         clientEntity = await this.clientService.findOne(createSessionDto.client);
-        console.log({clientEntity});
+        if (!clientEntity) throw new BadRequestException('Invalid client ID');
       }
 
-      if(createSessionDto.groupClients?.length) {
-        groupEntities = await this.clientService.findAll({ids: `${createSessionDto.groupClients.join(',')}`});
-        console.log('Group entities: - session.service.ts:64', groupEntities);
+      if (createSessionDto.groupClients?.length) {
+        groupEntities = await this.clientService.findAll({
+          ids: `${createSessionDto.groupClients.join(',')}`,
+        });
+        if (!groupEntities?.data?.length)
+          throw new BadRequestException('Invalid group client IDs');
       }
       const therapistEntity = await this.therapistService.findOne(id);
+      if (!therapistEntity) throw new BadRequestException('Invalid therapist ID');
 
       const { date, startTimes, duration } = createSessionDto;
       const baseDate = new Date(date);
@@ -84,11 +89,12 @@ export class SessionService {
 
         if (clientConflict) {
           throw new BadRequestException(
-            'Client already has a pending session on this date',
+            'Client already has a session scheduled on this date',
           );
         }
       }
 
+      const commonId = uuid();
       const sessions: Session[] = [];
       const sessionIds: string[] = [];
 
@@ -100,10 +106,11 @@ export class SessionService {
 
         const sessionEnd = new Date(schedule.getTime() + duration * 60 * 1000);
 
+        // THERAPIST CONFLICT CHECK
         const therapistConflict = await manager.findOne(Session, {
           where: {
             therapist: therapistEntity,
-            approvalStatus: Not(ApprovalStatus.PENDING),
+            approvalStatus: ApprovalStatus.CONFIRMED,
             schedule: Between(
               new Date(schedule.getTime() - duration * 60 * 1000),
               new Date(sessionEnd.getTime()),
@@ -112,17 +119,18 @@ export class SessionService {
         });
 
         if (therapistConflict) {
-          // Skip creating this hour slot, or notify if needed
-          this.logger.log(`Therapist already has a session at ${schedule.toLocaleString()}`);
-          continue;
+          throw new BadRequestException(`Therapist already has a session at ${schedule.toLocaleString()}`);
         }
 
         const newSession = manager.create(Session, {
           ...createSessionDto,
           schedule,
+          duration,
           client: clientEntity,
           therapist: therapistEntity,
           group: groupEntities?.data || null,
+          approvalStatus: ApprovalStatus.PENDING,
+          commonId,
         });
 
         const savedSession = await manager.save(newSession);
@@ -142,7 +150,7 @@ export class SessionService {
         // Send one notification with all session IDs
         this.firebaseService.sendPushNotification(
           tokens,
-          JSON.stringify({ sessionIds }), // Payload contains only IDs
+          JSON.stringify({ sessionIds }),
           SessionNotif.SCHEDULED,
           `Your sessions have been scheduled: ${sessions
             .map((s) => s.schedule.toLocaleString())
@@ -157,16 +165,24 @@ export class SessionService {
 
   async selectSession(token: TokenPayload, dto: SelectSessionDto) {
     return await this.sessionRepo.manager.transaction(async (manager) => {
-      const { selectedId, unselectedIds } = dto;
+      const { selectedId } = dto;
 
-      // Fetch selected session
-      const selected = await this.sessionRepo.findOne({
-        where: { id: selectedId },
-        relations: ['therapist', 'client'],
+      const selectedSession = await this.findOne(selectedId);
+      const commonId = selectedSession.commonId;
+
+      // Load all sessions in this batch
+      const groupSessions = await manager.find(Session, {
+        where: { commonId, client: { id: token.id } },
+        relations: ['therapist', 'client', 'modal'],
       });
 
+      if (!groupSessions.length) {
+        throw new BadRequestException('No sessions found for this selection');
+      }
+
+      const selected = groupSessions.find((s) => s.id === selectedId);
       if (!selected) {
-        throw new BadRequestException('Selected session does not exist');
+        throw new BadRequestException('Selected session is not part of this group');
       }
 
       if (selected.client.id !== token.id) {
@@ -178,31 +194,26 @@ export class SessionService {
         throw new BadRequestException('This session slot is no longer available');
       }
 
-      // Validate unselected IDs
-      const validUnselectedIds = (unselectedIds || []).filter(
-        (id) => id !== selectedId,
-      );
+      // THERAPIST AVAILABILITY CHECK
+      const therapistConflict = await manager.findOne(Availability, {
+        where: { therapist: selected.therapist, schedule: selected.schedule },
+      });
 
-      if (validUnselectedIds.length > 0) {
-        const unselectedSessions = await manager.find(Session, {
-          where: { 
-            id: In(validUnselectedIds),
-            client: { id: token.id }
-          },
-        });
-
-        const foundIds = unselectedSessions.map((s) => s.id);
-        const invalidIds = validUnselectedIds.filter((id) => !foundIds.includes(id));
-        if (invalidIds.length) {
-          throw new BadRequestException(`Some unselected sessions are invalid: ${invalidIds.join(', ')}`);
-        }
-
-        // Delete valid unselected sessions
-        await manager.delete(Session, foundIds);
+      if (therapistConflict) {
+        throw new BadRequestException(
+          `This slot at ${selected.schedule.toLocaleString()} is already taken`,
+        );
       }
 
+      // Confirm selected
       selected.approvalStatus = ApprovalStatus.CONFIRMED;
       const confirmed = await manager.save(selected);
+
+      // Delete all others from this group
+      const unselected = groupSessions.filter((s) => s.id !== selected.id);
+      if (unselected.length) {
+        await manager.delete(Session, { id: In(unselected.map((u) => u.id)) });
+      }
 
       // Add to therapist availability
       const availability = manager.create(Availability, {
@@ -260,7 +271,7 @@ export class SessionService {
           const conflict = await manager.findOne(Session, {
             where: {
               client: selected.client,
-              approvalStatus: Not(ApprovalStatus.PENDING),
+              approvalStatus: ApprovalStatus.CONFIRMED,
               schedule: Between(startOfWeek, endOfWeek),
             },
           });
@@ -272,7 +283,10 @@ export class SessionService {
             client: selected.client,
             schedule,
             duration: selected.duration,
-            type: selected.type
+            type: selected.type,
+            commonId,
+            modal: selected.modal,
+            approvalStatus: ApprovalStatus.CONFIRMED,
           });
 
           const saved = await manager.save(newSession);

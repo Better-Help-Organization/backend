@@ -62,6 +62,7 @@ export interface TokenPayload {
 export enum ValidFolders {
   LICENCE = "licence",
   PROFILE = "profile",
+  PAYMENT = "payment",
   DEGREE = "degree",
   GOV_ID = "gov_id",
   PROFESSIONAL_LICENSE = "professional_license",
@@ -123,6 +124,16 @@ export enum SubscriptionType {
   QUARTERLY = 3,
   SEMI_ANNUAL = 6,
   YEARLY = 12,
+}
+
+export enum PaymentMethod {
+  BANK_TRANSFER = 'bank_transfer',
+}
+
+export enum PaymentStatus {
+  PENDING = "pending",
+  ACCEPTED = "accepted",
+  REJECTED = 'rejected'
 }
 
 export enum MoodValues {

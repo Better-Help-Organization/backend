@@ -12,6 +12,14 @@ export class UpdateSessionDto {
       @IsNotEmpty()
       @IsUUID()
       therapist?: string;
+
+      @ApiProperty({
+        description: 'Name of the group',
+        example: 'Anxiety Support Group',
+      })
+      @IsOptional()
+      @IsString()
+      groupName: string;
       
       @ApiProperty({
         description: 'Content of the note',

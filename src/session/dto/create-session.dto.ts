@@ -23,6 +23,15 @@ export class baseSession {
   @IsString()
   note: string;
 
+
+  @ApiProperty({
+    description: 'Name of the group',
+    example: 'Anxiety Support Group',
+  })
+  @IsOptional()
+  @IsString()
+  groupName: string;
+
   @ApiProperty({
     description: 'Date of the session',
     example: '2025-08-12',

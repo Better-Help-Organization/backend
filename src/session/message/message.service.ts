@@ -171,7 +171,7 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
       // Step 4: send notification
       await this.firebaseService.sendPushNotification(
         tokens,
-        JSON.stringify({ id, removed: true }),
+        JSON.stringify({ id, removed: true, chat:message.chat.id }),
         SessionNotif.MESSAGE_REMOVED,
         `A message was deleted`
       );

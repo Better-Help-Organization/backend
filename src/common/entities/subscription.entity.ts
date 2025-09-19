@@ -1,9 +1,10 @@
-import { Entity, Column, ManyToOne } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Level } from './level.entity';
-import { CommonEntity } from './common.entity';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { SubscriptionStatus, SubscriptionType } from '../constants';
 import { Client } from './client.entity';
+import { CommonEntity } from './common.entity';
+import { Level } from './level.entity';
+import { Payment } from './payment.entity';
 
 @Entity()
 export class Subscription extends CommonEntity{
@@ -41,4 +42,8 @@ export class Subscription extends CommonEntity{
     @ApiProperty({ type: () => Level, description: 'Associated therapist level for subscription' })
     @ManyToOne(() => Level, (level) => level.subscription, { eager: true })
     level: Level;
+
+    @ApiProperty({ type: () => [Payment], description: 'Payments linked to this subscription' })
+    @OneToMany(() => Payment, (payment) => payment.subscription, { cascade: true })
+    payment: Payment[];
 }

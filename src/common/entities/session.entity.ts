@@ -42,6 +42,10 @@ export class Session extends CommonEntity {
   })
   group: Client[];
 
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  groupName: string;
+
 
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
@@ -73,6 +77,10 @@ export class Session extends CommonEntity {
   @ApiProperty()
   @Column({ type: 'enum', enum: ApprovalStatus, default: ApprovalStatus.PENDING })
   approvalStatus: ApprovalStatus;
+
+  @ApiProperty()
+  @Column({ nullable: true })
+  commonId: string;
 
   @ApiProperty()
   @OneToMany(() => Status, status => status.session, {
