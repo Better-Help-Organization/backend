@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateLicenseDto } from './dto/create-license.dto';
 import { UpdateLicenseDto } from './dto/update-license.dto';
 import { LicenseService } from './license.service';
@@ -23,8 +24,11 @@ export class LicenseController {
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
-  findAll() {
-    return this.licenseService.findAll();
+  @ApiFindAllQueryParams()
+  findAll(
+        @Query() queryparams?: FindAllQueryParams
+  ) {    
+    return this.licenseService.findAll(queryparams);
   }
 
   @Get(':id')
@@ -33,8 +37,12 @@ export class LicenseController {
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
-  findOne(@Param('id') id: string) {
-    return this.licenseService.findOne(id);
+  @ApiFindOneQueryParams()
+  findOne(
+    @Param('id') id: string,
+    @Query() queryParams: FindOneQueryParams,
+  ) {
+    return this.licenseService.findOne(id, queryParams);
   }
 
   @Patch(':id')
@@ -42,10 +50,6 @@ export class LicenseController {
     new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard()
   )
-  @DynamicGuards(
-  new AdminJwtAuthGuard(),
-)
-
   update(@CurrentUser() token: TokenPayload, @Param('id') id: string, @Body() updateLicenseDto: UpdateLicenseDto) {
     return this.licenseService.update(token, id, updateLicenseDto);
   }
