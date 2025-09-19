@@ -150,7 +150,7 @@ export class SessionService {
         // Send one notification with all session IDs
         this.firebaseService.sendPushNotification(
           tokens,
-          JSON.stringify({ sessionIds, commonId }),
+          JSON.stringify({ sessionIds }),
           SessionNotif.SCHEDULED,
           `Your sessions have been scheduled: ${sessions
             .map((s) => s.schedule.toLocaleString())
@@ -165,12 +165,15 @@ export class SessionService {
 
   async selectSession(token: TokenPayload, dto: SelectSessionDto) {
     return await this.sessionRepo.manager.transaction(async (manager) => {
-      const { selectedId, commonId } = dto;
+      const { selectedId } = dto;
+
+      const selectedSession = await this.findOne(selectedId);
+      const commonId = selectedSession.commonId;
 
       // Load all sessions in this batch
       const groupSessions = await manager.find(Session, {
         where: { commonId, client: { id: token.id } },
-        relations: ['therapist', 'client'],
+        relations: ['therapist', 'client', 'modal'],
       });
 
       if (!groupSessions.length) {
@@ -282,6 +285,7 @@ export class SessionService {
             duration: selected.duration,
             type: selected.type,
             commonId,
+            modal: selected.modal,
             approvalStatus: ApprovalStatus.CONFIRMED,
           });
 
