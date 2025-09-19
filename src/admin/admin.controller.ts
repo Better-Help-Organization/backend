@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { AdminService } from './admin.service';
-import { UpdateAdminDto } from './dto/update-admin.dto';
-import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
-import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { AdminJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
+import { AdminService } from './admin.service';
+import { AdminStatisticsService } from './admin.stats';
+import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly stats: AdminStatisticsService
+  ) {}
 
   // @Post()
   // create(@Body() createAdminDto: CreateAdminDto) {
@@ -25,6 +29,18 @@ export class AdminController {
   ) {
     console.log({user})
     return await this.adminService.findOne(user.id,queryParams);
+  }
+
+
+  @Get('stats')
+  @ApiFilterByDate()
+  @UseGuards(AdminJwtAuthGuard)
+  async statistics(
+    @CurrentUser() _: TokenPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.stats.getSystemStats(startDate, endDate);
   }
 
   @Get()

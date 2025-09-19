@@ -242,7 +242,6 @@ export class TherapistService {
       return path.join(folder.toLowerCase(), finalFileName); // relative path to store in DB
 }
 
-
   async saveDocument(token: TokenPayload, filename: string, folder: ValidFolders, modalId: string): Promise<string> {
 
       const finalFilePath = await this.moveLicenseFile(token, filename, folder);

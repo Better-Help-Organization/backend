@@ -6,7 +6,6 @@ import { TherapistModule } from 'src/therapist/therapist.module';
 import { PresenceGateway } from './presence.gateway';
 import { PresenceService } from './presence.service';
 
-// @Global()
 @Module({
   imports: [
     forwardRef(() => AuthModule),

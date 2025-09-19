@@ -7,7 +7,6 @@ import { Option } from './option.entity';
 import { Question } from './question.entity';
 
 @Unique(['client', 'question'])
-// @Unique(['client', 'modal'])
 @Entity()
 export class Answer extends CommonEntity {
   @ApiProperty({type: () => Client})

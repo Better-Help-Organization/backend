@@ -9,13 +9,14 @@ import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { DiaryService } from 'src/diary/diary.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { MatchService } from 'src/match/match.service';
 import { MoodService } from 'src/mood/mood.service';
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
+import { ClientStatisticsService } from './client.stats';
 import { UpdateClientDto } from './dto/update-client.dto';
 
 @Controller('client')
@@ -28,6 +29,7 @@ export class ClientController {
     private readonly matchService: MatchService,
     private readonly firebaseService: FirebaseService,
     private readonly diaryService: DiaryService,
+    private readonly stats: ClientStatisticsService
   ) {}
 
   @Get('me')
@@ -37,8 +39,19 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:40", user);
+    console.log("user - client.controller.ts:42", user);
     return await this.clientService.findOne(user.id,queryParams);
+  }
+
+  @Get('stats')
+  @ApiFilterByDate()
+  @UseGuards(ClientJwtAuthGuard)
+  async statistics(
+    @CurrentUser() client: TokenPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.stats.getClientAnalytics(startDate, endDate, client.id);
   }
 
   @ApiFindAllQueryParams()

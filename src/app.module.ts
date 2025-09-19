@@ -30,10 +30,10 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { TherapistModule } from './therapist/therapist.module';
 // import { SubscriptionModule } from './subscription/subscription.module';
 import { JwtModule } from '@nestjs/jwt';
+import { BankModule } from './bank/bank.module';
 import { ParameterModule } from './parameter/parameter.module';
 import { PaymentModule } from './payment/payment.module';
 import { QuoteModule } from './quote/quote.module';
-import { BankModule } from './bank/bank.module';
 
 @Module({
   imports: [
@@ -58,13 +58,12 @@ import { BankModule } from './bank/bank.module';
     MatchModule,
     PresenceModule,
     MoodModule,
-    // SubscriptionModule,
     DiaryModule,
     QuoteModule,
     SubscriptionModule,
     ParameterModule,
     PaymentModule,
-    BankModule
+    BankModule,
   ],
   controllers: [AppController],
   providers: [AppService,    
