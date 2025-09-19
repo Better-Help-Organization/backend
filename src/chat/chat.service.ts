@@ -308,6 +308,7 @@ export class ChatService {
   try {
     let client = null;
     let therapist = null;
+    let profile = null;
 
     if (sender.type === UserTypes.CLIENT) client = sender.id;
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
@@ -340,13 +341,21 @@ export class ChatService {
       // One-to-one chat
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
         tokens.therapist.push(chat.therapist.firebaseToken);
+        profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
         tokens.client.push(chat?.client?.firebaseToken);
+        profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
     console.log({tk:tokens})
-      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), {...SessionNotif.NEW_MESSAGE, title:sender.name}, content);
+      await this.firebaseService.sendPushNotification(
+        tokens, 
+        JSON.stringify(msg), 
+        {...SessionNotif.NEW_MESSAGE, title:sender.name}, 
+        content,
+         profile
+      );
 
   } catch (error) {
     this.logger.error(`Error sending message: ${error.message}`);
@@ -388,6 +397,7 @@ export class ChatService {
   try {
     let client = null;
     let therapist = null;
+    let profile = null
 
     if (sender.type === UserTypes.CLIENT) client = sender.id;
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
@@ -425,13 +435,15 @@ export class ChatService {
     } else {
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
         tokens.therapist.push(chat.therapist.firebaseToken);
+        profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
         tokens.client.push(chat.client.firebaseToken);
+        profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
 
-      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content);
+      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content, profile);
 
   } catch (error) {
     throw error;
@@ -569,7 +581,13 @@ export class ChatService {
 
     const room = createCallDto.room;
     const isVideoCall = createCallDto.isVideoCall;
-    await this.firebaseService.sendPushNotification(tokens, JSON.stringify({ room, callerData, chatId: id, isVideoCall }), SessionNotif.INCOMING_CALL, `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`)
+    await this.firebaseService.sendPushNotification(
+      tokens, 
+      JSON.stringify({ room, callerData, chatId: id, isVideoCall }), 
+      SessionNotif.INCOMING_CALL, 
+      `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString() 
+    )
 
     return chat;
     } catch (error) {
@@ -594,7 +612,8 @@ export class ChatService {
       tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_ENDED,
-      `Call ended by ${callerData.firstName}`
+      `Call ended by ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString()
     );
 
     return { success: true, status: 'ended' };
@@ -618,7 +637,8 @@ export class ChatService {
       tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_REJECTED,
-      `Call rejected by ${callerData.firstName}`
+      `Call rejected by ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString()
     );
 
     return { success: true, status: 'rejected' };

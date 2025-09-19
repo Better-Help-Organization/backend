@@ -65,8 +65,9 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
 
   async createOneMessage(sessionId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
     try {
-      let therapist = null
-      let client = null
+      let therapist = null;
+      let client = null;
+      let profile = null;
 
       if (sender.type === UserTypes.CLIENT) client = sender.id 
       if (sender.type === UserTypes.THERAPIST) therapist = sender.id

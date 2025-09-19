@@ -24,7 +24,7 @@ export class FirebaseService {
     private readonly therapistRepo: Repository<Therapist>,
   ){}
 
-  async sendPushNotification(tokens: Tokens, message: string, notificationType: SessionNotifValue, body ): Promise<void> {
+  async sendPushNotification(tokens: Tokens, message: string, notificationType: SessionNotifValue, body,   profile?: string  ): Promise<void> {
     try {
       const { code, title, showNotification } = notificationType
       this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
@@ -62,7 +62,8 @@ export class FirebaseService {
             data: {
                 id: message,
                 code,
-                timestamp: Date.now().toString()
+                timestamp: Date.now().toString(),
+                profile: profile || ''
             }
         }).catch((err)=>{})
     }
@@ -78,7 +79,7 @@ export class FirebaseService {
 
     async saveNotification(dto: SaveNotificationDto) {
         
-        const {body, code, message, title, clientTokens, therapistTokens} = dto
+        const {body, code, message, title, clientTokens, therapistTokens, profile} = dto
         // Fetch all clients in one query
         const clients = clientTokens?.length > 0
           ? await this.clientRepo.find({ where: { firebaseToken: In(clientTokens) } })
@@ -96,6 +97,7 @@ export class FirebaseService {
             body,
             message,
             code,
+            profile,
             client: {id: client.id},
             therapist: null,
           })),
@@ -104,6 +106,7 @@ export class FirebaseService {
             body,
             message: message,
             code,
+            profile,
             client: null,
             therapist: {id: therapist.id},
           })),

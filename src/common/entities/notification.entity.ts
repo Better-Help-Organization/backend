@@ -14,6 +14,9 @@ export class Notification extends CommonEntity {
   body: string;
 
   @Column({ type: 'text', nullable: true })
+  profile: string;
+
+  @Column({ type: 'text', nullable: true })
   message: string;
 
   @Column({ type: 'varchar', length: 50 })
