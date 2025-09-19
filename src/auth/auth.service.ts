@@ -610,26 +610,28 @@ export class AuthService {
   }
 
 
-  // async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
-  //   try {
+  async _allowAdminAccess(user: TokenPayload, mockId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
+    try {
       
-  //     let userToken: TokenPayload = null;
+      let userToken: TokenPayload = null;
       
-  //     if (user.type === UserTypes.ADMIN) {
-  //       const service = this._getServiceByKind(accessTo);
-  //         const { id, status  } = await service.findOne(id );
-  //         userToken = {
-  //         id: id,
-  //         status: status,
-  //         type: accessTo,
-  //       }
-  //     }
-  //     else userToken = user;
+      if (user.type === UserTypes.ADMIN) {
+        const service = this._getServiceByKind(accessTo);
+          const { id, status, firstName  } = await service.findOne(mockId);
+          userToken = {
+          id: id,
+          name: firstName,
+          status: status,
+          type: accessTo,
+        }
+      }
+      else userToken = user;
       
-  //     return userToken;
-  //   } catch (error) {
-  //     this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
-  //     throw error;
-  //   }
-  // }
+      return userToken;
+    } catch (error) {
+      this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
+      throw error;
+    }
+  }
+
 }
