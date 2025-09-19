@@ -140,6 +140,7 @@ export class MatchService {
           answerData: answerIds,
           matchData: match,
           clientData: client,
+          modal: preference.modal,
           availability: preference.availability,
         }),
         SessionNotif.MATCH_REQUEST,
