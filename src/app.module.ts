@@ -33,6 +33,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ParameterModule } from './parameter/parameter.module';
 import { PaymentModule } from './payment/payment.module';
 import { QuoteModule } from './quote/quote.module';
+import { BankModule } from './bank/bank.module';
 
 @Module({
   imports: [
@@ -62,7 +63,8 @@ import { QuoteModule } from './quote/quote.module';
     QuoteModule,
     SubscriptionModule,
     ParameterModule,
-    PaymentModule
+    PaymentModule,
+    BankModule
   ],
   controllers: [AppController],
   providers: [AppService,    

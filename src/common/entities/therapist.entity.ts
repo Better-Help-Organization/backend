@@ -1,13 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { Availability } from './availability.entity';
+import { Bank } from './bank.entity';
 import { Level } from './level.entity';
 import { License } from './license.entity';
 import { MatchTherapist } from './match-therapist.entity';
 import { Match } from './match.entity';
 import { Rating } from './rating.entity';
+import { TherapistBank } from './therapist-bank.entity';
 import { User } from './user.entity';
 
+// @Unique('UQ_therapist_bank', ['therapist', 'bank']) // composite unique constraint
 @Entity()
 export class Therapist extends User {
 
@@ -39,12 +42,6 @@ export class Therapist extends User {
   @OneToMany(() => MatchTherapist, matchTherapist => matchTherapist.therapist)
   match: MatchTherapist[];
 
-  @ApiProperty({ type: () => [Match], nullable: true })
-  @OneToMany(() => Match, match => match.accepted, {
-    cascade: false,
-    onDelete: 'SET NULL',
-  })
-  acceptedMatch: Match[];
 
   @ApiProperty({ example: 0 })
   @Column('int', { 
@@ -52,5 +49,17 @@ export class Therapist extends User {
     default: 0
   })
   hoursDedicatedPerWeek: number;
+
+  @ApiProperty({ type: () => [Match], nullable: true })
+  @OneToMany(() => Match, match => match.accepted, {
+    cascade: false,
+    onDelete: 'SET NULL',
+  })
+  acceptedMatch: Match[];
+
+  @ApiProperty({ type: () => [Bank], nullable: true })
+  @OneToMany(() => TherapistBank, tb => tb.therapist, { cascade: true })
+  therapistBank: TherapistBank[];
+
 
 }
