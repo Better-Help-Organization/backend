@@ -42,6 +42,10 @@ export class Session extends CommonEntity {
   })
   group: Client[];
 
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  groupName: string;
+
 
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
