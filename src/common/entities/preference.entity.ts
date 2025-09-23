@@ -42,7 +42,7 @@ export class Preference extends CommonEntity {
   goal: string;
 
   @ApiProperty({ type: () => Level })
-  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL', eager: true })
   level: Level;
 
   @ApiProperty({type: () => Availability})

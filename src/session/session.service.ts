@@ -14,7 +14,7 @@ import { Between, In, Not, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 
 @Injectable()
 export class SessionService {
@@ -300,7 +300,7 @@ export class SessionService {
     });
   }
 
-  async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto): Promise<Session> {
+  async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto): Promise<Session> {
     try {
       const session = await this.findOne(id, {fields: 'client.*, therapist.*'});
 

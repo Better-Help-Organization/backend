@@ -16,7 +16,7 @@ export class Subscription extends CommonEntity{
     type: SubscriptionType;
 
     @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
-    @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.PENDING })
+    @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.INACTIVE })
     status: SubscriptionStatus;
 
     @ApiProperty({ example: '2025-08-28', description: 'Start date of subscription' })

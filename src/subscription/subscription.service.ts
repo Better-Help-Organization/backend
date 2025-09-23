@@ -35,7 +35,7 @@ export class SubscriptionService {
       });
 
       if (existingActive) {
-        throw new BadRequestException('Client already has an active subscription');
+        // throw new BadRequestException('Client already has an active subscription');
       }
 
       if (dto.price && dto.price > dto.old_price) {
@@ -121,8 +121,11 @@ export class SubscriptionService {
     }
 
     const startDate = new Date(dto.start_date);
-    const endDate = dto.type == SubscriptionType.TRIAL ? addDays(startDate, 7) : addMonths(startDate, dto.type);
-
+    let endDate = null;
+    if (dto.end_date){
+      endDate = dto.type == SubscriptionType.TRIAL ? addDays(startDate, 7) : addMonths(startDate, dto.type);
+    }
+    console.log('endDate', endDate);
     subscription.type = dto.type ?? subscription.type;
     subscription.status = dto.status ?? subscription.status;
     subscription.old_price = dto.old_price ?? subscription.old_price;
@@ -131,7 +134,7 @@ export class SubscriptionService {
       ? startDate
       : subscription.start_date;
     subscription.end_date = endDate ?? subscription.end_date;
-
+    console.log(subscription.end_date)
     return this.subscriptionRepo.save(subscription);
   }
 

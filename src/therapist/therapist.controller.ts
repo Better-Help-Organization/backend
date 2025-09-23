@@ -11,6 +11,7 @@ import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'sr
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { PreferenceService } from 'src/preference/preference.service';
 import { SessionService } from 'src/session/session.service';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
@@ -23,6 +24,7 @@ export class TherapistController {
     private readonly chatService: ChatService,
     private readonly sessionService: SessionService,
     private readonly firebaseService: FirebaseService,
+    private readonly prefService: PreferenceService,
     private readonly stats: TherapistStatisticsService
   ) {}
 
@@ -66,6 +68,16 @@ export class TherapistController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.firebaseService.findAll(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/preferences')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyPreferences(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.prefService.findAll(queryParams);
   }
 
   @ApiFindOneQueryParams()

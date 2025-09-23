@@ -63,7 +63,7 @@ export class FirebaseService {
                 id: message,
                 code,
                 timestamp: Date.now().toString(),
-                profile: profile || ''
+                // profile: profile || ''
             }
         }).catch((err)=>{})
     }
@@ -71,7 +71,7 @@ export class FirebaseService {
       console.log({err})
     }
 
-      this.logger.log(`Notifications sent successfully to tokens: ${tokens}`);
+      this.logger.log(`Notifications sent successfully to tokens: ${JSON.stringify(tokens)}`);
     } catch (error) {
       this.logger.error('Error sending notification:', error);
     }

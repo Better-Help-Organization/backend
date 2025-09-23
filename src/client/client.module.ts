@@ -11,6 +11,7 @@ import { FirebaseModule } from 'src/firebase/firebase.module';
 import { MatchModule } from 'src/match/match.module';
 import { ModalModule } from 'src/modal/modal.module';
 import { MoodModule } from 'src/mood/mood.module';
+import { PreferenceModule } from 'src/preference/preference.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { SessionModule } from 'src/session/session.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
@@ -31,7 +32,8 @@ import { ClientStatisticsService } from './client.stats';
     forwardRef(() => SessionModule),
     forwardRef(() => MoodModule),
     forwardRef(() => MatchModule),
-    PresenceModule
+    PresenceModule,
+    PreferenceModule
   ],  
   controllers: [ClientController],
   providers: [ClientService, ClientStatisticsService],

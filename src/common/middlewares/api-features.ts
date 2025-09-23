@@ -402,6 +402,10 @@ export class APIFeatures {
 
     // if (useCache) this.query.cache('cache_getMany', 60000); // Cache for 60 seconds
 
+    if (this.target && this.tableName) {
+      this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
+    }
+
     // after running the existing pipeline (sort/field/filter/paginate) and fetching:
   const data = await this.query.getMany();
   let finalData = data;

@@ -55,6 +55,18 @@ export class UpdateSessionDto {
       @IsEnum(SessionType)
       type: SessionType;
 
+      // @ApiProperty({
+      //   description: 'Indicates whether the client attended the session',
+      //   example: false,
+      //   default: false,
+      // })
+      // @IsOptional()
+      // @IsBoolean()
+      // hasclientAttended: boolean;
+}
+
+export class AttendanceDto {
+
       @ApiProperty({
         description: 'Indicates whether the client attended the session',
         example: false,
@@ -62,7 +74,7 @@ export class UpdateSessionDto {
       })
       @IsOptional()
       @IsBoolean()
-      hasclientAttended: boolean;
+      hasTherapistAttended: boolean;
 }
 
 export class AssignSessionDto {

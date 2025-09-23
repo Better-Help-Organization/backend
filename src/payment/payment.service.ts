@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Final_Files_Dir, PaymentStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { Final_Files_Dir, PaymentStatus, SubscriptionStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
 import { Payment } from 'src/common/entities/payment.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -55,7 +55,6 @@ export class PaymentService {
         `Subscription with ID ${dto.subscriptionId} not found for this client`,
       );
     }
-
     let savedPayment: Payment | null = null;
     try {
       const payment = this.paymentRepo.create({
@@ -76,6 +75,8 @@ export class PaymentService {
       fs.renameSync(tmpPath, finalPath);
 
       savedPayment.filename = finalFileName;
+    subscription.status = SubscriptionStatus.PENDING;
+    await this.subscriptionRepo.save(subscription);
       return await this.paymentRepo.save(savedPayment);
     } catch (err) {
       this.logger.error(`Create payment error: ${err.message}`);

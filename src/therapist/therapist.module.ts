@@ -8,6 +8,7 @@ import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { LoggerModule } from 'src/logger/logger.module';
 import { ModalModule } from 'src/modal/modal.module';
+import { PreferenceModule } from 'src/preference/preference.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { SessionModule } from 'src/session/session.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
@@ -28,7 +29,8 @@ import { TherapistStatisticsService } from './therapist.stats';
     SubscriptionModule,
     LoggerModule,
     SessionModule,
-    FirebaseModule
+    FirebaseModule,
+    PreferenceModule
   ],  
   controllers: [TherapistController],
   providers: [TherapistService, TherapistStatisticsService],

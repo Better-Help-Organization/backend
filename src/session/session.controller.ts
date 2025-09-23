@@ -7,7 +7,7 @@ import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindO
 import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
 @Controller('session')
@@ -97,6 +97,16 @@ export class SessionController {
   update(
     @Param('id') id: string, 
     @Body() updateSessionDto: UpdateSessionDto) {
+    return this.sessionService.update(id, updateSessionDto);
+  }
+
+  @Patch('attendance/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard()
+  )
+  attendance(
+    @Param('id') id: string, 
+    @Body() updateSessionDto: AttendanceDto) {
     return this.sessionService.update(id, updateSessionDto);
   }
 

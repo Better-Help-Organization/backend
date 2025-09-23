@@ -113,6 +113,7 @@ export enum DayPeriod {
 
 export enum SubscriptionStatus {
   PENDING = 'pending',
+  INACTIVE = 'inactive',
   ACTIVE = 'active',
   PAUSED = 'paused',
   CANCELED = 'canceled',

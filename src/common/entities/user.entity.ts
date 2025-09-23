@@ -45,7 +45,7 @@ export abstract class User extends CommonEntity {
     @Column({default: false })
     isPhoneNumberAuthenticated: boolean;
 
-    @Exclude()
+    // @Exclude()
     @ApiProperty({ nullable: true })
     @Column({
         nullable: true

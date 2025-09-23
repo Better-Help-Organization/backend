@@ -14,6 +14,7 @@ import { DiaryService } from 'src/diary/diary.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { MatchService } from 'src/match/match.service';
 import { MoodService } from 'src/mood/mood.service';
+import { PreferenceService } from 'src/preference/preference.service';
 import { SessionService } from 'src/session/session.service';
 import { ClientService } from './client.service';
 import { ClientStatisticsService } from './client.stats';
@@ -29,7 +30,8 @@ export class ClientController {
     private readonly matchService: MatchService,
     private readonly firebaseService: FirebaseService,
     private readonly diaryService: DiaryService,
-    private readonly stats: ClientStatisticsService
+    private readonly stats: ClientStatisticsService,
+    private readonly prefService: PreferenceService,
   ) {}
 
   @Get('me')
@@ -86,6 +88,17 @@ export class ClientController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.firebaseService.findAll(queryParams);
+  }
+
+
+  @ApiFindAllQueryParams()
+  @Get('me/preferences')
+  @UseGuards(ClientJwtAuthGuard)
+  async findMyPreferences(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.prefService.findAll(queryParams);
   }
 
   @ApiFindOneQueryParams()

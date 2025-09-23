@@ -308,7 +308,7 @@ export class ChatService {
   try {
     let client = null;
     let therapist = null;
-    let profile = null;
+    // let profile = null;
 
     if (sender.type === UserTypes.CLIENT) client = sender.id;
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
@@ -341,11 +341,11 @@ export class ChatService {
       // One-to-one chat
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
         tokens.therapist.push(chat.therapist.firebaseToken);
-        profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
+        // profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
         tokens.client.push(chat?.client?.firebaseToken);
-        profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
+        // profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
     console.log({tk:tokens})
@@ -353,8 +353,9 @@ export class ChatService {
         tokens, 
         JSON.stringify(msg), 
         {...SessionNotif.NEW_MESSAGE, title:sender.name}, 
-        content,
-         profile
+        content
+        // ,
+        //  profile
       );
 
   } catch (error) {

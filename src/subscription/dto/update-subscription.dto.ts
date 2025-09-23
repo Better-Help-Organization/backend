@@ -24,6 +24,13 @@ export class UpdateSubscriptionDto {
   @IsDateString()
   @IsFutureDateOrDateTime({ message: 'Subscription must be in the future' })
   start_date?: Date;
+  
+  
+  @ApiProperty({ description: 'Start date of subscription', example: '2025-08-28' })
+  @IsOptional()
+  @IsDateString()
+  @IsFutureDateOrDateTime({ message: 'Subscription must be in the future' })
+  end_date?: Date;
 
   @ApiProperty({ description: 'Original price before discount', example: 580 })
   @IsOptional()
