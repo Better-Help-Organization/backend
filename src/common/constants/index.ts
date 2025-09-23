@@ -1,4 +1,4 @@
-falsealsemport { join } from "path";
+import { join } from "path";
 
 export interface Tokens {
     client?: string[];
