@@ -63,7 +63,7 @@ export class FirebaseService {
                 id: message,
                 code,
                 timestamp: Date.now().toString(),
-                // profile: profile || ''
+                profile: profile || ''
             }
         }).catch((err)=>{})
     }
