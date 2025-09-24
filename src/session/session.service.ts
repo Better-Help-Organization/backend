@@ -246,9 +246,15 @@ export class SessionService {
       }
       const allSessions: Session[] = [confirmed];
 
-      // Subscription-based recurring sessions
+// Subscription-based recurring sessions
       const subscription = await this.subscriptionRepo.findOne({
-        where: { client: { id: token.id }, status: SubscriptionStatus.ACTIVE },
+        where: {
+          status: SubscriptionStatus.ACTIVE,
+          client: {
+            client: { id: token.id },  // go through ClientSubscription -> Client
+          },
+        },
+        relations: ['client', 'client.client'], // load both levels
         order: { start_date: 'DESC' },
       });
 
@@ -295,7 +301,21 @@ export class SessionService {
 
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
       }
+      // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT
+      const upcomingIds = allSessions.map((s) => s.id);
 
+      const clientName = [confirmed.client.firstName, confirmed.client.lastName]
+        .filter(Boolean) // removes null/undefined/empty
+        .join(' ');
+
+      if (confirmed.therapist?.firebaseToken) {
+        this.firebaseService.sendPushNotification(
+          { client: [], therapist: [confirmed.therapist.firebaseToken], admin: [] },
+          JSON.stringify({ sessionIds: upcomingIds }),
+          SessionNotif.CONFIRMED,
+          `You have ${allSessions.length} upcoming confirmed session(s) with ${clientName}.`,
+        );
+      }
       return allSessions;
     });
   }
