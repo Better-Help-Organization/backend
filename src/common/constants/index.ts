@@ -161,6 +161,7 @@ export const SessionNotif: Record<string, { code: string; title: string, showNot
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
   MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: false },
+  CONFIRMED: { code: "15", title: "Upcoming confirmed sessions with client", showNotification: true },
 
 } as const;
 
