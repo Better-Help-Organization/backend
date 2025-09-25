@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, ManyToOne } from 'typeorm';
 import { PaymentMethod, PaymentStatus } from '../constants';
+import { ClientSubscription } from './client-subscription.entity';
 import { CommonEntity } from './common.entity';
-import { Subscription } from './subscription.entity';
 
 @Entity()
 export class Payment extends CommonEntity {
@@ -34,7 +34,7 @@ export class Payment extends CommonEntity {
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   status: PaymentStatus;
 
-  @ApiProperty({ type: () => Subscription, description: 'Associated subscription for this payment' })
-  @ManyToOne(() => Subscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
-  subscription: Subscription;
+  @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
+  @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
+  subscription: ClientSubscription;
 }

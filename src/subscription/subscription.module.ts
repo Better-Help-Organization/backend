@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
-import { SubscriptionService } from './subscription.service';
-import { SubscriptionController } from './subscription.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LoggerModule } from 'src/logger/logger.module';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
+import { LoggerModule } from 'src/logger/logger.module';
+import { SubscriptionController } from './subscription.controller';
+import { SubscriptionService } from './subscription.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Client, Level, Subscription]),
+    TypeOrmModule.forFeature([Client, Level, Subscription, ClientSubscription]),
     LoggerModule,
   ],
   controllers: [SubscriptionController],

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { addDays, addMonths } from 'date-fns';
 import { SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
@@ -18,6 +19,9 @@ export class SubscriptionService {
     @InjectRepository(Subscription)
     private subscriptionRepo: Repository<Subscription>,
 
+    @InjectRepository(ClientSubscription)
+    private clientSubscriptionRepo: Repository<ClientSubscription>,
+
     @InjectRepository(Level)
     private readonly levelRepository: Repository<Level>,
 
@@ -29,9 +33,12 @@ export class SubscriptionService {
 
   async create(token: TokenPayload, dto: CreateSubscriptionDto): Promise<Subscription> {
     try {
-      const existingActive = await this.subscriptionRepo.findOne({
-        where: { client: { id: token.id } },
-        withDeleted: false,
+      const existingActive = await this.clientSubscriptionRepo.findOne({
+        where: {
+          client: { id: token.id },
+          subscription: { status: SubscriptionStatus.ACTIVE },
+        },
+        relations: ['subscription'],
       });
 
       if (existingActive) {
@@ -57,11 +64,18 @@ export class SubscriptionService {
         end_date: endDate,
         old_price: dto.old_price,
         price: dto.price,
-        client: { id: token.id },
         level: { id: dto.levelId },
       });
+      const savedSub = await this.subscriptionRepo.save(subscription);
 
-      return await this.subscriptionRepo.save(subscription);
+      const client = await this.clientRepository.findOne({ where: { id: token.id } });
+      const clientSub = this.clientSubscriptionRepo.create({
+        client,
+        subscription: savedSub,
+      });
+      await this.clientSubscriptionRepo.save(clientSub);
+
+      return savedSub;
     } catch (err) {
       this.logger.error(`Create subscription error: ${err.message}`);
       throw err;
@@ -93,19 +107,36 @@ export class SubscriptionService {
   async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto): Promise<Subscription> {
     const subscription = await this.subscriptionRepo.findOne({
       where: { id },
-      relations: ['client', 'level'],
+      relations: ['client', 'client.client', 'level'],
     });
 
     if (!subscription) {
       throw new NotFoundException(`Subscription with ID ${id} not found`);
     }
 
-    if ('clientId' in dto && dto.clientId && dto.clientId !== subscription.client?.id) {
-      const client = await this.clientRepository.findOne({ where: { id: dto.clientId } });
-      if (!client) {
-        throw new NotFoundException(`Client with ID ${dto.clientId} not found`);
+    if ('clientId' in dto && dto.clientId) {
+      // Find the existing ClientSubscription for this client
+      const existingClientSub = await this.clientSubscriptionRepo.findOne({
+        where: {
+          subscription: { id: subscription.id },
+          client: { id: dto.clientId },
+        },
+      });
+
+      if (!existingClientSub) {
+        // If no existing link, create a new ClientSubscription
+        const client = await this.clientRepository.findOne({ where: { id: dto.clientId } });
+        if (!client) {
+          throw new NotFoundException(`Client with ID ${dto.clientId} not found`);
+        }
+
+        const newClientSub = this.clientSubscriptionRepo.create({
+          client,
+          subscription,
+        });
+
+        await this.clientSubscriptionRepo.save(newClientSub);
       }
-      subscription.client = client;
     }
 
     if (dto.old_price && dto.price && dto.price > dto.old_price) {
@@ -120,21 +151,51 @@ export class SubscriptionService {
       subscription.level = level;
     }
 
-    const startDate = new Date(dto.start_date);
-    let endDate = null;
-    if (dto.end_date){
-      endDate = dto.type == SubscriptionType.TRIAL ? addDays(startDate, 7) : addMonths(startDate, dto.type);
-    }
-    console.log('endDate', endDate);
+    const startDate = dto.start_date ? new Date(dto.start_date) : subscription.start_date;
+    const endDate =
+      dto.type != null
+        ? dto.type === SubscriptionType.TRIAL
+          ? addDays(startDate, 7)
+          : addMonths(startDate, dto.type)
+        : subscription.end_date;
+
     subscription.type = dto.type ?? subscription.type;
-    subscription.status = dto.status ?? subscription.status;
+    subscription.start_date = startDate;
+    subscription.end_date = endDate;
     subscription.old_price = dto.old_price ?? subscription.old_price;
     subscription.price = dto.price ?? subscription.price;
-    subscription.start_date = dto.start_date
-      ? startDate
-      : subscription.start_date;
-    subscription.end_date = endDate ?? subscription.end_date;
-    console.log(subscription.end_date)
+
+    // Handle status change
+    if (dto.status && dto.status !== subscription.status) {
+      if (dto.status === SubscriptionStatus.ACTIVE) {
+        const linkedClients = await this.clientSubscriptionRepo.find({
+          where: { subscription: { id: subscription.id } },
+          relations: ['client'],
+        });
+
+        for (const clientSub of linkedClients) {
+          const client = clientSub.client;
+
+          const otherClientSubs = await this.clientSubscriptionRepo.find({
+            where: { client: { id: client.id } },
+            relations: ['subscription'],
+          });
+
+          for (const cs of otherClientSubs) {
+            if (cs.subscription.status === SubscriptionStatus.ACTIVE && cs.subscription.id !== subscription.id) {
+              cs.subscription.status = SubscriptionStatus.PAUSED;
+              await this.subscriptionRepo.save(cs.subscription);
+            }
+          }
+
+          client.activeSubscription = subscription;
+          await this.clientRepository.save(client);
+        }
+      }
+
+      subscription.status = dto.status;
+    }
+
     return this.subscriptionRepo.save(subscription);
   }
 

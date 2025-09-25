@@ -5,7 +5,8 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
-  Repository
+  Repository,
+  Unique
 } from 'typeorm';
 import { ApprovalStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
@@ -18,6 +19,7 @@ import { Message } from './message.entity';
 import { Modal } from './modal.entity';
 
 @Entity('session')
+@Unique(['client', 'therapist', 'modal', 'schedule'])
 export class Session extends CommonEntity {
 
   @ApiProperty({ type : () => Client})
@@ -57,10 +59,6 @@ export class Session extends CommonEntity {
   @ApiProperty({ default: false })
   @Column({default: false })
   hasclientAttended: boolean;
-  
-  @ApiProperty({ default: false })
-  @Column({default: false, nullable:true })
-  hasTherapistAttended: boolean;
 
   @ApiProperty()
   @Column({ type: 'timestamp' })

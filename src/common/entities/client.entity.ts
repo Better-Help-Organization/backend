@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { Answer } from './answer.entity';
+import { ClientSubscription } from './client-subscription.entity';
 import { Diary } from './diary.entity';
 import { Match } from './match.entity';
 import { Mood } from './mood.entity';
@@ -52,8 +53,12 @@ export class Client extends User {
   @OneToMany(() => Diary, diary => diary.client)
   diary: Diary[];
 
+  @ApiProperty({ type: () => ClientSubscription, isArray: true })
+  @OneToMany(() => ClientSubscription, cs => cs.client)
+  subscription: ClientSubscription[];
+
   @ApiProperty({ type: () => Subscription })
-  @OneToMany(() => Subscription, subscription => subscription.client)
-  subscription: Subscription[];
-  // @ApiProperty({ type: () => Session })
+  @OneToOne(() => Subscription, { nullable: true })
+  @JoinColumn({ name: 'active_subscription_id' })
+  activeSubscription?: Subscription;
 }

@@ -2,9 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Final_Files_Dir, PaymentStatus, SubscriptionStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { Final_Files_Dir, PaymentStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Payment } from 'src/common/entities/payment.entity';
-import { Subscription } from 'src/common/entities/subscription.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { LoggerService } from 'src/logger/logger.service';
@@ -18,8 +18,8 @@ export class PaymentService {
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
 
-    @InjectRepository(Subscription)
-    private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(ClientSubscription)
+    private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
 
     private readonly logger: LoggerService,
   ) {}
@@ -42,19 +42,18 @@ export class PaymentService {
       throw new BadRequestException('Uploaded file does not exist or was already processed');
     }
 
-    const subscription = await this.subscriptionRepo.findOne({
+    const clientSub = await this.clientSubscriptionRepo.findOne({
       where: {
-        id: dto.subscriptionId,
         client: { id: token.id },
+        subscription: { id: dto.subscriptionId },
       },
-      relations: ['client'],
+      relations: ['client', 'subscription', 'payment'],
     });
 
-    if (!subscription) {
-      throw new NotFoundException(
-        `Subscription with ID ${dto.subscriptionId} not found for this client`,
-      );
+    if (!clientSub) {
+      throw new NotFoundException(`Subscription with ID ${dto.subscriptionId} not found for this client`);
     }
+
     let savedPayment: Payment | null = null;
     try {
       const payment = this.paymentRepo.create({
@@ -62,21 +61,19 @@ export class PaymentService {
         date: dto.date ?? new Date(),
         method: dto.method,
         receipt: dto.receipt,
-        subscription,
+        subscription: clientSub,
       });
 
       savedPayment = await this.paymentRepo.save(payment);
 
       // construct final file name and path
-      const finalFileName = `${subscription.client.id}_${subscription.id}_${savedPayment.id}${ext}`;
+      const finalFileName = `${clientSub.client.id}_${clientSub.subscription.id}}_${savedPayment.id}${ext}`;
       const finalPath = path.join(Final_Files_Dir, ValidFolders.PAYMENT, finalFileName);
 
       fs.mkdirSync(path.dirname(finalPath), { recursive: true });
       fs.renameSync(tmpPath, finalPath);
 
       savedPayment.filename = finalFileName;
-    subscription.status = SubscriptionStatus.PENDING;
-    await this.subscriptionRepo.save(subscription);
       return await this.paymentRepo.save(savedPayment);
     } catch (err) {
       this.logger.error(`Create payment error: ${err.message}`);

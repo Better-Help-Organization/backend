@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
-  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -10,8 +9,7 @@ import {
   IsUUID,
   Matches
 } from 'class-validator';
-import { SessionType } from 'src/common/constants';
-import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
+import { DayOfWeek, SessionType } from 'src/common/constants';
 
 export class baseSession {
 
@@ -33,15 +31,17 @@ export class baseSession {
   groupName: string;
 
   @ApiProperty({
-    description: 'Date of the session',
-    example: '2025-08-12',
+    description: 'Selected weekdays for candidate sessions',
+    example: [DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY],
+    enum: DayOfWeek,
+    isArray: true,
   })
-  @IsDateString()
-  @IsFutureDateOrDateTime({ message: 'Session must be in the future' })
-  date: string;
+  @IsArray()
+  @IsEnum(DayOfWeek, { each: true })
+  dates: DayOfWeek[];
 
   @ApiProperty({
-    description: 'Array of start times (24h format) for the session',
+    description: 'Array of start times (24h format) for each date (will be combined with each startDate)',
     example: ['09:00', '11:00', '15:00'],
   })
   @IsArray()
