@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { ApprovalStatus, SessionNotif, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
+import { ApprovalStatus, DayOfWeek, SessionNotif, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
@@ -14,7 +14,32 @@ import { Between, In, Not, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, UpdateSessionDto } from './dto/update-session.dto';
+
+function getNextMonday(from: Date): Date {
+  const day = from.getDay(); // 0 = Sunday, 1 = Monday ...
+  const diff = (8 - day) % 7; // days until next Monday
+  const nextMonday = new Date(from);
+  nextMonday.setDate(from.getDate() + diff);
+  nextMonday.setHours(0, 0, 0, 0);
+  return nextMonday;
+}
+
+function getDateForWeekday(baseMonday: Date, weekday: DayOfWeek): Date {
+  const map: Record<DayOfWeek, number> = {
+    [DayOfWeek.MONDAY]: 0,
+    [DayOfWeek.TUESDAY]: 1,
+    [DayOfWeek.WEDNESDAY]: 2,
+    [DayOfWeek.THURSDAY]: 3,
+    [DayOfWeek.FRIDAY]: 4,
+    [DayOfWeek.SATURDAY]: 5,
+    [DayOfWeek.SUNDAY]: 6,
+  };
+
+  const result = new Date(baseMonday);
+  result.setDate(baseMonday.getDate() + map[weekday]);
+  return result;
+}
 
 @Injectable()
 export class SessionService {
@@ -70,93 +95,110 @@ export class SessionService {
       const therapistEntity = await this.therapistService.findOne(id);
       if (!therapistEntity) throw new BadRequestException('Invalid therapist ID');
 
-      const { date, startTimes, duration } = createSessionDto;
-      const baseDate = new Date(date);
+      const { dates, startTimes, duration } = createSessionDto;
 
-      // CLIENT DAILY CONFLICT CHECK
-      if (clientEntity) {
-        const startOfDay = new Date(baseDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(baseDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const clientConflict = await manager.findOne(Session, {
-          where: {
-            client: clientEntity,
-            schedule: Between(startOfDay, endOfDay),
-          },
-        });
-
-        if (clientConflict) {
-          throw new BadRequestException(
-            'Client already has a session scheduled on this date',
-          );
-        }
+      // basic guards
+      if (!Array.isArray(dates) || dates.length === 0) {
+        throw new BadRequestException('At least one weekday must be provided');
       }
+      if (!Array.isArray(startTimes) || startTimes.length === 0) {
+        throw new BadRequestException('At least one startTime must be provided');
+      }
+
+      const baseMonday = getNextMonday(new Date());
 
       const commonId = uuid();
       const sessions: Session[] = [];
       const sessionIds: string[] = [];
 
-      for (const startTime of startTimes) {
-        const [hours, minutes] = startTime.split(':').map(Number);
+      // For each selected weekday, map it to the date within the week that starts at next Monday
+      for (const weekday of dates) {
+        const actualDate = getDateForWeekday(baseMonday, weekday);
 
-        const schedule = new Date(baseDate);
-        schedule.setHours(hours, minutes, 0, 0);
+        // CLIENT DAILY CONFLICT CHECK (same client + therapist + modal + same day)
+        if (clientEntity) {
+          const startOfDay = new Date(actualDate);
+          startOfDay.setHours(0, 0, 0, 0);
 
-        const sessionEnd = new Date(schedule.getTime() + duration * 60 * 1000);
+          const endOfDay = new Date(actualDate);
+          endOfDay.setHours(23, 59, 59, 999);
 
-        // THERAPIST CONFLICT CHECK
-        const therapistConflict = await manager.findOne(Session, {
-          where: {
-            therapist: therapistEntity,
-            approvalStatus: ApprovalStatus.CONFIRMED,
-            schedule: Between(
-              new Date(schedule.getTime() - duration * 60 * 1000),
-              new Date(sessionEnd.getTime()),
-            ),
-          },
-        });
+          const clientConflict = await manager.findOne(Session, {
+            where: {
+              client: clientEntity,
+              therapist: therapistEntity,
+              modal: createSessionDto.modal ? { id: createSessionDto.modal } : null,
+              schedule: Between(startOfDay, endOfDay),
+            },
+          });
 
-        if (therapistConflict) {
-          throw new BadRequestException(`Therapist already has a session at ${schedule.toLocaleString()}`);
+          if (clientConflict) {
+            throw new BadRequestException(
+              `Client already has a session with this therapist and level on ${actualDate.toDateString()}`
+            );
+          }
         }
 
-        const newSession = manager.create(Session, {
-          ...createSessionDto,
-          schedule,
-          duration,
-          client: clientEntity,
-          therapist: therapistEntity,
-          group: groupEntities?.data || null,
-          approvalStatus: ApprovalStatus.PENDING,
-          commonId,
-        });
+        // For each provided startTime create a slot on actualDate
+        for (const startTime of startTimes) {
+          const [hours, minutes] = startTime.split(':').map(Number);
+          const schedule = new Date(actualDate);
+          schedule.setHours(hours, minutes, 0, 0);
 
-        const savedSession = await manager.save(newSession);
-        sessions.push(savedSession);
-        sessionIds.push(savedSession.id);
+          const sessionEnd = new Date(schedule.getTime() + duration * 60 * 1000);
+
+          // THERAPIST CONFLICT CHECK (overlap with confirmed sessions)
+          const therapistConflict = await manager.findOne(Session, {
+            where: {
+              therapist: therapistEntity,
+              approvalStatus: ApprovalStatus.CONFIRMED,
+              schedule: Between(
+                new Date(schedule.getTime() - duration * 60 * 1000),
+                new Date(sessionEnd.getTime()),
+              ),
+            },
+          });
+
+          if (therapistConflict) {
+            throw new BadRequestException(
+              `Therapist already has a session at ${schedule.toLocaleString()}`,
+            );
+          }
+
+          const newSession = manager.create(Session, {
+            ...createSessionDto,
+            schedule,
+            duration,
+            client: clientEntity,
+            therapist: therapistEntity,
+            group: groupEntities?.data || null,
+            approvalStatus: ApprovalStatus.PENDING,
+            commonId,
+          });
+
+          const savedSession = await manager.save(newSession);
+          sessions.push(savedSession);
+          sessionIds.push(savedSession.id);
+        }
       }
 
-      if (sessions.length > 0) {
-        // Collect tokens only once
-        const tokens: Tokens = { client: [], therapist: [], admin: [] };
-        if (clientEntity?.firebaseToken) tokens.client.push(clientEntity.firebaseToken);
-        if (groupEntities)
-          tokens.client.push(...groupEntities.data.map((c) => c.firebaseToken));
-        if (therapistEntity?.firebaseToken)
-          tokens.therapist.push(therapistEntity.firebaseToken);
+      // Collect tokens only once
+      const tokens: Tokens = { client: [], therapist: [], admin: [] };
+      if (clientEntity?.firebaseToken) tokens.client.push(clientEntity.firebaseToken);
+      if (groupEntities)
+        tokens.client.push(...groupEntities.data.map((c) => c.firebaseToken));
+      if (therapistEntity?.firebaseToken)
+        tokens.therapist.push(therapistEntity.firebaseToken);
 
-        // Send one notification with all session IDs
-        this.firebaseService.sendPushNotification(
-          tokens,
-          JSON.stringify({ sessionIds }),
-          SessionNotif.SCHEDULED,
-          `Your sessions have been scheduled: ${sessions
-            .map((s) => s.schedule.toLocaleString())
-            .join(', ')}`,
-        );
-      }
+      // Send one notification with all session IDs
+      this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ sessionIds }),
+        SessionNotif.SCHEDULED,
+        `Your sessions have been scheduled: ${sessions
+          .map((s) => s.schedule.toLocaleString())
+          .join(', ')}`,
+      );
 
       this.logger.log(`Created ${sessions.length} session(s) successfully`);
       return sessions;
@@ -180,6 +222,24 @@ export class SessionService {
         throw new BadRequestException('No sessions found for this selection');
       }
 
+      // REQUIRE ACTIVE SUBSCRIPTION
+      const subscription = await this.subscriptionRepo.findOne({
+        where: {
+          status: SubscriptionStatus.ACTIVE,
+          client: {
+            client: { id: token.id },  // go through ClientSubscription -> Client
+          },
+        },
+        relations: ['client', 'client.client'], // load both levels
+        order: { start_date: 'DESC' },
+      });
+
+      if (!subscription) {
+        throw new BadRequestException(
+          'You must have an active subscription to confirm a session.',
+        );
+      }
+
       const selected = groupSessions.find((s) => s.id === selectedId);
       if (!selected) {
         throw new BadRequestException('Selected session is not part of this group');
@@ -194,9 +254,24 @@ export class SessionService {
         throw new BadRequestException('This session slot is no longer available');
       }
 
+      // THERAPIST CONFLICT CHECK against confirmed sessions
+      const therapistConflictInSessions = await manager.findOne(Session, {
+        where: {
+          therapist: { id: selected.therapist.id },
+          schedule: selected.schedule,
+          approvalStatus: ApprovalStatus.CONFIRMED,
+        },
+      });
+
+      if (therapistConflictInSessions) {
+        throw new BadRequestException(
+          `This slot at ${selected.schedule.toLocaleString()} is already taken`,
+        );
+      }
+
       // THERAPIST AVAILABILITY CHECK
       const therapistConflict = await manager.findOne(Availability, {
-        where: { therapist: selected.therapist, schedule: selected.schedule },
+        where: { therapist: { id: selected.therapist.id }, schedule: selected.schedule },
       });
 
       if (therapistConflict) {
@@ -246,18 +321,7 @@ export class SessionService {
       }
       const allSessions: Session[] = [confirmed];
 
-// Subscription-based recurring sessions
-      const subscription = await this.subscriptionRepo.findOne({
-        where: {
-          status: SubscriptionStatus.ACTIVE,
-          client: {
-            client: { id: token.id },  // go through ClientSubscription -> Client
-          },
-        },
-        relations: ['client', 'client.client'], // load both levels
-        order: { start_date: 'DESC' },
-      });
-
+      // Subscription-based recurring sessions
       if (subscription) {
         const weeks = subscription.type * 4;
 
@@ -301,6 +365,7 @@ export class SessionService {
 
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
       }
+
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT
       const upcomingIds = allSessions.map((s) => s.id);
 
@@ -320,7 +385,7 @@ export class SessionService {
     });
   }
 
-  async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto): Promise<Session> {
+  async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto): Promise<Session> {
     try {
       const session = await this.findOne(id, {fields: 'client.*, therapist.*'});
 
