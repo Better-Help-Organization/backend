@@ -119,9 +119,10 @@ export class AuthService {
   private _generateOTP(): [string, Date] {
 
     let secret = null;
-    process.env.NODE_ENV === 'prod' 
-    ? secret = (speakeasy.generateSecret()).base32
-    : secret = this.configService.getOrThrow<string>('OTP_SECRET')
+    //process.env.NODE_ENV === 'prod' 
+   // ? 
+    secret = (speakeasy.generateSecret()).base32
+   // : secret = this.configService.getOrThrow<string>('OTP_SECRET')
   
     const OTP = speakeasy.totp({
       secret,
