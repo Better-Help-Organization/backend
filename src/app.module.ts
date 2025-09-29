@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AnswerModule } from './answer/answer.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
+import { BankModule } from './bank/bank.module';
 import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
@@ -21,19 +24,16 @@ import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
 import { MoodModule } from './mood/mood.module';
 import { OptionModule } from './option/option.module';
+import { ParameterModule } from './parameter/parameter.module';
+import { PaymentModule } from './payment/payment.module';
 import { PreferenceModule } from './preference/preference.module';
 import { PresenceModule } from './presence/presence.module';
 import { QuestionModule } from './question/question.module';
+import { QuoteModule } from './quote/quote.module';
 import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { TherapistModule } from './therapist/therapist.module';
-// import { SubscriptionModule } from './subscription/subscription.module';
-import { JwtModule } from '@nestjs/jwt';
-import { BankModule } from './bank/bank.module';
-import { ParameterModule } from './parameter/parameter.module';
-import { PaymentModule } from './payment/payment.module';
-import { QuoteModule } from './quote/quote.module';
 
 @Module({
   imports: [
@@ -47,6 +47,7 @@ import { QuoteModule } from './quote/quote.module';
     JwtModule.register({
         global: true,   // make JwtService available app-wide
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,    
     LoggerModule.forRoot(),
     AuthModule, ClientModule, TherapistModule, 

@@ -45,7 +45,8 @@ export class FirebaseService {
     try {
       const { code, title, showNotification } = notificationType
       this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
-      if(!body) body = "Place Holder"
+      if(!body) body = "You have a new notification."
+
       try{
         let notification = undefined
         let android = null
