@@ -4,7 +4,9 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  NotFoundException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
 import * as fs from 'fs';
 import multer from 'multer';
@@ -15,18 +17,24 @@ import {
   ALLOWED_MIME_TYPES,
   FILE_UPLOAD_KEY,
   MAX_FILE_SIZE,
+  SubscriptionStatus,
   Tmp_Files_Dir,
   ValidFolders,
 } from 'src/common/constants';
 import { ModalService } from 'src/modal/modal.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
+import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { ClientSubscription } from '../entities/client-subscription.entity';
 
 @Injectable()
 export class UploadInterceptor implements NestInterceptor {
   constructor(
     private readonly modalService: ModalService,
-    private readonly subscriptionService: SubscriptionService
+    private readonly subscriptionService: SubscriptionService,
+    @InjectRepository(ClientSubscription)
+    private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
+    
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -111,11 +119,22 @@ export class UploadInterceptor implements NestInterceptor {
                         if (!subscriptionId) {
                           return cb(new Error('subscriptionId is required for payment uploads'), '');
                         }
+                        console.log({subscriptionId})
+                        // const subscription = await this.subscriptionService.findOne(subscriptionId);
+                        // if (!subscription) {
+                        //   return cb(new Error('Invalid subscriptionIds'), '');
+                        // }
+                      const subscription = await this.clientSubscriptionRepo.findOne({
+                            where: {
+                              id: subscriptionId,
+                            },
+                          relations: ['client', 'subscription', 'payment'],
+                        });
+                            if (!subscription) {
+                              throw new NotFoundException(`Subscription with ID ${subscriptionId} not found for this client`);
+                            }
+                        
 
-                        const subscription = await this.subscriptionService.findOne(subscriptionId);
-                        if (!subscription) {
-                          return cb(new Error('Invalid subscriptionId'), '');
-                        }
 
                         const uuid = uuidv4();
                         const filename = `${token.id}_${subscriptionId}_${uuid}${ext}`;
@@ -126,6 +145,10 @@ export class UploadInterceptor implements NestInterceptor {
                         if (fs.existsSync(fullPath)) {
                           fs.unlinkSync(fullPath);
                         }
+
+                      subscription.status = SubscriptionStatus.PENDING
+                      const cs = await this.clientSubscriptionRepo.save(subscription)
+                        
 
                         cb(null, filename);
                       }

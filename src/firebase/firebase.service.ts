@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as admin from 'firebase-admin';
-import { SessionNotifValue } from 'src/common/constants';
+import { SessionNotif, SessionNotifValue, TokenPayload, UserTypes } from 'src/common/constants';
 import { Tokens } from "src/common/constants/index";
 import { Client } from 'src/common/entities/client.entity';
 import { Notification } from 'src/common/entities/notification.entity';
@@ -24,14 +24,48 @@ export class FirebaseService {
     private readonly therapistRepo: Repository<Therapist>,
   ){}
 
+
+  async markAsRead(queryParams: FindAllQueryParams) {
+
+    // const ids = queryParams?.ids ? queryParams.ids.split(',').map((id) => id.trim()) : [];
+
+    // if (ids.length === 0) {
+    //   throw new BadRequestException("No IDs provided for update.");
+    // }
+
+    const updateResult = await this.notifRepo.update(
+      { isRead: false },  // Filtering by the provided ids
+      { isRead: true }  // Updating the status to 'read' (or any other field you need)
+    );
+  
+    return "Records updated successfully";
+  }
+
   async sendPushNotification(tokens: Tokens, message: string, notificationType: SessionNotifValue, body,   profile?: string  ): Promise<void> {
     try {
       const { code, title, showNotification } = notificationType
       this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
       if(!body) body = "Place Holder"
-
       try{
         let notification = undefined
+        let android = null
+        let apns = null
+      
+        if(notificationType === SessionNotif.MATCH_REQUEST){
+          android = {
+            "notification":{
+              "sound": "positive",
+              "channel_id":"match_requests"
+            }
+          }
+          apns = {
+            "payload": {
+              "aps":{
+                "sound": "positive.wav"
+              }
+            }
+          }
+        }
         
         if (showNotification) {
           notification = { title, body }
@@ -64,7 +98,9 @@ export class FirebaseService {
                 code,
                 timestamp: Date.now().toString(),
                 profile: profile || ''
-            }
+            },
+            android: android? android: undefined,
+            apns: apns? apns: undefined
         }).catch((err)=>{})
     }
     catch(err){
@@ -77,7 +113,7 @@ export class FirebaseService {
     }
   }
 
-    async saveNotification(dto: SaveNotificationDto) {
+  async saveNotification(dto: SaveNotificationDto) {
         
         const {body, code, message, title, clientTokens, therapistTokens, profile} = dto
         // Fetch all clients in one query
@@ -118,7 +154,7 @@ export class FirebaseService {
 
   }
 
-    async findOne(id: string, queryParams?: FindOneQueryParams<Notification>) {
+  async findOne(id: string, queryParams?: FindOneQueryParams<Notification>) {
       try {
         this.logger.log(`Finding notification with ID: ${id}`);
         const notification = await new APIFeatures(this.notifRepo, queryParams).getOne(id);
@@ -136,10 +172,23 @@ export class FirebaseService {
       }
     }
 
-    async findAll(queryParams?: FindAllQueryParams<Notification>) {
+  async findAll(queryParams?: FindAllQueryParams<Notification>, user?: TokenPayload) {
       try {
         this.logger.log(`Fetching all notification`);
         const result = await new APIFeatures(this.notifRepo, queryParams).getMany();
+            // Count unread notifications for this user
+    const unreadCount = await this.notifRepo.count({
+      where: {
+        isRead: false,
+        ...(user?.type === UserTypes.CLIENT
+          ? { client: { id: user.id } }
+          : { therapist: { id: user.id } }),
+      },
+    });
+
+    this.logger.log(`Found ${result.data.length} notification`);
+    return { ...result, unreadCount };
+
         this.logger.log(`Found ${result.data.length} notification`);
         return result;
       } catch (error) {

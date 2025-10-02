@@ -30,4 +30,8 @@ export class Notification extends CommonEntity {
   @ManyToOne(() => Therapist, { nullable: true })
   therapist?: Therapist;
 
+  @ApiProperty({ default: false, description: "Whether the notification has seen" })
+  @Column({ type: 'boolean', default: false })
+  isRead: boolean;
+
 }

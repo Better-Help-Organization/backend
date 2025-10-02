@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Final_Files_Dir, PaymentStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { Final_Files_Dir, PaymentStatus, SubscriptionStatus, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Payment } from 'src/common/entities/payment.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -44,12 +44,14 @@ export class PaymentService {
 
     const clientSub = await this.clientSubscriptionRepo.findOne({
       where: {
+        id: dto.subscriptionId,
         client: { id: token.id },
-        subscription: { id: dto.subscriptionId },
+        // subscription: { id: dto.subscriptionId },
+        // subscription: { id: dto.subscriptionId },
       },
       relations: ['client', 'subscription', 'payment'],
     });
-
+    console.log({clientSub})
     if (!clientSub) {
       throw new NotFoundException(`Subscription with ID ${dto.subscriptionId} not found for this client`);
     }
@@ -82,7 +84,8 @@ export class PaymentService {
       if (fs.existsSync(tmpPath)) {
         fs.unlinkSync(tmpPath);
       }
-
+      clientSub.status = SubscriptionStatus.PENDING
+      const cs = await this.clientSubscriptionRepo.save(clientSub)
       // cleanup partially saved payment
       if (savedPayment && savedPayment.id) {
         await this.paymentRepo.delete(savedPayment.id).catch(() => null);

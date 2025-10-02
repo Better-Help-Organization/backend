@@ -7,7 +7,6 @@ import { Match } from './match.entity';
 import { Mood } from './mood.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
-import { Subscription } from './subscription.entity';
 import { User } from './user.entity';
 
 @Entity()
@@ -57,8 +56,8 @@ export class Client extends User {
   @OneToMany(() => ClientSubscription, cs => cs.client)
   subscription: ClientSubscription[];
 
-  @ApiProperty({ type: () => Subscription })
-  @OneToOne(() => Subscription, { nullable: true })
+  @ApiProperty({ type: () => ClientSubscription })
+  @OneToOne(() => ClientSubscription, { nullable: true })
   @JoinColumn({ name: 'active_subscription_id' })
-  activeSubscription?: Subscription;
+  activeSubscription?: ClientSubscription;
 }

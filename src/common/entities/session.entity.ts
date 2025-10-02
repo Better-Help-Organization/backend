@@ -8,7 +8,7 @@ import {
   Repository,
   Unique
 } from 'typeorm';
-import { ApprovalStatus, SessionType } from '../constants';
+import { ApprovalStatus, SessionStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
 import { Status } from './status.entity';
@@ -94,6 +94,20 @@ export class Session extends CommonEntity {
     nullable: true, // optional
   })
   status: Status;
+
+  @ApiProperty({
+    enum: SessionStatus,
+    description: 'Latest session status',
+  })
+  @Column({ type: 'enum', enum: SessionStatus, nullable: true })
+  latestStatus: SessionStatus;
+
+  @ApiProperty({
+    description: 'Reason for latest status',
+    nullable: true,
+  })
+  @Column({ type: 'text', nullable: true })
+  latestReason: string;
 
   @ApiProperty({ type: () => Message, isArray: true })
   @OneToMany(() => Message, (message) => message.session, {onDelete: 'CASCADE'})

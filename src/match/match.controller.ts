@@ -27,7 +27,7 @@ export class MatchController {
     @CurrentUser() therapist: TokenPayload,
     @Body() acceptMatchDto: AcceptMatchDto
   ) {
-    return this.matchService.acceptMatch(therapist, acceptMatchDto);
+    return await this.matchService.acceptMatch(therapist, acceptMatchDto);
   }
 
 

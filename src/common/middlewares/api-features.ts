@@ -340,43 +340,134 @@ export class APIFeatures {
   }
   // Done
   applyEagerRelations<T>(
-    query: SelectQueryBuilder<T>,
-    entityClass: Function,
-    alias: string,
-    visited = new Set<string>()
-  ): SelectQueryBuilder<T> {
-    const metadata = getMetadataArgsStorage();
+  query: SelectQueryBuilder<T>,
+  entityClass: Function,
+  alias: string,
+  visited = new Set<string>()
+): SelectQueryBuilder<T> {
+  const metadata = getMetadataArgsStorage();
 
-    const relations = metadata.relations.filter(
-      (r) => r.target === entityClass && r.options?.eager
-    );
+  const relations = metadata.relations.filter(
+    (r) => r.target === entityClass && r.options?.eager
+  );
 
-    for (const relation of relations) {
-      const joinPath = `${alias}.${relation.propertyName}`;
-      const joinAlias = `${alias}_${relation.propertyName}`;
+  for (const relation of relations) {
+    const joinPath = `${alias}.${relation.propertyName}`;
+    const joinAlias = `${alias}_${relation.propertyName}`;
 
-      if (visited.has(joinPath)) continue;
-      visited.add(joinPath);
+    if (visited.has(joinPath)) continue;
+    visited.add(joinPath);
 
-      query = query.leftJoinAndSelect(joinPath, joinAlias);
+    query = query.leftJoinAndSelect(joinPath, joinAlias);
 
-      // Recursively apply eager relations to the related entity
-      const relatedEntityClass =
-        typeof relation.type === 'function' ? relation.type : relation.type;
+    // --- FIX: safely resolve relatedEntityClass ---
+    let relatedEntityClass: Function | undefined;
 
-      // Skip primitives or plain types
-      if (typeof relatedEntityClass === 'function') {
-        const hasNestedEager = metadata.relations.some(
-          (r) => r.target === relatedEntityClass && r.options?.eager
-        );
-        if (hasNestedEager) {
-          query = this.applyEagerRelations(query, relatedEntityClass, joinAlias, visited);
-        }
+    if (typeof relation.type === 'function') {
+      if ((relation.type as Function).length === 0) {
+        // () => Entity style
+        relatedEntityClass = (relation.type as () => Function)();
+      } else {
+        // Direct class reference
+        relatedEntityClass = relation.type as Function;
       }
+    } else {
+      // string, EntitySchema, or object → skip (not directly resolvable here)
+      continue;
     }
 
-    return query;
+    // Recursively apply eager relations if nested
+    if (relatedEntityClass) {
+      const hasNestedEager = metadata.relations.some(
+        (r) => r.target === relatedEntityClass && r.options?.eager
+      );
+      if (hasNestedEager) {
+        query = this.applyEagerRelations(query, relatedEntityClass, joinAlias, visited);
+      }
+    }
   }
+
+  return query;
+}
+
+
+//   applyEagerRelations<T>(
+//   query: SelectQueryBuilder<T>,
+//   entityClass: Function,
+//   alias: string,
+//   visited = new Set<string>()
+// ): SelectQueryBuilder<T> {
+//   const metadata = getMetadataArgsStorage();
+//   const entityTarget = (entityClass as any).constructor || entityClass;
+
+//   const relations = metadata.relations.filter(
+//     (r) => r.target === entityTarget && r.options?.eager
+//   );
+
+//   for (const relation of relations) {
+//     const joinPath = `${alias}.${relation.propertyName}`;
+//     const joinAlias = `${alias}_${relation.propertyName}`;
+//     const key = `${entityTarget.name}.${relation.propertyName}`;
+
+//     if (visited.has(key)) continue;
+//     visited.add(key);
+
+//     query = query.leftJoinAndSelect(joinPath, joinAlias);
+
+//     const relatedEntityClass =
+//       typeof relation.type === 'function' ? relation.type() : relation.type;
+
+//     if (typeof relatedEntityClass === 'function') {
+//       const hasNestedEager = metadata.relations.some(
+//         (r) => r.target === relatedEntityClass && r.options?.eager
+//       );
+//       if (hasNestedEager) {
+//         query = this.applyEagerRelations(query, relatedEntityClass, joinAlias, visited);
+//       }
+//     }
+//   }
+
+//   return query;
+// }
+
+  // applyEagerRelations<T>(
+  //   query: SelectQueryBuilder<T>,
+  //   entityClass: Function,
+  //   alias: string,
+  //   visited = new Set<string>()
+  // ): SelectQueryBuilder<T> {
+  //   const metadata = getMetadataArgsStorage();
+
+  //   const relations = metadata.relations.filter(
+  //     (r) => r.target === entityClass && r.options?.eager
+  //   );
+
+  //   for (const relation of relations) {
+  //     const joinPath = `${alias}.${relation.propertyName}`;
+  //     const joinAlias = `${alias}_${relation.propertyName}`;
+
+  //     if (visited.has(joinPath)) continue;
+  //     visited.add(joinPath);
+
+  //     query = query.leftJoinAndSelect(joinPath, joinAlias);
+
+  //     // Recursively apply eager relations to the related entity
+  //     const relatedEntityClass =
+  //       typeof relation.type === 'function' ? relation.type : relation.type;
+
+  //     // Skip primitives or plain types
+  //     if (typeof relatedEntityClass === 'function') {
+  //       const hasNestedEager = metadata.relations.some(
+  //         (r) => r.target === relatedEntityClass && r.options?.eager
+  //       );
+  //       if (hasNestedEager) {
+  //         query = this.applyEagerRelations(query, relatedEntityClass, joinAlias, visited);
+  //       }
+  //     }
+  //   }
+
+  //   return query;
+  // }
 
 // Done
   ManyIds() {

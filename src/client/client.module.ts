@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Mood } from 'src/common/entities/mood.entity';
@@ -21,7 +22,7 @@ import { ClientStatisticsService } from './client.stats';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Client, Mood, Diary, Rating, Subscription]),
+    TypeOrmModule.forFeature([Client, Mood, Diary, Rating, Subscription, ClientSubscription]),
     ChatModule,
     SessionModule,
     ModalModule,

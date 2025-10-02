@@ -31,7 +31,7 @@ export class SubscriptionService {
     private readonly logger: LoggerService,
   ) {}
 
-  async create(token: TokenPayload, dto: CreateSubscriptionDto): Promise<Subscription> {
+  async create(token: TokenPayload, dto: CreateSubscriptionDto) {
     try {
       const existingActive = await this.clientSubscriptionRepo.findOne({
         where: {
@@ -72,10 +72,17 @@ export class SubscriptionService {
       const clientSub = this.clientSubscriptionRepo.create({
         client,
         subscription: savedSub,
+        start_date: startDate,
+        end_date: endDate,
+        //activeSubscription: savedSub
       });
-      await this.clientSubscriptionRepo.save(clientSub);
+      const csub = await this.clientSubscriptionRepo.save(clientSub);
+      client.activeSubscription = csub
+      await this.clientRepository.save(client)
+      console.log({client})
 
-      return savedSub;
+
+      return clientSub;
     } catch (err) {
       this.logger.error(`Create subscription error: ${err.message}`);
       throw err;
@@ -104,10 +111,10 @@ export class SubscriptionService {
     }
   }
 
-  async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto): Promise<Subscription> {
-    const subscription = await this.subscriptionRepo.findOne({
+  async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto) {
+    const subscription = await this.clientSubscriptionRepo.findOne({
       where: { id },
-      relations: ['client', 'client.client', 'level'],
+      // relations: ['client', 'client.client', 'level'],
     });
 
     if (!subscription) {
@@ -130,12 +137,12 @@ export class SubscriptionService {
           throw new NotFoundException(`Client with ID ${dto.clientId} not found`);
         }
 
-        const newClientSub = this.clientSubscriptionRepo.create({
-          client,
-          subscription,
-        });
+        // const newClientSub = this.clientSubscriptionRepo.create({
+        //   client,
+        //   subscription,
+        // });
 
-        await this.clientSubscriptionRepo.save(newClientSub);
+        // await this.clientSubscriptionRepo.save(newClientSub);
       }
     }
 
@@ -143,13 +150,13 @@ export class SubscriptionService {
       throw new BadRequestException('Price cannot be greater than old price');
     }
 
-    if (dto.levelId && dto.levelId !== subscription.level?.id) {
-      const level = await this.levelRepository.findOne({ where: { id: dto.levelId } });
-      if (!level) {
-        throw new NotFoundException(`Level with ID ${dto.levelId} not found`);
-      }
-      subscription.level = level;
-    }
+    // if (dto.levelId && dto.levelId !== subscription.level?.id) {
+    //   const level = await this.levelRepository.findOne({ where: { id: dto.levelId } });
+    //   if (!level) {
+    //     throw new NotFoundException(`Level with ID ${dto.levelId} not found`);
+    //   }
+    //   subscription.level = level;
+    // }
 
     const startDate = dto.start_date ? new Date(dto.start_date) : subscription.start_date;
     const endDate =
@@ -159,11 +166,11 @@ export class SubscriptionService {
           : addMonths(startDate, dto.type)
         : subscription.end_date;
 
-    subscription.type = dto.type ?? subscription.type;
-    subscription.start_date = startDate;
-    subscription.end_date = endDate;
-    subscription.old_price = dto.old_price ?? subscription.old_price;
-    subscription.price = dto.price ?? subscription.price;
+    // subscription.type = dto.type ?? subscription.type;
+    // subscription.start_date = startDate;
+    // subscription.end_date = endDate;
+    // subscription.old_price = dto.old_price ?? subscription.old_price;
+    // subscription.price = dto.price ?? subscription.price;
 
     // Handle status change
     if (dto.status && dto.status !== subscription.status) {
@@ -188,7 +195,7 @@ export class SubscriptionService {
             }
           }
 
-          client.activeSubscription = subscription;
+          // client.activeSubscription = subscription;
           await this.clientRepository.save(client);
         }
       }
@@ -196,7 +203,7 @@ export class SubscriptionService {
       subscription.status = dto.status;
     }
 
-    return this.subscriptionRepo.save(subscription);
+    return this.clientSubscriptionRepo.save(subscription);
   }
 
   async remove(id: string): Promise<void> {

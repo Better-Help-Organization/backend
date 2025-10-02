@@ -1,9 +1,9 @@
-import { Entity, Column, ManyToOne, Unique, Check } from 'typeorm';
-import { Therapist } from './therapist.entity';
+import { ApiProperty } from '@nestjs/swagger';
+import { Check, Column, Entity, ManyToOne, Unique } from 'typeorm';
+import { MAX_RATING, MIN_RATING } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
-import { ApiProperty } from '@nestjs/swagger';
-import { MAX_RATING, MIN_RATING } from '../constants';
+import { Therapist } from './therapist.entity';
 
 @Unique(['client', 'therapist'])
 @Entity()
@@ -12,6 +12,7 @@ export class Rating extends CommonEntity {
   @ManyToOne(() => Therapist, therapist => therapist.rating, {
     nullable: false,
     onDelete: 'CASCADE',
+    eager: true
   })
   therapist: Therapist;
 
@@ -19,6 +20,7 @@ export class Rating extends CommonEntity {
   @ManyToOne(() => Client, client => client.rating, {
     nullable: false,
     onDelete: 'CASCADE',
+    eager: true
   })
   client: Client;
 

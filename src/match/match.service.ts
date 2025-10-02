@@ -94,6 +94,7 @@ export class MatchService {
     // const therapists = await this.therapistService.findMatchingTherapists({
     //   gender: preference.gender,
     //   level: preference.level?.id,
+    // status: BaseStatus.ACTIVE
     //   availability: preference.availability.map(a => ({
     //     day: a.day,
     //     day_period: a.day_period,

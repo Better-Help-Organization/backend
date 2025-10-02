@@ -31,14 +31,6 @@ export class Therapist extends User {
   @OneToMany(() => License, license => license.therapist)
   license: License[];
 
-  // @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
-  // @Column({
-  //     type: "enum",
-  //     default: BaseStatus.INACTIVE,
-  //     enum: BaseStatus,
-  // })
-  // expertise: BaseStatus;
-
   @ApiProperty()
   @OneToMany(() => Expertise, exp => exp.therapist, {
     cascade: true,

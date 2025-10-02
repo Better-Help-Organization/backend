@@ -87,7 +87,17 @@ export class ClientController {
     @GroupScope() _gs: boolean,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
-    return this.firebaseService.findAll(queryParams);
+    return this.firebaseService.findAll(queryParams, _);
+  }
+
+  @ApiFindAllQueryParams()
+  @Post('me/notifications/read')
+  @UseGuards(ClientJwtAuthGuard)
+  async readMyNotifications(
+    @CurrentUser() _: TokenPayload,
+  @Query() queryParams,
+  ) {
+    return this.firebaseService.markAsRead(queryParams);
   }
 
 

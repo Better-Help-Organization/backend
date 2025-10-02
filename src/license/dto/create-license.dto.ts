@@ -41,4 +41,12 @@ export class CreateLicenseDto {
   @IsOptional()
   @IsString()
   filename: string;
+
+  @ApiProperty({
+    example: '6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24.pdf',
+    description: 'File name of the uploaded licence',
+  })
+  @IsOptional()
+  @IsString()
+  work_experience: string;
 }

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -7,9 +8,27 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Matches
+  Matches,
+  ValidateNested
 } from 'class-validator';
 import { DayOfWeek, SessionType } from 'src/common/constants';
+
+export class DateWithTimes {
+  @ApiProperty({ enum: DayOfWeek })
+  @IsEnum(DayOfWeek)
+  date: DayOfWeek;
+
+  @ApiProperty({
+    type: [String],
+    example: ['09:00', '11:00'],
+  })
+  @IsArray()
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    each: true,
+    message: 'Each start time must be in HH:mm format',
+  })
+  startTimes: string[];
+}
 
 export class baseSession {
 
@@ -31,25 +50,17 @@ export class baseSession {
   groupName: string;
 
   @ApiProperty({
-    description: 'Selected weekdays for candidate sessions',
-    example: [DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY],
-    enum: DayOfWeek,
-    isArray: true,
+    type: [DateWithTimes],
+    description: 'Weekday + start times',
+    example: [
+      { date: DayOfWeek.MONDAY, startTimes: ['09:00', '11:00'] },
+      { date: DayOfWeek.WEDNESDAY, startTimes: ['10:00'] },
+    ],
   })
   @IsArray()
-  @IsEnum(DayOfWeek, { each: true })
-  dates: DayOfWeek[];
-
-  @ApiProperty({
-    description: 'Array of start times (24h format) for each date (will be combined with each startDate)',
-    example: ['09:00', '11:00', '15:00'],
-  })
-  @IsArray()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    each: true,
-    message: 'Each start time must be in HH:mm format',
-  })
-  startTimes: string[];
+  @ValidateNested({ each: true })
+  @Type(() => DateWithTimes)
+  dates: DateWithTimes[];
 
   @ApiProperty({
     description: 'Duration of the session in minutes',

@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { License } from 'src/common/entities/license.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -10,6 +11,7 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { ModalModule } from 'src/modal/modal.module';
 import { PreferenceModule } from 'src/preference/preference.module';
 import { PresenceModule } from 'src/presence/presence.module';
+import { RatingModule } from 'src/rating/rating.module';
 import { SessionModule } from 'src/session/session.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TherapistController } from './therapist.controller';
@@ -21,7 +23,8 @@ import { TherapistStatisticsService } from './therapist.stats';
     TypeOrmModule.forFeature([
       Therapist, 
       License,
-      Session
+      Session,
+      ClientSubscription
     ]),
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),
@@ -30,7 +33,8 @@ import { TherapistStatisticsService } from './therapist.stats';
     LoggerModule,
     SessionModule,
     FirebaseModule,
-    PreferenceModule
+    PreferenceModule,
+    RatingModule
   ],  
   controllers: [TherapistController],
   providers: [TherapistService, TherapistStatisticsService],

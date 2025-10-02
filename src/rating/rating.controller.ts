@@ -1,11 +1,12 @@
-import { Controller, Post, Body, Param, Patch, Delete, Get, UseGuards } from '@nestjs/common';
-import { RatingService } from './rating.service';
-import { CreateRatingDto } from './dto/create-rating.dto';
-import { UpdateRatingDto } from './dto/update-rating.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
+import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { CreateRatingDto } from './dto/create-rating.dto';
+import { UpdateRatingDto } from './dto/update-rating.dto';
+import { RatingService } from './rating.service';
 
 @Controller('ratings')
 export class RatingController {
@@ -17,24 +18,30 @@ export class RatingController {
     return this.ratingService.create(token, dto);
   }
 
+  @ApiFindAllQueryParams()
   @Get()
   @DynamicGuards(
     new TherapistJwtAuthGuard(),
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
-  findAll() {
-    return this.ratingService.findAll();
+  findAll(
+    @Query() queryParams,
+  ) {
+    return this.ratingService.findAll(queryParams);
   }
 
   @Get(':id')
+  @ApiFindOneQueryParams()
   @DynamicGuards(
     new TherapistJwtAuthGuard(),
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
-  findOne(@Param('id') id: string) {
-    return this.ratingService.findOne(id);
+  findOne(
+    @Query() queryParams,
+    @Param('id') id: string) {
+    return this.ratingService.findOne(id, queryParams);
   }
 
   @Patch(':id')

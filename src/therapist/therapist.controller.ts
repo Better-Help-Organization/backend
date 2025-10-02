@@ -12,6 +12,7 @@ import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { PreferenceService } from 'src/preference/preference.service';
+import { RatingService } from 'src/rating/rating.service';
 import { SessionService } from 'src/session/session.service';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
@@ -25,7 +26,8 @@ export class TherapistController {
     private readonly sessionService: SessionService,
     private readonly firebaseService: FirebaseService,
     private readonly prefService: PreferenceService,
-    private readonly stats: TherapistStatisticsService
+    private readonly stats: TherapistStatisticsService,
+    private readonly ratingService: RatingService,
   ) {}
 
 
@@ -67,7 +69,17 @@ export class TherapistController {
     @CurrentUser() _: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
-    return this.firebaseService.findAll(queryParams);
+    return this.firebaseService.findAll(queryParams, _);
+  }
+
+  @ApiFindAllQueryParams()
+  @Post('me/notifications/read')
+  @UseGuards(TherapistJwtAuthGuard)
+  async readMyNotifications(
+    @CurrentUser() _: TokenPayload,
+  @Query() queryParams,
+  ) {
+    return this.firebaseService.markAsRead(queryParams);
   }
 
   @ApiFindAllQueryParams()
@@ -99,6 +111,16 @@ export class TherapistController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.sessionService.findAll(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/ratings')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyRating(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.ratingService.findAll(queryParams);
   }
 
   @ApiFindOneQueryParams()
