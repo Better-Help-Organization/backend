@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { Availability } from './availability.entity';
 import { Bank } from './bank.entity';
+import { Expertise } from './expertise.entity';
 import { Level } from './level.entity';
 import { License } from './license.entity';
 import { MatchTherapist } from './match-therapist.entity';
@@ -29,6 +30,22 @@ export class Therapist extends User {
   @ApiProperty({type: () => License})
   @OneToMany(() => License, license => license.therapist)
   license: License[];
+
+  // @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
+  // @Column({
+  //     type: "enum",
+  //     default: BaseStatus.INACTIVE,
+  //     enum: BaseStatus,
+  // })
+  // expertise: BaseStatus;
+
+  @ApiProperty()
+  @OneToMany(() => Expertise, exp => exp.therapist, {
+    cascade: true,
+    nullable: true, // optional
+    eager: true
+  })
+  expertise: Expertise[];
 
   @ApiProperty({type: () => Rating})
   @OneToMany(() => Rating, rating => rating.therapist)

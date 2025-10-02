@@ -1,7 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { ExpertiseValues } from 'src/common/constants';
 import { UpdateUserDto } from 'src/common/dto/update-user.dto';
+
+
+export class ExpertiseDto {
+  @ApiProperty({ enum: ExpertiseValues })
+  @IsOptional()
+  @IsEnum(ExpertiseValues)
+  expertise: ExpertiseValues;
+}
+
 
 export class TherapistBankDto {
   @ApiProperty({
@@ -59,5 +69,16 @@ export class UpdateTherapistDto extends UpdateUserDto {
     @ValidateNested({ each: true })
     @Type(() => TherapistBankDto)
     therapistBank?: TherapistBankDto[];
+
+    @ApiProperty({
+      type: [ExpertiseDto],
+      description: "Therapist expertise list",
+      required: false,
+    })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ExpertiseDto)
+    expertise?: ExpertiseDto[];
 
 }

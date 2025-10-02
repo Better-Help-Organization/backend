@@ -20,6 +20,36 @@ export enum BaseStatus {
     SUSPENDED = "suspended",
 }
 
+export enum ExpertiseValues {
+    IndividualTherapy = "Individual Therapy",
+    TeenTherapy = "Teen Therapy",
+    CoupleTherapy = "Couple Therapy",
+    GroupTherapy = "Group Therapy",
+    Anxiety = "Anxiety",
+    Depression = "Depression",
+    StressManagement = "Stress Management",
+    Trauma = "Trauma",
+    GriefLoss = "Grief / Loss",
+    RelationshipProblems = "Relationship Problems",
+    SelfEsteem = "Self Esteem",
+    AngerIssues = "Anger Issues",
+    PeerPressure = "Peer Pressure",
+    AcademicStress = "Academic Stress",
+    FamilyIssues = "Family Issues",
+    BehavioralChange = "Behavioral Change",
+    Bullying = "Bullying",
+    SocialIsolation = "Social Isolation",
+    CommunicationProblems = "Communication Problems",
+    TrustIssues = "Trust Issues",
+    IntimacyConcerns = "Intimacy Concerns",
+    ParentingChallenges = "Parenting Challenges",
+    ConflictResolution = "Conflict Resolution",
+    AnxietySupportGroup = "Anxiety Support Group",
+    DepressionSupportGroup = "Depression Support Group",
+    ParentingSupportGroup = "Parenting Support Group"
+}
+
+
 export enum Gender {
     MALE = "male",
     FEMALE = "female"
