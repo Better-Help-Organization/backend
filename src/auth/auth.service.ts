@@ -154,6 +154,9 @@ export class AuthService {
   // }
 
   async emailOtp<T extends User>(type: UserTypes, user: T) {
+    
+    // todo: turned off
+    return;
     this.logger.debug(`[emailOtp] Sending OTP to ${user.email} (type: ${type})`);
     const repo = await this.getRepo(type);
     const [OTP, OTPExpires] = this._generateOTP();
