@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionNotif, SubscriptionStatus } from 'src/common/constants';
+import { ApprovalStatus, DefaultParameters, SessionNotif, SubscriptionStatus } from 'src/common/constants';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Mood } from 'src/common/entities/mood.entity';
@@ -10,13 +10,15 @@ import { Session } from 'src/common/entities/session.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { LoggerService } from 'src/logger/logger.service';
-import { Between, Repository } from 'typeorm';
+import { ParameterService } from 'src/parameter/parameter.service';
+import { Between, LessThan, Repository } from 'typeorm';
 import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
 export class NotificationScheduler {
   constructor(
     private readonly firebaseService: FirebaseService,
+    private readonly parameterService: ParameterService,
     private readonly logger: LoggerService,
     @InjectRepository(Client) private readonly clientRepo: Repository<Client>,
     @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
@@ -237,6 +239,65 @@ export class NotificationScheduler {
                     `Your subscription will expire on ${sub.end_date}. Renew now to avoid interruption.`,
                 );
             }
+        }
+    }
+
+    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // Runs every day at 00:00
+    async PendingSessionCleanup(): Promise<void> {
+        this.logger.log('Starting expired pending sessions cleanup...');
+
+        try {
+            // Fetch expiry time from default parameters
+            const expiryInMinutes = await this.parameterService.getDefaultByName(
+                DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES,
+            );
+
+            // Compute expiry threshold
+            const now = new Date();
+            const expiryThreshold = new Date(now.getTime() - Number(expiryInMinutes) * 60 * 1000);
+
+            this.logger.log(`Removing pending sessions created before: ${expiryThreshold.toISOString()}`);
+
+            // Find sessions older than expiry time and still pending
+            const expiredSessions = await this.sessionRepo.find({
+                where: {
+                approvalStatus: ApprovalStatus.PENDING,
+                createdAt: LessThan(expiryThreshold)
+                },
+                relations: ['client'], // make sure you can access client info
+            });
+
+            if (expiredSessions.length === 0) {
+                this.logger.log('No expired pending sessions found.');
+                return;
+            }
+
+            // Delete or update them (depending on your use case)
+            await this.sessionRepo.remove(expiredSessions);
+
+            // Extract unique client IDs
+            const clientIds = [...new Set(expiredSessions.map(s => s.client.id))];
+
+            // Update hasNotification to null for affected clients
+            await Promise.all(clientIds.map(id => this.clientRepo.update(id, { hasNotification: null })));
+
+            // Send notification to each client
+            for (const session of expiredSessions) {
+                const client = session.client;
+
+                if (client?.firebaseToken) {
+                    await this.firebaseService.sendPushNotification(
+                    { client: [client.firebaseToken], therapist: [], admin: [] },
+                    'Pending session removed',
+                    SessionNotif.PENDING_SESSION_DELETED,
+                    `Your pending session scheduled on ${session.schedule.toDateString()} was automatically removed due to inactivity.`,
+                    );
+                }
+            }
+
+            this.logger.log(`Removed ${expiredSessions.length} expired pending session(s).`);
+        } catch (error) {
+        this.logger.error('Error while cleaning expired pending sessions:', error);
         }
     }
 }

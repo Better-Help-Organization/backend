@@ -191,6 +191,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   TAKEN: { code: "13", title: "❌ Session slot is no longer available", showNotification: true, },
   MESSAGE_REMOVED: { code: "14", title: "🗑️ Message deleted", showNotification: false, },
   CONFIRMED: { code: "15", title: "✅ Your session is confirmed 🎉", showNotification: true, },
+  PENDING_SESSION_DELETED: { code: "22", title: "🗓️ Pending session removed", showNotification: true, },
 
     // 🔔 Scheduled notifications
   DAILY_MOOD: { code: "16", title: "📝 Daily check-in time!", showNotification: true },
@@ -203,7 +204,8 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
 
 export enum DefaultParameters {
   VAT="vat",
-  NOTIFICATION_EXPIRY="notification expiry"
+  NOTIFICATION_EXPIRY="notification expiry",
+  PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes"
 }
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

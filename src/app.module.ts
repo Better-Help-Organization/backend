@@ -23,6 +23,7 @@ import { LoggerModule } from './logger/logger.module';
 import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
 import { MoodModule } from './mood/mood.module';
+import { NotificationModule } from './notification/notification.module';
 import { OptionModule } from './option/option.module';
 import { ParameterModule } from './parameter/parameter.module';
 import { PaymentModule } from './payment/payment.module';
@@ -65,6 +66,7 @@ import { TherapistModule } from './therapist/therapist.module';
     ParameterModule,
     PaymentModule,
     BankModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [AppService,    

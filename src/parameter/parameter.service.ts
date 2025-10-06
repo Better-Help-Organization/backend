@@ -65,6 +65,8 @@ export class ParameterService {
           return await  this.parseFloatParams(response.data[0]);
         case DefaultParameters.NOTIFICATION_EXPIRY:
           return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES:
+          return this.parseFloatParams(response.data[0]);
         default:
           throw new NotFoundException(`Default parameter with name ${name} not found`);
       }

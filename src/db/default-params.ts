@@ -10,4 +10,8 @@ export const defaultParams: Parameter[] = [
     name: DefaultParameters.NOTIFICATION_EXPIRY,
     value: '3',
 },
+{
+    name: DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES,
+    value: '0.1',
+}
 ] as  Parameter[];
