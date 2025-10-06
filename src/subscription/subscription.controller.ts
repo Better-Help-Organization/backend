@@ -26,6 +26,15 @@ export class SubscriptionController {
   ) findAll(@Query() query: FindAllQueryParams) {
     return this.subscriptionService.findAll(query);
   }
+  // findAllUsersubs
+  @ApiFindAllQueryParams()
+  @Get("/user-sub")
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard()
+  ) findAllUsersubs(@Query() query: FindAllQueryParams) {
+    return this.subscriptionService.findAllUsersubs(query);
+  }
 
   @ApiFindOneQueryParams()
   @Get(':id')

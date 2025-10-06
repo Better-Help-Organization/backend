@@ -61,7 +61,7 @@ export class FirebaseService {
           apns = {
             "payload": {
               "aps":{
-                "sound": "positive.wav"
+                "sound": "positive"
               }
             }
           }
@@ -148,9 +148,19 @@ export class FirebaseService {
           })),
         ];
 
+        // if (notifications.length > 0) {
+        //   await this.notifRepo.save(notifications);
+        // }
         if (notifications.length > 0) {
-          await this.notifRepo.save(notifications);
-        }
+          const saved = await this.notifRepo.save(notifications);
+
+          if (code === SessionNotif.SCHEDULED.code && saved[0]?.client?.id) {
+            await this.clientRepo.update(saved[0].client.id, {
+              hasNotification: saved[0],
+            });
+          }
+      }
+
 
   }
 

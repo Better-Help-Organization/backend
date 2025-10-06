@@ -4,6 +4,7 @@ import { ClientService } from 'src/client/client.service';
 import { ApprovalStatus, DayOfWeek, SessionNotif, SessionStatus, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
+import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Status } from 'src/common/entities/status.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
@@ -193,18 +194,7 @@ export class SessionService {
         tokens,
         JSON.stringify({ sessionIds }),
         SessionNotif.SCHEDULED,
-        `Your sessions have been scheduled: ${sessions
-          .map((s) =>
-            s.schedule.toLocaleDateString('en-US', {
-              month: 'short',   // "Sep"
-              day: 'numeric',   // "29"
-              year: 'numeric',  // "2025"
-              hour: 'numeric',  // "10"
-              minute: '2-digit',// "30"
-              hour12: true,     // "AM/PM"
-            })
-          )
-          .join(', ')}`
+        `Your are matched with a therapist choose one out of the list of scheduled times`
         );
 
       this.logger.log(`Created ${sessions.length} session(s) successfully`);
@@ -291,6 +281,8 @@ export class SessionService {
       // Confirm selected
       selected.approvalStatus = ApprovalStatus.CONFIRMED;
       const confirmed = await manager.save(selected);
+      // Nullify client's hasNotification after successful confirmation
+      await manager.update(Client, { id: confirmed.client.id }, { hasNotification: null });
 
       // Delete all others from this group
       const unselected = groupSessions.filter((s) => s.id !== selected.id);
@@ -423,10 +415,6 @@ export class SessionService {
     }
 
     this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
-
-
-
-        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
       }
 
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT

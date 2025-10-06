@@ -98,6 +98,15 @@ export class SubscriptionService {
     }
   }
 
+    async findAllUsersubs(queryParams?: FindAllQueryParams) {
+    try {
+      return await new APIFeatures(this.clientSubscriptionRepo, queryParams).getMany();
+    } catch (error) {
+      this.logger.error(`Failed to find subscriptions: ${error.message}`);
+      throw error;
+    }
+  }
+
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Subscription> {
     try {
       const subscription = await new APIFeatures(this.subscriptionRepo, queryParams).getOne(id);

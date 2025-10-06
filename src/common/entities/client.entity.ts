@@ -5,6 +5,7 @@ import { ClientSubscription } from './client-subscription.entity';
 import { Diary } from './diary.entity';
 import { Match } from './match.entity';
 import { Mood } from './mood.entity';
+import { Notification } from './notification.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
 import { User } from './user.entity';
@@ -60,4 +61,10 @@ export class Client extends User {
   @OneToOne(() => ClientSubscription, { nullable: true })
   @JoinColumn({ name: 'active_subscription_id' })
   activeSubscription?: ClientSubscription;
+
+  @ApiProperty({ type: () => Notification, nullable: true })
+  @OneToOne(() => Notification, { nullable: true, cascade: true })
+  @JoinColumn()
+  hasNotification?: Notification | null;
+
 }
