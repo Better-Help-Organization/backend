@@ -340,8 +340,8 @@ export class SessionService {
           schedule.setDate(schedule.getDate() + i * 7);
 
           try {
-            console.log("Creating schedule for iteration", i, schedule.toISOString());
-            console.log("Trying to create recurring session at:", schedule.toISOString());
+            console.log("Creating schedule for iteration - session.service.ts:343", i, schedule.toISOString());
+            console.log("Trying to create recurring session at: - session.service.ts:344", schedule.toISOString());
         
             const newSession = this.sessionRepo.create({
               therapist: selected.therapist,
@@ -355,7 +355,7 @@ export class SessionService {
             });
         
             const saved = await manager.save(newSession);
-            console.log("Saved recurring session:", saved.id);
+            console.log("Saved recurring session: - session.service.ts:358", saved.id);
         
             allSessions.push(saved);
         
@@ -394,10 +394,11 @@ export class SessionService {
               `Updated subscription ${subscription.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
             );
           } catch (err) {
-              console.error("Failed to save recurring session at", schedule.toISOString(), err.message);
+              console.error("Failed to save recurring session at - session.service.ts:397", schedule.toISOString(), err.message);
           }
         }
 
+        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
         cs.session = allSessions
         this.clientSubscriptionRepo.save(cs);
