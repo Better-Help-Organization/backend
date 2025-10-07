@@ -380,41 +380,74 @@ export class SessionService {
       //   createdSchedules.push(schedule);
       // }
 
-      const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
+        const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
 
-    for (let i = 1; i < weeks; i++) {
-    // Always create a fresh date object so no mutation issues
-    this.logger.log(`debug ${weeks}, ${typeof(weeks)}`)
-    const schedule = new Date(selected.schedule);
-    schedule.setDate(schedule.getDate() + i * 7);
+        for (let i = 1; i < weeks; i++) {
+          // Always create a fresh date object so no mutation issues
+          this.logger.log(`debug ${weeks}, ${typeof(weeks)}`)
+          const schedule = new Date(selected.schedule);
+          schedule.setDate(schedule.getDate() + i * 7);
 
-   try {
-     console.log("Creating schedule for iteration", i, schedule.toISOString());
-     console.log("Trying to create recurring session at:", schedule.toISOString());
- 
-     const newSession = this.sessionRepo.create({
-       therapist: selected.therapist,
-       client: selected.client,
-       schedule,
-       duration: selected.duration,
-       type: selected.type,
-       commonId,
-       modal: selected.modal,
-       approvalStatus: ApprovalStatus.CONFIRMED,
-     });
- 
-     const saved = await manager.save(newSession);
-     console.log("Saved recurring session:", saved.id);
- 
-     allSessions.push(saved);
- 
-     createdSchedules.push(schedule);
-   } catch (err) {
-      console.error("Failed to save recurring session at", schedule.toISOString(), err.message);
-   }
-    }
+          try {
+            console.log("Creating schedule for iteration", i, schedule.toISOString());
+            console.log("Trying to create recurring session at:", schedule.toISOString());
+        
+            const newSession = this.sessionRepo.create({
+              therapist: selected.therapist,
+              client: selected.client,
+              schedule,
+              duration: selected.duration,
+              type: selected.type,
+              commonId,
+              modal: selected.modal,
+              approvalStatus: ApprovalStatus.CONFIRMED,
+            });
+        
+            const saved = await manager.save(newSession);
+            console.log("Saved recurring session:", saved.id);
+        
+            allSessions.push(saved);
+        
+            createdSchedules.push(schedule);
 
-    this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
+            // update subscription start and end dates to the first and last session
+            const firstSessionDate = allSessions
+              .map(s => s.schedule)
+              .sort((a, b) => a.getTime() - b.getTime())[0];
+            
+            const lastSessionDate = allSessions
+              .map(s => s.schedule)
+              .sort((a, b) => b.getTime() - a.getTime())[0];
+
+            // Update main Subscription entity
+            subscription.start_date = firstSessionDate;
+            subscription.end_date = lastSessionDate;
+            await manager.save(subscription);
+
+            // Update the corresponding ClientSubscription
+            const clientSub = await manager.findOne(ClientSubscription, {
+              where: { client: { id: selected.client.id }, subscription: { id: subscription.id } },
+            });
+
+            if (clientSub) {
+              clientSub.start_date = firstSessionDate;
+              clientSub.end_date = lastSessionDate;
+              await manager.save(clientSub);
+
+              this.logger.log(
+                `Updated ClientSubscription ${clientSub.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
+              );
+            }
+
+            this.logger.log(
+              `Updated subscription ${subscription.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
+            );
+          } catch (err) {
+              console.error("Failed to save recurring session at", schedule.toISOString(), err.message);
+          }
+        }
+
+        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
       }
 
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT

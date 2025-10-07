@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApprovalStatus, DefaultParameters, SessionNotif, SubscriptionStatus } from 'src/common/constants';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Mood } from 'src/common/entities/mood.entity';
 import { Note } from 'src/common/entities/note.entity';
 import { Session } from 'src/common/entities/session.entity';
-import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
@@ -23,7 +23,7 @@ export class NotificationScheduler {
     @InjectRepository(Client) private readonly clientRepo: Repository<Client>,
     @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
     @InjectRepository(Therapist) private readonly therapistRepo: Repository<Therapist>,
-    @InjectRepository(Subscription) private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(ClientSubscription) private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
     @InjectRepository(Mood) private readonly moodRepo: Repository<Mood>,
     @InjectRepository(Note) private readonly noteRepo: Repository<Note>,
     @InjectRepository(Diary) private readonly diaryRepo: Repository<Diary>,
@@ -42,8 +42,8 @@ export class NotificationScheduler {
 
         const clients = await this.clientRepo
         .createQueryBuilder('client')
-        .innerJoinAndSelect('client.activeSubscription', 'subscription')
-        .where('subscription.status = :status', { status: SubscriptionStatus.ACTIVE })
+        .innerJoinAndSelect('client.activeSubscription', 'activeSub')
+        .where('activeSub.status = :status', { status: SubscriptionStatus.ACTIVE })
         .getMany();
 
         for (const client of clients) {
@@ -183,25 +183,23 @@ export class NotificationScheduler {
         const nextDay = new Date(targetDate);
         nextDay.setDate(nextDay.getDate() + 1);
 
-        const expiredSubs = await this.subscriptionRepo.find({
+        const expiredSubs = await this.clientSubscriptionRepo.find({
             where: {
                 status: SubscriptionStatus.INACTIVE,
                 end_date: Between(targetDate, nextDay),
             },
-            relations: ['client', 'client.client'], // subscription → clientSubs → client
+            relations: ['client'],
         });
 
-        for (const sub of expiredSubs) {
-            for (const clientSub of sub.client) {
-                const client = clientSub.client;
-                if (client?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                        { client: [client.firebaseToken], therapist: [], admin: [] },
-                        'REMINDER',
-                        SessionNotif.INACTIVITY,
-                        'It’s been a while since your last session. Come back and continue your journey.',
-                    );
-                }
+        for (const cs of expiredSubs) {
+            const client = cs.client;
+            if (client?.firebaseToken) {
+                await this.firebaseService.sendPushNotification(
+                    { client: [client.firebaseToken], therapist: [], admin: [] },
+                    'REMINDER',
+                    SessionNotif.INACTIVITY,
+                    'It’s been a while since your last session. Come back and continue your journey.',
+                );
             }
         }
     }
@@ -220,29 +218,62 @@ export class NotificationScheduler {
         const targetEnd = new Date(targetStart);
         targetEnd.setUTCHours(23, 59, 59, 999);
 
-        // Find active subscriptions expiring EXACTLY in 7 days (UTC)
-        const subs = await this.subscriptionRepo.find({
+        const subs = await this.clientSubscriptionRepo.find({
             where: {
                 status: SubscriptionStatus.ACTIVE,
                 end_date: Between(targetStart, targetEnd),
             },
-            relations: ['activeForClient'],
+            relations: ['client', 'subscription'],
         });
 
-        for (const sub of subs) {
-            const client = sub.activeForClient;
+        for (const cs of subs) {
+            const client = cs.client;
             if (client?.firebaseToken) {
                 await this.firebaseService.sendPushNotification(
                     { client: [client.firebaseToken], therapist: [], admin: [] },
                     'EXPIRY',
                     SessionNotif.SUBSCRIPTION_EXPIRY,
-                    `Your subscription will expire on ${sub.end_date}. Renew now to avoid interruption.`,
+                    `Your subscription (${cs.subscription?.id ?? 'plan'}) will expire on ${cs.end_date}. Renew now to avoid interruption.`,
                 );
             }
         }
     }
 
-    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // Runs every day at 00:00
+    // 6. Subscription expiration day notification
+    @Cron('0 59 23 * * *', { timeZone: 'Africa/Addis_Ababa' })
+    async sendSubscriptionExpiryDayNotification() {
+        this.logger.log('Checking for subscriptions expiring today...');
+
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setUTCHours(23, 59, 59, 999);
+
+        const expiringToday = await this.clientSubscriptionRepo.find({
+        where: {
+            status: SubscriptionStatus.ACTIVE,
+            end_date: Between(today, tomorrow),
+        },
+        relations: ['client'],
+        });
+
+        for (const cs of expiringToday) {
+        const client = cs.client;
+        if (client?.firebaseToken) {
+            await this.firebaseService.sendPushNotification(
+            { client: [client.firebaseToken], therapist: [], admin: [] },
+            'SUBSCRIPTION EXPIRED',
+            SessionNotif.SUBSCRIPTION_EXPIRED,
+            `Your subscription has expired today. Renew now to continue your sessions.`,
+            );
+        }
+        }
+
+        this.logger.log(`Sent expiry notifications for ${expiringToday.length} subscription(s).`);
+    }
+
+  // 7. Pending session cleanup
+    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' })
     async PendingSessionCleanup(): Promise<void> {
         this.logger.log('Starting expired pending sessions cleanup...');
 
