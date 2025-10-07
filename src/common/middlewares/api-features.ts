@@ -701,6 +701,7 @@ export class APIFeatures {
     this.sort();
     this.field();
     this.filter();
+    this.ManyIds();
     this.paginate();
 
     // if (useCache) this.query.cache('cache_getMany', 60000); // Cache for 60 seconds
@@ -709,56 +710,83 @@ export class APIFeatures {
       this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
     }
 
-    // after running the existing pipeline (sort/field/filter/paginate) and fetching:
-  const data = await this.query.getMany();
-  let finalData = data;
-    console.log({finalData})
-  // If a distinctField was requested, dedupe by that field (support relation.field too)
-  if (this.distinctField) {
-    const fieldParts = this.distinctField.split('.');
-    if (fieldParts.length === 1) {
-      const key = fieldParts[0];
-      finalData = data.filter((obj, index, arr) =>
-        index === arr.findIndex(o => {
-          // handle nested or undefined safely
-          const a = o && o[key];
-          return a === (obj && obj[key]);
-        })
-      );
-    } else if (fieldParts.length === 2) {
-      // relation.field — we need to pick o[relation] && o[relation][field]
-      const rel = fieldParts[0];
-      const fld = fieldParts[1];
-      finalData = data.filter((obj, index, arr) =>
-        index === arr.findIndex(o => {
-          const a = o && o[rel] && o[rel][fld];
-          const b = obj && obj[rel] && obj[rel][fld];
-          return a === b;
-        })
-      );
-    } else {
-      // deeper nesting: generic lookup
-      const getter = (o: any) => fieldParts.reduce((acc, p) => (acc ? acc[p] : undefined), o);
-      finalData = data.filter((obj, index, arr) =>
-        index === arr.findIndex(o => getter(o) === getter(obj))
-      );
+    const data = await this.query.getMany()
+    const totalItems = await this.query.getCount()
+    const totalPages = Math.ceil(totalItems / (parseInt(this.queryParams?.take,10) || 10));
+
+    return {
+      data,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: this.parsedPage,
+        pageSize: this.parsedLimit,
+      },
     }
   }
-  // Recompute pagination totals based on deduped set
-  const totalItems = finalData.length;
-  const totalPages = Math.ceil(totalItems / (this.parsedLimit || 10));
 
-  return {
-    data: finalData,
-    pagination: {
-      totalItems,
-      totalPages,
-      currentPage: this.parsedPage,
-      pageSize: this.parsedLimit,
-    },
-  };
+//   async getMany({useCache = false} = {}) {
+//     this.sort();
+//     this.field();
+//     this.filter();
+//     this.paginate();
 
-}
+//     // if (useCache) this.query.cache('cache_getMany', 60000); // Cache for 60 seconds
+
+//     if (this.target && this.tableName) {
+//       this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
+//     }
+
+//     // after running the existing pipeline (sort/field/filter/paginate) and fetching:
+//   const data = await this.query.getMany();
+//   let finalData = data;
+//     console.log({finalData})
+//   // If a distinctField was requested, dedupe by that field (support relation.field too)
+//   if (this.distinctField) {
+//     const fieldParts = this.distinctField.split('.');
+//     if (fieldParts.length === 1) {
+//       const key = fieldParts[0];
+//       finalData = data.filter((obj, index, arr) =>
+//         index === arr.findIndex(o => {
+//           // handle nested or undefined safely
+//           const a = o && o[key];
+//           return a === (obj && obj[key]);
+//         })
+//       );
+//     } else if (fieldParts.length === 2) {
+//       // relation.field — we need to pick o[relation] && o[relation][field]
+//       const rel = fieldParts[0];
+//       const fld = fieldParts[1];
+//       finalData = data.filter((obj, index, arr) =>
+//         index === arr.findIndex(o => {
+//           const a = o && o[rel] && o[rel][fld];
+//           const b = obj && obj[rel] && obj[rel][fld];
+//           return a === b;
+//         })
+//       );
+//     } else {
+//       // deeper nesting: generic lookup
+//       const getter = (o: any) => fieldParts.reduce((acc, p) => (acc ? acc[p] : undefined), o);
+//       finalData = data.filter((obj, index, arr) =>
+//         index === arr.findIndex(o => getter(o) === getter(obj))
+//       );
+//     }
+//   }
+//   // Recompute pagination totals based on deduped set
+//   const totalItems = finalData.length;
+//   const totalPages = Math.ceil(totalItems / (this.parsedLimit || 10));
+
+//   return {
+//     data: finalData,
+//     pagination: {
+//       totalItems,
+//       totalPages,
+//       currentPage: this.parsedPage,
+//       pageSize: this.parsedLimit,
+//     },
+//   };
+
+// }
   async getOne(id: string) {
     // if(!this.queryParams.options){
       this.field();
