@@ -111,7 +111,8 @@ export class TherapistStatisticsService {
   }
 
   async getAnalyticsOverTime(start: string, end: string, therapistId: string) {
-  
+  // total sessions
+  // total clients
     const sessionsOverTime = await this.getSessionsOverTime(start, end, therapistId)
     const usersTreatedOverTime = await this.getUsersTreatedOverTime(start, end, therapistId)
     const revenueOverTime = await this.getRevenueOverTime(start, end, therapistId)

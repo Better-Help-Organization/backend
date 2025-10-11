@@ -474,10 +474,13 @@ export class SessionService {
     updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
   ): Promise<Session> {
     try {
-    const session = await this.findOne(id, { fields: 'client.*, therapist.*, status.*, latestStatus' });
+    const session = await this.findOne(id, { fields: 'client.*, therapist.*, status.*, latestStatus, hasTherapistAttended' });
 
     const invalidStatuses = [SessionStatus.COMPLETED, SessionStatus.CANCELED];
-    if (invalidStatuses.includes(session.latestStatus)) {
+    // if (invalidStatuses.includes(session.latestStatus)) {
+    //   throw new BadRequestException("This session cannot be updated.");
+    // }
+    if (session.hasTherapistAttended) {
       throw new BadRequestException("This session cannot be updated.");
     }
 
