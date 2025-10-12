@@ -31,21 +31,30 @@ export const AuthEnforcedQueryParams = createParamDecorator(
       // Allow chats where client is the user or user is in the group
         if (request.groupScope) {
           // Only allow group filter if entity supports group
-          enforcedFilter = `(client.id=${userIdFilter}|group.id=${userIdFilter})`;
+          enforcedFilter = `(client.id:=${userIdFilter}|group.id:=${userIdFilter})`;
         } else {
           // For entities like Mood (no group relation)
-          enforcedFilter = `client.id=${userIdFilter}`;
+          // enforcedFilter = `client.id:=${userIdFilter}`;
         }
     } else if (user.type === UserTypes.THERAPIST) {
       // Only filter on therapist for now
-      enforcedFilter = `therapist.id=${userIdFilter}`;
+      enforcedFilter = `therapist.id:=${userIdFilter}`;
     } else {
       throw new Error('Invalid user type');
     }
 
-    filters.push(enforcedFilter);
-    query.filters = filters.join(',');
+    // Parse existing filters into an array
+    const existingFilters = query.filters ? query.filters.split(',') : [];
 
-    return plainToInstance(data, query, { enableImplicitConversion: true });
+    // Merge user filters with enforced filter
+    const mergedFilters = [...existingFilters, enforcedFilter].filter(Boolean);
+
+    // Store them in query.filters so downstream code sees everything
+    query.filters = mergedFilters.join(',');
+
+    console.log('merged filters', query.filters);
+
+    // Return as usual
+    return plainToInstance(data, { ...query }, { enableImplicitConversion: true });
   }
 );
