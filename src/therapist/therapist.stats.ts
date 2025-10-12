@@ -118,13 +118,31 @@ export class TherapistStatisticsService {
     const revenueOverTime = await this.getRevenueOverTime(start, end, therapistId)
     const therapistWorkload = await this.getTherapistWorkload(start, end, therapistId)
 
-  return {
-    sessionsOverTime,
-    usersTreatedOverTime,
-    revenueOverTime,
-    therapistWorkload,
-  };
-}
+    // 🧮 Get total counts (no date filters)
+    const totalSessionsQb = this.sessionRepo.createQueryBuilder('session')
+      .select('COUNT(session.id)', 'totalSessions');
+    if (therapistId) {
+      totalSessionsQb.where('session.therapistId = :therapistId', { therapistId });
+    }
+    const { totalSessions } = await totalSessionsQb.getRawOne();
+
+    const totalUsersQb = this.sessionRepo.createQueryBuilder('session')
+      .leftJoin('session.client', 'client')
+      .select('COUNT(DISTINCT client.id)', 'totalUsers');
+    if (therapistId) {
+      totalUsersQb.where('session.therapistId = :therapistId', { therapistId });
+    }
+    const { totalUsers } = await totalUsersQb.getRawOne();
+
+    return {
+      totalSessions: Number(totalSessions) || 0,
+      totalUsers: Number(totalUsers) || 0,
+      sessionsOverTime,
+      usersTreatedOverTime,
+      revenueOverTime,
+      therapistWorkload,
+    };
+  }
 
 }
 
