@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { BaseStatus } from '../constants';
 import { Availability } from './availability.entity';
 import { Bank } from './bank.entity';
 import { Expertise } from './expertise.entity';
@@ -22,6 +23,14 @@ export class Therapist extends User {
   @ApiProperty()
   @Column({ default: false })
   verified: boolean;
+
+  @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
+  @Column({
+      type: "enum",
+      default: BaseStatus.INACTIVE,
+      enum: BaseStatus,
+  })
+  status: BaseStatus;
 
   @ApiProperty({type: () => Availability})
   @OneToMany(() => Availability, availability => availability.therapist)

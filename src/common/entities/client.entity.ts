@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { BaseStatus } from '../constants';
 import { Answer } from './answer.entity';
 import { ClientSubscription } from './client-subscription.entity';
 import { Diary } from './diary.entity';
@@ -28,6 +29,14 @@ export class Client extends User {
   @ApiProperty()
   @Column({ default: false })
   isInGroup: boolean;
+
+  @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
+  @Column({
+      type: "enum",
+      default: BaseStatus.ACTIVE,
+      enum: BaseStatus,
+  })
+  status: BaseStatus;
 
   @ApiProperty({ type: () => Preference })
   @OneToMany(() => Preference, preference => preference.client)
@@ -58,7 +67,7 @@ export class Client extends User {
   subscription: ClientSubscription[];
 
   @ApiProperty({ type: () => ClientSubscription })
-  @OneToOne(() => ClientSubscription, { nullable: true })
+  @OneToOne(() => ClientSubscription, { nullable: true, eager: true })
   @JoinColumn({ name: 'active_subscription_id' })
   activeSubscription?: ClientSubscription;
 
