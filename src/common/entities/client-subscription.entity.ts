@@ -15,7 +15,7 @@ export class ClientSubscription extends CommonEntity {
   client: Client;
 
   @ApiProperty({ type: () => Subscription })
-  @ManyToOne(() => Subscription, subscription => subscription.client, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Subscription, subscription => subscription.client, { onDelete: 'CASCADE', eager: true })
   subscription: Subscription;
 
   @ApiProperty({ type: () => Payment, isArray: true })
