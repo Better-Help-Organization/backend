@@ -30,6 +30,21 @@ export class DateWithTimes {
   startTimes: string[];
 }
 
+export class DateWithTime {
+  @ApiProperty({ enum: DayOfWeek })
+  @IsEnum(DayOfWeek)
+  date: DayOfWeek;
+
+  @ApiProperty({
+    type: String,
+    example: '09:00',
+  })
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Each start time must be in HH:mm format',
+  })
+  startTime: string;
+}
+
 export class baseSession {
 
   @ApiProperty({
@@ -48,19 +63,6 @@ export class baseSession {
   @IsOptional()
   @IsString()
   groupName: string;
-
-  @ApiProperty({
-    type: [DateWithTimes],
-    description: 'Weekday + start times',
-    example: [
-      { date: DayOfWeek.MONDAY, startTimes: ['09:00', '11:00'] },
-      { date: DayOfWeek.WEDNESDAY, startTimes: ['10:00'] },
-    ],
-  })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => DateWithTimes)
-  dates: DateWithTimes[];
 
   @ApiProperty({
     description: 'Duration of the session in minutes',
@@ -97,6 +99,20 @@ export class CreateSessionDto extends baseSession {
   @IsUUID()
   client?: string;
 
+
+  @ApiProperty({
+    type: [DateWithTimes],
+    description: 'Weekday + start times',
+    example: [
+      { date: DayOfWeek.MONDAY, startTimes: ['09:00', '11:00'] },
+      { date: DayOfWeek.WEDNESDAY, startTimes: ['10:00'] },
+    ],
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DateWithTimes)
+  dates: DateWithTimes[];
+
 }
 
 export class CreateGroupSession extends baseSession {
@@ -119,4 +135,15 @@ export class CreateGroupSession extends baseSession {
   @IsNotEmpty()
   @IsUUID()
   therapist?: string;
+
+  @ApiProperty({
+    type: DateWithTime,
+    description: 'Weekday and start time for the session',
+    example: { date: DayOfWeek.MONDAY, startTime: '09:00' },
+  })
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => DateWithTime)
+  date: DateWithTime;
+
 } 
