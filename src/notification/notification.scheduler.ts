@@ -233,7 +233,7 @@ export class NotificationScheduler {
                     { client: [client.firebaseToken], therapist: [], admin: [] },
                     'EXPIRY',
                     SessionNotif.SUBSCRIPTION_EXPIRY,
-                    `Your subscription (${cs.subscription?.id ?? 'plan'}) will expire on ${cs.end_date}. Renew now to avoid interruption.`,
+                    `Your subscription will expire on ${cs.end_date}.`,
                 );
             }
         }
