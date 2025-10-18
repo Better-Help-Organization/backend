@@ -29,6 +29,16 @@ export class QuoteController {
     return this.quoteService.findAll(queryparams);
   }
 
+  @Get("daily")
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+    new ClientJwtAuthGuard()
+  )
+  DailyQuote() {
+    return this.quoteService.getDailyQuote();
+  }
+
   @Get(':id')
   @ApiFindOneQueryParams()
     @DynamicGuards(
