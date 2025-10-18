@@ -1,5 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
 import { Admin } from 'src/common/entities/admin.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -69,6 +72,43 @@ export class AdminService {
       throw error;
     }
   }
+
+    async uploadProfile(token: TokenPayload, tmpFileName: string) {
+      const client = await this.findOne(token.id);
+      const ext = path.extname(tmpFileName) || '.jpg';
+      const tmpPath = path.join(Tmp_Files_Dir, tmpFileName);
+  
+      if (!fs.existsSync(tmpPath)) {
+        throw new BadRequestException('Uploaded profile file not found');
+      }
+  
+      const finalDir = path.join(Final_Files_Dir, ValidFolders.PROFILE);
+      fs.mkdirSync(finalDir, { recursive: true });
+  
+      const existingFiles = fs
+        .readdirSync(finalDir)
+        .filter(file => file.startsWith(`${client.id}.`));
+      for (const file of existingFiles) {
+        fs.unlinkSync(path.join(finalDir, file));
+      }
+  
+      const finalFileName = `${client.id}${ext}`;
+      const finalPath = path.join(finalDir, finalFileName);
+  
+      client.profile = path.join(ValidFolders.PROFILE, finalFileName)
+      try {
+        await this.adminRepo.save(client);
+  
+        fs.renameSync(tmpPath, finalPath);
+        // this.presenceService.notifyProfilePictureChange(token.id, UserTypes.CLIENT, client.profile);
+        
+        return path.join(ValidFolders.PROFILE, finalFileName);
+      } catch (err) {
+        this.logger.error(`Failed to update admin profile: ${err.message}`);
+        if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+        throw new BadRequestException('Profile upload failed. Please try again.');
+      }
+    }
 
   async remove(id: string) {
     try {
