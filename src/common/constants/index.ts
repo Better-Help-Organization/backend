@@ -201,6 +201,8 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   INACTIVITY: { code: "21", title: "👋 We miss you!", showNotification: true },
   SUBSCRIPTION_EXPIRY: { code: "22", title: "⚠️ Subscription expiring soon", showNotification: true },
   SUBSCRIPTION_EXPIRED: { code: "23", title: "❌ Subscription expired", showNotification: true },
+  GROUP_SCHEDULED: { code: "24", title: 'Group Session Created', showNotification: true },
+
 } as const;
 
 export enum DefaultParameters {
