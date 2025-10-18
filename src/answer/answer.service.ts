@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QuestionType, TokenPayload } from 'src/common/constants';
+import { ModalName, QuestionType, TokenPayload } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
+import { Client } from 'src/common/entities/client.entity';
+import { Modal } from 'src/common/entities/modal.entity';
 import { Option } from 'src/common/entities/option.entity';
 import { Question } from 'src/common/entities/question.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -18,6 +20,8 @@ export class AnswerService {
     @InjectRepository(Answer) private readonly answerRepository: Repository<Answer>,
     @InjectRepository(Question) private readonly questionRepository: Repository<Question>,
     @InjectRepository(Option) private readonly optionRepository: Repository<Option>,
+    @InjectRepository(Client) private readonly clientRepo: Repository<Client>,
+    @InjectRepository(Modal) private readonly modalRepo: Repository<Modal>,
 
     private readonly dataSource: DataSource,
     private readonly modalService: ModalService,
@@ -132,6 +136,100 @@ export class AnswerService {
       throw error;
     }
   }
+
+  async findClientsWhoFilledAllGroupAnswers(queryParams?: FindAllQueryParams) {
+  // 1️⃣ Get group therapy modal and questions
+  const groupModal = await this.modalRepo.findOne({
+    where: { name: ModalName.GROUP_THERAPY },
+    relations: ['question'],
+  });
+
+  if (!groupModal) {
+    return {
+      data: [],
+      pagination: { totalItems: 0, totalPages: 0, currentPage: 1, pageSize: 10 },
+    };
+  }
+
+  const totalQuestions = groupModal.question.length;
+  if (totalQuestions === 0) {
+    return {
+      data: [],
+      pagination: { totalItems: 0, totalPages: 0, currentPage: 1, pageSize: 10 },
+    };
+  }
+
+  // 2️⃣ Base query for clients who answered all group questions
+  const qb = this.clientRepo.createQueryBuilder('client')
+    .where(qb => {
+      const sub = qb.subQuery()
+        .select('answer.clientId')
+        .from(Answer, 'answer')
+        .where('answer.modalId = :modalId', { modalId: groupModal.id })
+        .groupBy('answer.clientId')
+        .having('COUNT(DISTINCT answer.questionId) = :totalQuestions', { totalQuestions })
+        .getQuery();
+      return 'client.id NOT IN ' + sub;
+    })
+    .andWhere('client.isInGroup = false')
+    .setParameter('modalId', groupModal.id);
+
+  // 3️⃣ Field selection
+  if (queryParams?.fields) {
+    const fields = queryParams.fields
+      .split(',')
+      .map(f => f.trim())
+      .filter(f => f.length > 0);
+    if (fields.length) {
+      qb.select(fields.map(f => `client.${f}`));
+    }
+  }
+
+  // 4️⃣ Filters (simple "field=value" or multiple comma-separated)
+  if (queryParams?.filters) {
+    const filters = queryParams.filters.split(',');
+    for (const filter of filters) {
+      const [field, operator, value] = filter.split('=');
+      if (field && operator && value) {
+        if (operator.toLowerCase() === 'like') {
+          qb.andWhere(`client.${field} LIKE :${field}`, { [field]: `%${value}%` });
+        } else {
+          qb.andWhere(`client.${field} ${operator} :${field}`, { [field]: value });
+        }
+      }
+    }
+  }
+
+  // 5️⃣ Sorting
+  if (queryParams?.sort) {
+    const sorts = queryParams.sort.split(',');
+    for (const sortRule of sorts) {
+      const [field, order] = sortRule.split(':');
+      qb.addOrderBy(`client.${field}`, (order?.toUpperCase() as 'ASC' | 'DESC') || 'ASC');
+    }
+  }
+
+  // 6️⃣ Pagination
+  const page = parseInt(queryParams?.page, 10) || 1;
+  const take = parseInt(queryParams?.take, 10) || 10;
+  const skip = (page - 1) * take;
+  qb.skip(skip).take(take);
+
+  // 7️⃣ Execute query
+  const [data, totalItems] = await qb.getManyAndCount();
+  const totalPages = Math.ceil(totalItems / take);
+
+  // 8️⃣ Return structured result
+  return {
+    data,
+    pagination: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize: take,
+    },
+  };
+}
 
   async update(client: TokenPayload, id: string, dto: UpdateAnswerDto) {
     try {
