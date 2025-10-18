@@ -76,4 +76,8 @@ export class Client extends User {
   @JoinColumn()
   hasNotification?: Notification | null;
 
+    // @Expose()
+    // get type() {
+    //   return this.activeSubscription?.subscription ?? null;
+    // }
 }

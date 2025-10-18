@@ -33,5 +33,11 @@ export class ClientSubscription extends CommonEntity {
   @ApiProperty({ example: '2025-09-28', description: 'End date of subscription' })
   @Column({ type: 'date', nullable: true })
   end_date: Date;
+
+  // @Expose()
+  // get type() {
+  //   return this.subscription?.type ?? null;
+  // }
+
   
 }
