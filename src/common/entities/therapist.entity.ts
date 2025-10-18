@@ -3,6 +3,7 @@ import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseStatus } from '../constants';
 import { Availability } from './availability.entity';
 import { Bank } from './bank.entity';
+import { ClientSubscription } from './client-subscription.entity';
 import { Expertise } from './expertise.entity';
 import { Level } from './level.entity';
 import { License } from './license.entity';
@@ -79,5 +80,8 @@ export class Therapist extends User {
   @OneToMany(() => TherapistBank, tb => tb.therapist, { cascade: true })
   therapistBank: TherapistBank[];
 
+  @ApiProperty({ type: () => ClientSubscription, isArray: true })
+  @OneToMany(() => ClientSubscription, cs => cs.therapist)
+  subscription: ClientSubscription[];
 
 }

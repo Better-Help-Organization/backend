@@ -399,6 +399,8 @@ export class SessionService {
         }
 
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
+        cs.session = allSessions
+        this.clientSubscriptionRepo.save(cs);
       }
 
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT
