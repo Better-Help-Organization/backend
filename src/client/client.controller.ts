@@ -84,7 +84,6 @@ export class ClientController {
   @UseGuards(ClientJwtAuthGuard)
   async findMyNotifications(
     @CurrentUser() _: TokenPayload,
-    @GroupScope() _gs: boolean,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.firebaseService.findAll(queryParams, _);
