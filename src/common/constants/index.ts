@@ -192,9 +192,8 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
   MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: false },
   CONFIRMED: { code: "15", title: "Upcoming confirmed sessions with client", showNotification: true },
-
-    // 🔔 Scheduled notifications
-  PENDING_SESSION_DELETED: { code: "16", title: "Pending session removed", showNotification: true, },
+  // 🔔 Scheduled notifications
+  PENDING_SESSION_DELETED: { code: "16", title: "🗓️ Pending session removed", showNotification: true, },
   DAILY_MOOD: { code: "17", title: "📝 Daily check-in time!", showNotification: true },
   SESSION_REMINDER_CLIENT: { code: "18", title: "⏰ Don’t forget your session!", showNotification: true },
   SESSION_REMINDER_THERAPIST: { code: "19", title: "📋 Upcoming session alert", showNotification: true },
@@ -202,6 +201,8 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   INACTIVITY: { code: "21", title: "👋 We miss you!", showNotification: true },
   SUBSCRIPTION_EXPIRY: { code: "22", title: "⚠️ Subscription expiring soon", showNotification: true },
   SUBSCRIPTION_EXPIRED: { code: "23", title: "❌ Subscription expired", showNotification: true },
+  GROUP_SCHEDULED: { code: "24", title: 'Group Session Created', showNotification: true },
+
 } as const;
 
 export enum DefaultParameters {

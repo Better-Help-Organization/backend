@@ -10,13 +10,14 @@ export const GroupScope = createParamDecorator(
       },
 );
 
+
 export const AuthEnforcedQueryParams = createParamDecorator(
   (data: ClassConstructor<any>, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
     const query = request.query;
     const user: TokenPayload = request.user;
 
-    const userIdFilter = `${user.id}`;
+    // Parse existing filters into an array
     let filters = query.filters ? query.filters.split(',') : [];
 
     // Remove any previous filters on client/therapist/group
@@ -28,24 +29,30 @@ export const AuthEnforcedQueryParams = createParamDecorator(
     let enforcedFilter = '';
 
     if (user.type === UserTypes.CLIENT) {
-      // Allow chats where client is the user or user is in the group
+          const userIdFilter = `${user.id}`;
+
+      // Include sessions where client is the user OR user is in the group
         if (request.groupScope) {
-          // Only allow group filter if entity supports group
-          enforcedFilter = `(client.id=${userIdFilter}|group.id=${userIdFilter})`;
-        } else {
-          // For entities like Mood (no group relation)
-          enforcedFilter = `client.id=${userIdFilter}`;
+          enforcedFilter = `(client.id:=${user.id}||group.id:=${user.id})`;
+        }
+        else{
+          enforcedFilter = `client.id:=${userIdFilter}`;
         }
     } else if (user.type === UserTypes.THERAPIST) {
       // Only filter on therapist for now
-      enforcedFilter = `therapist.id=${userIdFilter}`;
+      enforcedFilter = `therapist.id:=${user.id}`;
     } else {
       throw new Error('Invalid user type');
     }
 
-    filters.push(enforcedFilter);
-    query.filters = filters.join(',');
+    // Merge user filters with any existing filters
+    const mergedFilters = [...filters, enforcedFilter].filter(Boolean);
 
-    return plainToInstance(data, query, { enableImplicitConversion: true });
+    // Store them back in query.filters for downstream use
+    query.filters = mergedFilters.join(',');
+
+    console.log('merged filters', query.filters);
+
+    return plainToInstance(data, { ...query }, { enableImplicitConversion: true });
   }
 );

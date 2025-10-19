@@ -15,6 +15,7 @@ import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
+import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
 
@@ -116,6 +117,10 @@ export class Session extends CommonEntity {
   @ApiProperty({type : () => Modal})
   @ManyToOne(() => Modal, (modal) => modal.session, { onDelete: 'RESTRICT' })
   modal: Modal;
+
+  @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
+  @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
+  subscription: ClientSubscription;
 
   async addMessage(
     msgRepo: Repository<Message>,

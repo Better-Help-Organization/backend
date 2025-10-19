@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { QuestionType } from 'src/common/constants';
 
@@ -26,4 +26,12 @@ export class UpdateQuestionDto {
   @IsOptional()
   @IsUUID()
   modalId: string;
+
+  @ApiProperty({
+    description: 'The order of the question within the modal',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  order?: number;
 }

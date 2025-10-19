@@ -165,10 +165,10 @@ export class MatchService {
         where: { id: acceptMatchDto.matchId },
         relations: ['client', 'matchedTherapist', 'matchedTherapist.therapist', 'accepted'],
       });
-      console.log({match})
       if (!match) {
         throw new NotFoundException('Match not found');
       }
+      console.log({match:match.client.activeSubscription})
 
       if (match.accepted) {
         throw new ConflictException('Match already accepted by another therapist');
@@ -183,11 +183,20 @@ export class MatchService {
       if (!therapist) {
         throw new NotFoundException('Therapist not found');
       }
+          const subscription = match.client.activeSubscription;
+    if (!subscription) {
+      throw new BadRequestException('Client has no active subscription');
+    }
+    subscription.therapist = therapist;
 
-      const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
-      if (!matchTherapist) {
-        throw new BadRequestException('Therapist not part of this match');
-      }
+    // Save subscription entity
+    await queryRunner.manager.save(subscription);
+
+
+    const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
+    if (!matchTherapist) {
+      throw new BadRequestException('Therapist not part of this match');
+    }
 
       matchTherapist.respondedAt = new Date();
       await queryRunner.manager.save(matchTherapist);

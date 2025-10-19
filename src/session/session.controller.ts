@@ -30,7 +30,7 @@ export class SessionController {
     @CurrentUser() user: TokenPayload,
     @Body() createGroupSessionDto: CreateGroupSession
   ) {
-    return this.sessionService.create(user.id, createGroupSessionDto);
+    return this.sessionService.createGroupSession(createGroupSessionDto);
   }
 
   @Post()

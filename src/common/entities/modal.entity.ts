@@ -18,6 +18,10 @@ export class Modal extends CommonEntity {
   @Column({unique: true, nullable: true})
   order: number;
 
+  @ApiProperty()
+  @Column({unique: true, nullable: true})
+  code: number;
+
   @ApiProperty() 
   @Column('text')
   description: string;

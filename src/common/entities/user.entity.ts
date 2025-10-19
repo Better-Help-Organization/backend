@@ -65,7 +65,7 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
     @Column({
         type: "enum",
-        default: BaseStatus.INACTIVE,
+        default: BaseStatus.ACTIVE,
         enum: BaseStatus,
     })
     status: BaseStatus;

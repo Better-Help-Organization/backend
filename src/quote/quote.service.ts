@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DailyQuote } from 'src/common/entities/daily-quote.entity';
 import { Quote } from 'src/common/entities/quote.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -15,6 +16,8 @@ export class QuoteService {
     constructor(
       @InjectRepository(Quote)
       private  quoteRepo:Repository<Quote>,
+      @InjectRepository(DailyQuote)
+      private  dailyQuoteRepo:Repository<DailyQuote>,
       private readonly logger: LoggerService,  
     ){}
   
@@ -50,6 +53,32 @@ export class QuoteService {
         throw error;
       }
     }
+
+    async getDailyQuote(): Promise<Quote | null> {
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Check if already exists
+      let daily = await this.dailyQuoteRepo.findOne({
+        where: { date: todayStr },
+        relations: ['quote'],
+      });
+
+      if (daily) return daily.quote;
+
+      // Pick a random quote and save
+      const allQuotes = await this.quoteRepo.find();
+      if (!allQuotes.length) return null;
+
+      const randomIndex = Math.floor(Math.random() * allQuotes.length);
+      daily = this.dailyQuoteRepo.create({
+        date: todayStr,
+        quote: allQuotes[randomIndex],
+      });
+
+      await this.dailyQuoteRepo.save(daily);
+      return daily.quote;
+    }
+
   
 
   update(id: string, updateQuoteDto: UpdateQuoteDto) {

@@ -16,7 +16,7 @@ export class CreateSubscriptionDto {
   start_date: Date;
 
   @ApiProperty({ description: 'Original price before discount', example: 580 })
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
   @Min(0, { message: 'old_price must be a positive number' })
   old_price: number;

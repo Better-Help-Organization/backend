@@ -28,7 +28,7 @@ export class Subscription extends CommonEntity{
     end_date: Date;
 
     @ApiProperty({ example: 580, description: 'Original (old) price before discount' })
-    @Column('int')
+    @Column('int',  { nullable: true })
     old_price: number;
 
     @ApiProperty({ example: 499, description: 'Discounted price (if applicable)' })

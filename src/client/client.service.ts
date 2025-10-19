@@ -142,7 +142,7 @@ export class ClientService {
       
       return path.join(ValidFolders.PROFILE, finalFileName);
     } catch (err) {
-      this.logger.error(`Failed to update therapist profile: ${err.message}`);
+      this.logger.error(`Failed to update client profile: ${err.message}`);
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
       throw new BadRequestException('Profile upload failed. Please try again.');
     }

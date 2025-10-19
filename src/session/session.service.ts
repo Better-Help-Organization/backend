@@ -1,21 +1,23 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { ApprovalStatus, DayOfWeek, SessionNotif, SessionStatus, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
+import { ApprovalStatus, DayOfWeek, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Status } from 'src/common/entities/status.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
+import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Between, In, Not, Repository } from 'typeorm';
-import { v4 as uuid } from 'uuid';
+import { Between, DataSource, In, Not, Repository } from 'typeorm';
+import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
+import { CreateGroupSession } from './dto/create-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
 import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 
@@ -54,7 +56,8 @@ export class SessionService {
     private readonly logger: LoggerService,
     private readonly firebaseService: FirebaseService,  
     private readonly clientService: ClientService,  
-    private readonly therapistService: TherapistService,  
+    private readonly therapistService: TherapistService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(queryParams?: FindAllQueryParams) {
@@ -327,59 +330,7 @@ export class SessionService {
       if (subscription) {
         const weeks = subscription.type * 4;
         console.log(subscription.type)
-
-      // const createdSchedules: Date[] = [selected.schedule]; // already created first one
-
-      // for (let i = 1; i < weeks; i++) {
-      //   const schedule = new Date(selected.schedule);
-      //   schedule.setDate(schedule.getDate() + i * 7);
-
-      //   // check conflicts in DB
-
-      //   const startOfWeek = new Date(schedule);
-      //   startOfWeek.setDate(schedule.getDate() - schedule.getDay());
-      //   startOfWeek.setHours(0, 0, 0, 0);
-
-      //   const endOfWeek = new Date(startOfWeek);
-      //   endOfWeek.setDate(startOfWeek.getDate() + 6);
-      //   endOfWeek.setHours(23, 59, 59, 999);
-
-      //   console.log({startOfWeek, endOfWeek})
-      //   const conflict = await manager.findOne(Session, {
-      //     where: {
-      //       client: selected.client,
-      //       approvalStatus: ApprovalStatus.CONFIRMED,
-      //       schedule: Between(startOfWeek, endOfWeek)
-      //       // schedule: Between(
-      //       //   new Date(schedule.getFullYear(), schedule.getMonth(), schedule.getDate() - schedule.getDay()),
-      //       //   new Date(schedule.getFullYear(), schedule.getMonth(), schedule.getDate() - schedule.getDay() + 6, 23, 59, 59, 999)
-      //       // ),
-      //     },
-      //   });
-      //   console.log({conflict})
-      //   // check conflicts in-memory too
-      //   const hasLocalConflict = createdSchedules.some(d =>
-      //     Math.abs(d.getTime() - schedule.getTime()) < 7 * 24 * 60 * 60 * 1000
-      //   );
-
-      //   console.log({hasLocalConflict})
-      //   // if (conflict || hasLocalConflict) continue;
-      //   const newSession = this.sessionRepo.create({
-      //     therapist: selected.therapist,
-      //     client: selected.client,
-      //     schedule,
-      //     duration: selected.duration,
-      //     type: selected.type,
-      //     commonId,
-      //     modal: selected.modal,
-      //     approvalStatus: ApprovalStatus.CONFIRMED,
-      //   });
-
-      //   const saved = await manager.save(newSession);
-      //   allSessions.push(saved);
-      //   createdSchedules.push(schedule);
-      // }
-
+  
         const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
 
         for (let i = 1; i < weeks; i++) {
@@ -389,8 +340,8 @@ export class SessionService {
           schedule.setDate(schedule.getDate() + i * 7);
 
           try {
-            console.log("Creating schedule for iteration", i, schedule.toISOString());
-            console.log("Trying to create recurring session at:", schedule.toISOString());
+            console.log("Creating schedule for iteration - session.service.ts:343", i, schedule.toISOString());
+            console.log("Trying to create recurring session at: - session.service.ts:344", schedule.toISOString());
         
             const newSession = this.sessionRepo.create({
               therapist: selected.therapist,
@@ -404,7 +355,7 @@ export class SessionService {
             });
         
             const saved = await manager.save(newSession);
-            console.log("Saved recurring session:", saved.id);
+            console.log("Saved recurring session: - session.service.ts:358", saved.id);
         
             allSessions.push(saved);
         
@@ -443,11 +394,14 @@ export class SessionService {
               `Updated subscription ${subscription.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
             );
           } catch (err) {
-              console.error("Failed to save recurring session at", schedule.toISOString(), err.message);
+              console.error("Failed to save recurring session at - session.service.ts:397", schedule.toISOString(), err.message);
           }
         }
 
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
+        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
+        cs.session = allSessions
+        this.clientSubscriptionRepo.save(cs);
       }
 
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT
@@ -469,52 +423,69 @@ export class SessionService {
     });
   }
 
-  async update(
-    id: string,
-    updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
-  ): Promise<Session> {
-    try {
-    const session = await this.findOne(id, { fields: 'client.*, therapist.*, status.*, latestStatus' });
+async update(
+  id: string,
+  updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
+): Promise<Session> {
+  try {
+    const session = await this.findOne(id, {
+      fields: 'client.*, therapist.*, status.*, latestStatus, hasTherapistAttended',
+    });
 
-    const invalidStatuses = [SessionStatus.COMPLETED, SessionStatus.CANCELED];
-    if (invalidStatuses.includes(session.latestStatus)) {
-      throw new BadRequestException("This session cannot be updated.");
+    // ✅ If therapist attended, restrict updates except 'note'
+    if (session.hasTherapistAttended) {
+      const allowedField = 'note';
+
+      // Find which disallowed fields were sent in DTO
+      const invalidFields = Object.keys(updateSessionDto).filter(
+        (key) => key !== allowedField && updateSessionDto[key as keyof typeof updateSessionDto] !== undefined
+      );
+
+      if (invalidFields.length > 0) {
+        const readableFields = invalidFields
+          .map((f) => f.replace(/([A-Z])/g, ' $1').toLowerCase())
+          .join(', ');
+        throw new BadRequestException(
+          `You can’t change ${readableFields} for this session because sessoin is complete.`
+        );
+      }
     }
 
-    // ✅ Handle status updates
-    if ('status' in updateSessionDto && updateSessionDto.status) {
-      const { status, reason } = updateSessionDto.status;
+    // ✅ Apply updates normally if allowed
+    const sanitizedDto = { ...(updateSessionDto as UpdateSessionDto) };
 
-      // Append to history
+    // ✅ Handle status updates
+    if ('status' in sanitizedDto && sanitizedDto.status) {
+      const { status, reason } = sanitizedDto.status;
+
       const newStatus = this.sessionRepo.manager.create(Status, {
         session,
         status,
         reason,
       });
       await this.sessionRepo.manager.save(Status, newStatus);
-
-      // Update denormalized fields
       session.latestStatus = status;
       session.latestReason = reason;
     }
 
-    // ✅ Apply all other updates (therapist, schedule, etc.)
-    Object.assign(session, { ...updateSessionDto, status: undefined });
-
+    // ✅ Apply all other updates
+    Object.assign(session, { ...sanitizedDto, status: undefined });
     const savedSession = await this.sessionRepo.save(session);
 
-    // Send push notification if schedule changed
-    if ((updateSessionDto as UpdateSessionDto).schedule) {
+    // ✅ Notify schedule change
+    if ('schedule' in sanitizedDto) {
       this.firebaseService.sendPushNotification(
         { client: [], therapist: [], admin: [] },
         JSON.stringify(savedSession),
         SessionNotif.SCHEDULED,
-        `Your session has been updated for ${new Date(session.schedule).toLocaleString()}`
+        `Your session has been updated for ${new Date(
+          session.schedule
+        ).toLocaleString()}`
       );
     }
 
-    // Notify if status changed
-    if ((updateSessionDto as UpdateSessionDto).status) {
+    // ✅ Notify status change
+    if ('status' in sanitizedDto) {
       this.firebaseService.sendPushNotification(
         { client: [], therapist: [], admin: [] },
         JSON.stringify(savedSession),
@@ -530,117 +501,301 @@ export class SessionService {
   }
 }
 
+  async createGroupSession(dto: CreateGroupSession) {
+    this.logger.log("Creating a group session")
+    return await this.dataSource.transaction(async (manager) => {
+      // 1️⃣ Validate therapist
+      const therapist = await manager.findOne(Therapist, { where: { id: dto.therapist } });
+      if (!therapist) throw new NotFoundException('Therapist not found');
+      console.log({therapist})
+      // 2️⃣ Validate clients
+      // const clients = await manager.findBy(Client, { id: In(dto.groupClients) });
 
-  // async update(id: string, updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto): Promise<Session> {
-  //   try {
-  //     const session = await this.findOne(id, {fields: 'client.*, therapist.*, status.*'});
+      const clients = await manager.find(Client, {
+        where: { id: In(dto.groupClients) },
+        relations: ['activeSubscription', 'activeSubscription.subscription'],
+      });
 
-  //     // Array of statuses that cannot be updated
-  //     const invalidStatuses = [
-  //       SessionStatus.COMPLETED,
-  //       SessionStatus.CANCELED
-  //     ];
+      if (!clients.length) throw new BadRequestException('No valid clients found');
 
-  //     // Check if the session status is invalid for update
-  //     if (invalidStatuses.includes(session.status.status)) {
-  //       throw new BadRequestException("This session status cannot be updated.")
-  //       // console.log("This session status cannot be updated.");
-  //     }
+      // 3️⃣ Validate date + time
+      if (!dto.date || !dto.date.startTime) throw new BadRequestException('Date and startTime are required');
 
-  //     Object.assign(session, { ...updateSessionDto });
-  //     const clientToken = await this.clientService.findOne(session.client.id)
-  //     const therapistToken = await this.therapistService.findOne(session.therapist.id)
+      const baseMonday = getNextMonday(new Date());
+      const targetDate = getDateForWeekday(baseMonday, dto.date.date);
+      const [hours, minutes] = dto.date.startTime.split(':').map(Number);
+      targetDate.setHours(hours, minutes, 0, 0);
 
-  //     const tokens: Tokens = {
-  //       client: [],
-  //       therapist: [],
-  //       admin: [],
-  //     };
-      
-  //     tokens.client.push(clientToken?.firebaseToken);
-  //     tokens.therapist.push(therapistToken?.firebaseToken);
-      
-  //     const savedSession = await this.sessionRepo.save(session);
-      
-  //     const schedule = (updateSessionDto as UpdateSessionDto).schedule;
+      // 4️⃣ Fetch subscriptions for all clients
+      const clientSubs = await manager.find(ClientSubscription, {
+        where: {
+          client: { id: In(clients.map(c => c.id)) },
+          status: SubscriptionStatus.ACTIVE,
+        },
+        relations: ['client', 'subscription'],
+        order: { start_date: 'ASC' },
+      });
+      console.log({clientSubs})
+      if (!clientSubs.length) throw new BadRequestException('No active subscriptions found');
 
-  //     if (schedule) 
-  //     this.firebaseService.sendPushNotification(
-  //       tokens,
-  //       JSON.stringify(savedSession),
-  //       SessionNotif.SCHEDULED,
-  //       `Your session has been updated for ${new Date(session.schedule).toLocaleString()}`,
-  //     );
-      
-  //     return savedSession
-  //   } catch (error) {
-  //     this.logger.error(`Failed to update Session: ${error.message}`, error.stack);
-  //     throw error;
-  //   }
-  // }
+      // // 5️⃣ Determine weeks per client
+      // const clientWeeksMap = new Map<string, number>();
+      // let maxWeeks = 0;
+
+      // for (const cs of clientSubs) {
+      //   const weeks = cs.subscription.type * 4; // assuming type = number of weeks per month
+      //   clientWeeksMap.set(cs.client.id, weeks);
+      //   if (weeks > maxWeeks) maxWeeks = weeks;
+      // }
+      // 5️⃣ Determine weeks per client using activeSubscription
+  
+      // 5️⃣ Determine sessions per client using activeSubscription
+      const clientWeeksMap = new Map<string, number>();
+      let maxWeeks = 0;
+
+      // Only consider clients with an active subscription
+      for (const client of clients) {
+        console.log({client})
+        if (!client.activeSubscription || !client.activeSubscription.subscription) continue;
+
+        const typeValue = client.activeSubscription.subscription.type;
+        const weeks = typeValue === SubscriptionType.TRIAL ? 1 : typeValue * 4;
+
+        // const weeks = client.activeSubscription.subscription.type * 4; // type = months, 1 month = 4 weeks
+        console.log({weeks})
+        clientWeeksMap.set(client.id, weeks);
+        if (weeks > maxWeeks) maxWeeks = weeks;
+      }
+
+      const commonId = uuidv4();
+
+      // 6️⃣ Create sessions based on longest subscription
+      const allSessions: Session[] = [];
+      const scheduleDates: Date[] = []; // store created schedule dates
+
+      console.log({maxWeeks})
+      for (let i = 0; i < maxWeeks; i++) {
+        const schedule = new Date(targetDate); // base schedule for first session
+        schedule.setDate(targetDate.getDate() + i * 7); // next week offset
+        console.log({schedule})
+        // Attach clients according to their subscription length
+        const clientsForThisSession = clients.filter(c => {
+          const weeks = clientWeeksMap.get(c.id) ?? 0;
+          return weeks > i; // attach only if this client has remaining sessions
+        });
+        console.log({clientsForThisSession})
+        if (!clientsForThisSession.length) continue; // skip if no clients for this week
+
+        const session = manager.create(Session, {
+          therapist,
+          group: clientsForThisSession,
+          groupName: dto.groupName ?? 'Group Session',
+          schedule,
+          duration: dto.duration,
+          type: dto.type,
+          note: dto.note ?? null,
+          approvalStatus: ApprovalStatus.CONFIRMED,
+          modal: dto.modal ? ({ id: dto.modal } as any) : null,
+          client: null,
+          commonId
+        });
+        console.log({session})
+        const savedSession = await manager.save(session);
+        allSessions.push(savedSession);
+        scheduleDates.push(schedule);
+
+        // ✅ Update isInGroup for clients
+        for (const client of clientsForThisSession) {
+          if (!client.isInGroup) {
+            console.log({client})
+            await manager.update(Client, { id: client.id }, { isInGroup: true });
+            console.log({client})
+          }
+        }
+      }
+
+      // 7️⃣ Send notifications
+      const tokens: Tokens = { client: [], therapist: [], admin: [] };
+
+      // collect client tokens
+      clients.forEach(c => {
+        if (c.firebaseToken) tokens.client.push(c.firebaseToken);
+      });
+
+      // therapist token
+      if (therapist.firebaseToken) tokens.therapist.push(therapist.firebaseToken);
+
+      // send push notification
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ sessionIds: allSessions.map(s => s.id) }),
+        SessionNotif.GROUP_SCHEDULED,
+        `Your group session(s) have been Created.`
+      );
+
+      return allSessions;
+
+    });
+  }
 
   async addToSession(sessionId: string, dto: AddToSessionDto) {
+  return await this.sessionRepo.manager.transaction(async (manager) => {
     const { groupClients } = dto;
 
-    const session = await this.findOne(sessionId, { fields: 'client.*, group.*, therapist.*' });
+    // 1️⃣ Load full reference session with all relations
+    const referenceSession = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: [
+        'client',
+        'group',
+        'therapist',
+        'modal',
+        'status',
+        'message',
+      ],
+    });
 
-    if (session.client != null) {
+    if (!referenceSession) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    if (referenceSession.client != null) {
       throw new BadRequestException('Cannot add clients to a 1-on-1 session');
     }
 
-    const existingClientIds = session.group.map(c => c.id);
-
-    // Fetch all clients to be added
-    const clientsToAdd = await this.clientService.findAll({
-      ids: `${groupClients.join(',')}`,
-    });
-
-    const newClients = clientsToAdd.data.filter(
-      (c) => !existingClientIds.includes(c.id),
-    );
-
-    if (newClients.length === 0) {
-      throw new BadRequestException('All clients are already part of the session');
+    if (!referenceSession.commonId) {
+      throw new BadRequestException('This session is not part of a group series');
     }
 
-    // ✅ Ensure isInGroup is set to true
+    // 2️⃣ Find all sessions in the same group series
+    const relatedSessions = await this.sessionRepo.find({
+      where: { commonId: referenceSession.commonId },
+      relations: ['group', 'therapist', 'client'],
+      order: { schedule: 'ASC' },
+    });
+
+    if (!relatedSessions.length) {
+      throw new BadRequestException('No related sessions found for this group');
+    }
+
+    const lastSessionDate = relatedSessions[relatedSessions.length - 1]?.schedule;
+
+    // 3️⃣ Collect existing client IDs across all sessions
+    const existingClientIds = new Set(relatedSessions.flatMap(s => s.group.map(c => c.id)));
+
+    // 4️⃣ Fetch new clients to add
+    const clientsToAdd = await this.clientService.findAll({ ids: groupClients.join(',') });
+    const newClients = clientsToAdd.data.filter(c => !existingClientIds.has(c.id));
+
+    if (!newClients.length) {
+      throw new BadRequestException('All clients are already part of these group sessions');
+    }
+
+    const now = new Date();
+    const allUpdatedSessions: Session[] = [...relatedSessions];
+
+    // 5️⃣ Process each new client
     for (const client of newClients) {
+      // ✅ Ensure isInGroup flag
       if (!client.isInGroup) {
-        await this.clientService.update(client.id, { isInGroup: true });
-        client.isInGroup = true; // keep in sync locally
+        await manager.update(Client, { id: client.id }, { isInGroup: true });
+        client.isInGroup = true;
+      }
+
+      const activeSub = client.activeSubscription;
+      if (!activeSub || !activeSub.subscription) continue;
+
+      const subEnd = new Date(activeSub.end_date);
+
+      // 6️⃣ Attach client only to future sessions within subscription
+      for (const session of relatedSessions) {
+        const sessionDate = new Date(session.schedule);
+
+        // Skip past sessions (already occurred)
+        if (sessionDate < now) continue;
+
+        // Join client if subscription covers the session
+        if (subEnd >= sessionDate) {
+          if (!session.group.find((c) => c.id === client.id)) {
+            session.group.push(client);
+          }
+        } else {
+          // Extend subscription if session is beyond current end date
+          const existingSub = await manager.findOne(ClientSubscription, {
+            where: {
+              client: { id: client.id },
+              subscription: { id: activeSub.subscription.id },
+            },
+          });
+
+          if (!existingSub) {
+            const extensionSub = manager.create(ClientSubscription, {
+              client,
+              subscription: activeSub.subscription,
+              start_date: new Date(subEnd.getTime() + 1),
+              end_date: sessionDate,
+              status: SubscriptionStatus.ACTIVE,
+            });
+            await manager.save(extensionSub);
+            client.activeSubscription = extensionSub;
+            await manager.save(client);
+          }
+
+          if (!session.group.find((c) => c.id === client.id)) {
+            session.group.push(client);
+          }
+        }
+      }
+
+      // 7️⃣ Create new sessions if subscription extends beyond the final session
+      if (subEnd > lastSessionDate) {
+        let nextDate = new Date(lastSessionDate);
+        nextDate.setDate(nextDate.getDate() + 7); // weekly offset
+
+        while (nextDate <= subEnd) {
+          const clonedSession = manager.create(Session, {
+            therapist: referenceSession.therapist,
+            group: [client],
+            groupName: referenceSession.groupName,
+            schedule: new Date(nextDate),
+            duration: referenceSession.duration,
+            type: referenceSession.type,
+            note: referenceSession.note,
+            approvalStatus: ApprovalStatus.CONFIRMED,
+            modal: referenceSession.modal ? ({ id: referenceSession.modal.id } as any) : null,
+            client: null,
+            commonId: referenceSession.commonId,
+          });
+
+          const saved = await manager.save(clonedSession);
+          allUpdatedSessions.push(saved);
+          nextDate.setDate(nextDate.getDate() + 7);
+        }
       }
     }
 
-    session.group = [...session.group, ...newClients];
-    console.log(session.group);
+    // 8️⃣ Save all updated sessions
+    for (const session of relatedSessions) {
+      await manager.save(session);
+    }
 
-    return await this.sessionRepo.save(session);
+    // 9️⃣ Send notifications
+    const tokens: Tokens = { client: [], therapist: [], admin: [] };
+    const clientTokens = newClients.map(c => c.firebaseToken).filter(Boolean);
+    tokens.client.push(...clientTokens);
+
+    const therapistToken = referenceSession.therapist?.firebaseToken;
+    if (therapistToken) tokens.therapist.push(therapistToken);
+
+    await this.firebaseService.sendPushNotification(
+      tokens,
+      JSON.stringify({ commonId: referenceSession.commonId }),
+      SessionNotif.SCHEDULED,
+      `You have been added to all upcoming group sessions in this series.`
+    );
+    return allUpdatedSessions;
+  });
 }
-
-// async addToSession(sessionId: string, dto: AddToSessionDto) {
-//     const { groupClients } = dto;
-
-//     const session = await this.findOne(sessionId, { fields: 'client.*, group.*, therapist.*' });
-
-//     if(session.client != null) {
-//       throw new BadRequestException('Cannot add clients to a 1-on-1 session');
-//     }
-
-//     const existingClientIds = session.group.map(c => c.id);
-
-//     // Fetch all clients to be added
-//     const clientsToAdd = await this.clientService.findAll({ids: `${groupClients.join(',')}`});
-
-//     const newClients = clientsToAdd.data.filter(c => !existingClientIds.includes(c.id));
-
-//     if (newClients.length === 0) {
-//       throw new BadRequestException('All clients are already part of the session');
-//     }
-
-//     session.group = [...session.group, ...newClients];
-//     console.log(session.group)
-//     return await this.sessionRepo.save(session);
-//   }
 
   async remove(id: string): Promise<void> {
     try {
