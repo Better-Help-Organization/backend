@@ -60,7 +60,7 @@ export class PaymentService {
     try {
       const payment = this.paymentRepo.create({
         amount: dto.amount,
-        date: dto.date ?? new Date(),
+        date: new Date(),
         method: dto.method,
         receipt: dto.receipt,
         subscription: clientSub,
@@ -90,7 +90,6 @@ export class PaymentService {
       if (savedPayment && savedPayment.id) {
         await this.paymentRepo.delete(savedPayment.id).catch(() => null);
       }
-
       throw err;
     }
   }
