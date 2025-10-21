@@ -1,13 +1,15 @@
-import { Entity, Column, OneToMany } from 'typeorm';
-import { CommonEntity } from './common.entity';
-import { Question } from './question.entity';
-import { Preference } from './preference.entity';
 import { ApiProperty } from '@nestjs/swagger';
-import { License } from './license.entity';
+import { Column, Entity, OneToMany } from 'typeorm';
 import { Answer } from './answer.entity';
+import { CommonEntity } from './common.entity';
+import { License } from './license.entity';
+import { Preference } from './preference.entity';
+import { Question } from './question.entity';
+import { Session } from './session.entity';
 
 @Entity()
 export class Modal extends CommonEntity {
+  
   @ApiProperty()
   @Column({unique: true})
   name: string;
@@ -15,6 +17,10 @@ export class Modal extends CommonEntity {
   @ApiProperty()
   @Column({unique: true, nullable: true})
   order: number;
+
+  @ApiProperty()
+  @Column({unique: true, nullable: true})
+  code: number;
 
   @ApiProperty() 
   @Column('text')
@@ -35,4 +41,9 @@ export class Modal extends CommonEntity {
   @ApiProperty({type: () => License})
   @OneToMany(() => License, license => license.modal)
   license: License[];
+
+  @ApiProperty({type: () => Session})
+  @OneToMany(() => Session, (session) => session.modal)
+  session: Session[];
+
 }

@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { MatchService } from './match.service';
-import { CreateMatchDto } from './dto/create-match.dto';
-import { UpdateMatchDto } from './dto/update-match.dto';
-import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
+import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AcceptMatchDto } from './dto/accept-match.dto';
+import { CreateMatchDto } from './dto/create-match.dto';
+import { MatchService } from './match.service';
 
 @Controller('match')
 export class MatchController {
@@ -27,7 +27,7 @@ export class MatchController {
     @CurrentUser() therapist: TokenPayload,
     @Body() acceptMatchDto: AcceptMatchDto
   ) {
-    return this.matchService.acceptMatch(therapist, acceptMatchDto);
+    return await this.matchService.acceptMatch(therapist, acceptMatchDto);
   }
 
 
@@ -37,6 +37,7 @@ export class MatchController {
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
+  @ApiFindAllQueryParams()
   findAll() {
     return this.matchService.findAll();
   }
@@ -47,6 +48,7 @@ export class MatchController {
     new ClientJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
+  @ApiFindOneQueryParams()
   findOne(@Param('id') id: string) {
     return this.matchService.findOne(id);
   }

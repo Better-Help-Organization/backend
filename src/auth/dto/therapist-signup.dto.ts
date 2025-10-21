@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsOptional, IsString } from "class-validator";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 import { BaseSignupDto } from "./base-signup.dto";
 
 export class TherapistSignupDto extends BaseSignupDto {
@@ -7,4 +7,13 @@ export class TherapistSignupDto extends BaseSignupDto {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @ApiProperty({
+  example: 10,
+  description: "Short biography of the therapist",
+  required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  hoursDedicatedPerWeek: number;
 }

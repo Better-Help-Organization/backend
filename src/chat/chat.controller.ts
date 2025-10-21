@@ -1,6 +1,4 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -10,15 +8,8 @@ import { LoggerService } from 'src/logger/logger.service';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
 import { AddToChatDto } from './dto/add-chat.dto';
+import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
-
-
-class RoomDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  room: string;
-}
 
 @Controller('chat')
 export class ChatController {
@@ -29,7 +20,7 @@ export class ChatController {
   ) {}
 
   @DynamicGuards(
-    new ClientJwtAuthGuard(),
+    // new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
   @Post()
@@ -157,10 +148,10 @@ export class ChatController {
   async call(
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload,
-    @Body() roomDto: RoomDto
+    @Body() createCallDto: CreateCallDto
   ) {
    try{
-    return await this.chatService.call(id,user, roomDto.room);
+    return await this.chatService.call(id,user, createCallDto);
   } catch (error) {
     this.logger.error(`Error finding chat: ${error.message}`);
     return error;

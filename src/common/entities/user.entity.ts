@@ -45,7 +45,7 @@ export abstract class User extends CommonEntity {
     @Column({default: false })
     isPhoneNumberAuthenticated: boolean;
 
-    @Exclude()
+    // @Exclude()
     @ApiProperty({ nullable: true })
     @Column({
         nullable: true
@@ -54,7 +54,7 @@ export abstract class User extends CommonEntity {
 
     @Exclude()
     @ApiProperty({ nullable: true })
-    @Column({ nullable: true })
+    @Column({ type: 'text',nullable: true })
     refreshToken: string;
 
     @Exclude()
@@ -65,7 +65,7 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
     @Column({
         type: "enum",
-        default: BaseStatus.INACTIVE,
+        default: BaseStatus.ACTIVE,
         enum: BaseStatus,
     })
     status: BaseStatus;
@@ -94,4 +94,8 @@ export abstract class User extends CommonEntity {
     @ApiProperty({ nullable: true })
     @Column({ type: 'timestamp', nullable: true })
     lastSeenAt: Date;
+
+    @ApiProperty({ nullable: true })
+    @Column({ nullable: true })
+    profile: string;
 }

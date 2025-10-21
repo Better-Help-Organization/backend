@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { TokenPayload } from 'src/common/constants';
 import { Rating } from 'src/common/entities/rating.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
+import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { LoggerService } from 'src/logger/logger.service';
-import { TokenPayload } from 'src/common/constants';
+import { Repository } from 'typeorm';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { UpdateRatingDto } from './dto/update-rating.dto';
 
@@ -39,16 +41,18 @@ export class RatingService {
     }
   }
 
-  async findAll(): Promise<Rating[]> {
+  async findAll(queryParams?: FindAllQueryParams) {
     try {
-      return await this.ratingRepository.find({ relations: ['client', 'therapist'] });
+      return await new APIFeatures(this.ratingRepository, queryParams).getMany();
+      
+      // return await this.ratingRepository.find({ relations: ['client', 'therapist'] });
     } catch (error) {
       this.logger.error(`Failed to find ratings: ${error.message}`);
       throw error;
     }
   }
 
-  async findOne(id: string): Promise<Rating> {
+  async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Rating> {
     try {
       const rating = await this.ratingRepository.findOne({
         where: { id },

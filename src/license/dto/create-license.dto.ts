@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateLicenseDto {
   @ApiProperty({
@@ -14,7 +14,7 @@ export class CreateLicenseDto {
     example: '123456-CA',
     description: 'Unique license number issued by the regional board',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   license_number: string;
 
@@ -22,7 +22,7 @@ export class CreateLicenseDto {
     example: 'California',
     description: 'Region or state where the license is valid',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   region: string;
 
@@ -30,7 +30,7 @@ export class CreateLicenseDto {
     example: '2026-12-31',
     description: 'Date when the license expires (YYYY-MM-DD)',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsDateString()
   expiration_date: string;
 
@@ -38,7 +38,15 @@ export class CreateLicenseDto {
     example: '6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24.pdf',
     description: 'File name of the uploaded licence',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   filename: string;
+
+  @ApiProperty({
+    example: '6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24_6f1e5b39-c51a-4d38-a3b7-5cce7bcf7e24.pdf',
+    description: 'File name of the uploaded licence',
+  })
+  @IsOptional()
+  @IsString()
+  work_experience: string;
 }

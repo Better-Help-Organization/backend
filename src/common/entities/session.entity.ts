@@ -8,19 +8,19 @@ import {
   Repository,
   Unique
 } from 'typeorm';
-import { SessionType } from '../constants';
+import { ApprovalStatus, SessionStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
-import { Note } from './note.entity';
 import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
+import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
+import { Modal } from './modal.entity';
 
-@Unique('UQ_therapist_schedule', ['therapist','schedule'])
-@Unique('UQ_client_schedule', ['client', 'schedule'])
 @Entity('session')
+@Unique(['client', 'therapist', 'modal', 'schedule'])
 export class Session extends CommonEntity {
 
   @ApiProperty({ type : () => Client})
@@ -45,6 +45,10 @@ export class Session extends CommonEntity {
   })
   group: Client[];
 
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  groupName: string;
+
 
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
@@ -52,6 +56,14 @@ export class Session extends CommonEntity {
     // cascade: true
   })
   therapist: Therapist;
+
+  @ApiProperty({ default: false })
+  @Column({default: false })
+  hasclientAttended: boolean;
+
+  @ApiProperty({ default: false })
+  @Column({default: false, nullable:true })
+  hasTherapistAttended: boolean;
 
   @ApiProperty()
   @Column({ type: 'timestamp' })
@@ -65,12 +77,17 @@ export class Session extends CommonEntity {
   @Column({ type: 'enum', enum: SessionType })
   type: SessionType;
 
-  @ApiProperty({ type : () => Note} )
-  @OneToMany(() => Note, note => note.session, {
-    cascade: true,
-    nullable: true, // optional
-  })
-  note: Note[];
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  note: string;
+
+  @ApiProperty()
+  @Column({ type: 'enum', enum: ApprovalStatus, default: ApprovalStatus.PENDING })
+  approvalStatus: ApprovalStatus;
+
+  @ApiProperty()
+  @Column({ nullable: true })
+  commonId: string;
 
   @ApiProperty()
   @OneToMany(() => Status, status => status.session, {
@@ -79,9 +96,31 @@ export class Session extends CommonEntity {
   })
   status: Status;
 
+  @ApiProperty({
+    enum: SessionStatus,
+    description: 'Latest session status',
+  })
+  @Column({ type: 'enum', enum: SessionStatus, nullable: true })
+  latestStatus: SessionStatus;
+
+  @ApiProperty({
+    description: 'Reason for latest status',
+    nullable: true,
+  })
+  @Column({ type: 'text', nullable: true })
+  latestReason: string;
+
   @ApiProperty({ type: () => Message, isArray: true })
   @OneToMany(() => Message, (message) => message.session, {onDelete: 'CASCADE'})
   message: Message[];
+
+  @ApiProperty({type : () => Modal})
+  @ManyToOne(() => Modal, (modal) => modal.session, { onDelete: 'RESTRICT' })
+  modal: Modal;
+
+  @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
+  @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
+  subscription: ClientSubscription;
 
   async addMessage(
     msgRepo: Repository<Message>,

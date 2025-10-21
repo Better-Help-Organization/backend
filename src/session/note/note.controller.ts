@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/commo
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { CreateNoteDto } from '../dto/note/create-note.dto';
 import { NoteService } from './note.service';
@@ -23,6 +23,10 @@ export class NotesController {
 
   @Get()
   @ApiFindAllQueryParams()
+  @DynamicGuards(
+   new  TherapistJwtAuthGuard(),
+   new  AdminJwtAuthGuard()
+  )
   findAll(
     @Query() queryparams?: FindAllQueryParams
   ) {
@@ -31,6 +35,10 @@ export class NotesController {
 
   @Get(':id')
   @ApiFindOneQueryParams()
+  @DynamicGuards(
+   new  TherapistJwtAuthGuard(),
+   new  AdminJwtAuthGuard()
+  )
   findOne(
     @Param('id') id: string,
     @Query() queryParams: FindOneQueryParams,
@@ -44,6 +52,10 @@ export class NotesController {
   // }
 
   @Delete(':id')
+  @DynamicGuards(
+   new  TherapistJwtAuthGuard(),
+   new  AdminJwtAuthGuard()
+  )
   remove(@Param('id') id: string) {
     return this.noteService.remove(+id);
   }

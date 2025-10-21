@@ -4,26 +4,37 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  NotFoundException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
 import * as fs from 'fs';
 import multer from 'multer';
 import * as path from 'path';
 import { Observable, from, switchMap } from 'rxjs';
 import {
+  ALLOWED_IMAGE_MIME_TYPES,
   ALLOWED_MIME_TYPES,
   FILE_UPLOAD_KEY,
   MAX_FILE_SIZE,
+  SubscriptionStatus,
   Tmp_Files_Dir,
   ValidFolders,
 } from 'src/common/constants';
 import { ModalService } from 'src/modal/modal.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { ClientSubscription } from '../entities/client-subscription.entity';
 
 @Injectable()
 export class UploadInterceptor implements NestInterceptor {
   constructor(
     private readonly modalService: ModalService,
+    private readonly subscriptionService: SubscriptionService,
+    @InjectRepository(ClientSubscription)
+    private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
+    
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -70,7 +81,78 @@ export class UploadInterceptor implements NestInterceptor {
                       }
 
                       cb(null, filename);
-                    } else {
+                    } else if (folder === ValidFolders.PROFILE) {
+                        if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+                          return cb(new Error('Only image files are allowed for profile uploads'), '');
+                        }
+
+                        const basePrefix = `${token.id}`;
+                        const fileName = `${basePrefix}${ext}`;
+
+                        fs.mkdirSync(uploadDir, { recursive: true });
+
+                        const fullPath = path.join(uploadDir, fileName);
+
+                        if (fs.existsSync(fullPath)) {
+                          fs.unlinkSync(fullPath);
+                        }
+
+                        cb(null, fileName);
+                    } 
+                    else if (folder === ValidFolders.DEGREE) {
+                        const filename = `${token.id}_degree${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.GOV_ID) {
+                        const filename = `${token.id}_govid${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.PROFESSIONAL_LICENSE) {
+                        const filename = `${token.id}_prolicense${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.WORK_EXPERIENCE) {
+                        const filename = `${token.id}_cv${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.SPECIAL_TRAINING) {
+                        const filename = `${token.id}_training${ext}`;
+                        cb(null, filename);
+                      } else if (folder === ValidFolders.PAYMENT) {
+                        const subscriptionId = req.query.subscriptionId as string;
+                        if (!subscriptionId) {
+                          return cb(new Error('subscriptionId is required for payment uploads'), '');
+                        }
+                        console.log({subscriptionId})
+                        // const subscription = await this.subscriptionService.findOne(subscriptionId);
+                        // if (!subscription) {
+                        //   return cb(new Error('Invalid subscriptionIds'), '');
+                        // }
+                      const subscription = await this.clientSubscriptionRepo.findOne({
+                            where: {
+                              id: subscriptionId,
+                            },
+                          relations: ['client', 'subscription', 'payment'],
+                        });
+                            if (!subscription) {
+                              throw new NotFoundException(`Subscription with ID ${subscriptionId} not found for this client`);
+                            }
+                        
+
+
+                        const uuid = uuidv4();
+                        const filename = `${token.id}_${subscriptionId}_${uuid}${ext}`;
+
+                        fs.mkdirSync(uploadDir, { recursive: true });
+
+                        const fullPath = path.join(uploadDir, filename);
+                        if (fs.existsSync(fullPath)) {
+                          fs.unlinkSync(fullPath);
+                        }
+
+                      subscription.status = SubscriptionStatus.PENDING
+                      const cs = await this.clientSubscriptionRepo.save(subscription)
+                        
+
+                        cb(null, filename);
+                      }
+                    else {
                         return cb(new Error('Unsupported folder type'), '');
                     }
                 } catch (err: any) {
@@ -81,7 +163,7 @@ export class UploadInterceptor implements NestInterceptor {
           }),
           fileFilter: (req, file, cb) => {
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-              console.warn('Rejected file type: - upload.interceptor.ts:84', file.mimetype);
+              console.warn('Rejected file type: - upload.interceptor.ts:119', file.mimetype);
             }
             cb(null, true);
           },

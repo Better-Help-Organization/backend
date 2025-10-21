@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 
 import { CreateStatusDto } from '../dto/status/create-status.dto';
@@ -15,7 +15,9 @@ export class StatusController {
 
   @Post(':sessoinId')
   @DynamicGuards(
-   new  TherapistJwtAuthGuard()
+    new  TherapistJwtAuthGuard(),
+    new  AdminJwtAuthGuard(),
+    new  ClientJwtAuthGuard()
   )
   create(
     @CurrentUser() user: TokenPayload,
@@ -25,6 +27,11 @@ export class StatusController {
   }
 
   @Get()
+  @DynamicGuards(
+    new  TherapistJwtAuthGuard(),
+    new  AdminJwtAuthGuard(),
+    new  ClientJwtAuthGuard()
+  )
   @ApiFindAllQueryParams()
   findAll(
     @Query() queryparams?: FindAllQueryParams
@@ -34,6 +41,11 @@ export class StatusController {
 
   @Get(':id')
   @ApiFindOneQueryParams()
+  @DynamicGuards(
+  new  TherapistJwtAuthGuard(),
+  new  AdminJwtAuthGuard(),
+  new  ClientJwtAuthGuard()
+)
   findOne(
     @Param('id') id: string,
     @Query() queryParams: FindOneQueryParams,
@@ -42,11 +54,17 @@ export class StatusController {
   }
 
   @Patch(':id')
+  @DynamicGuards(
+  new  AdminJwtAuthGuard()
+  )
   update(@Param('id') id: string, @Body() updateStatusDto: UpdateStatusDto) {
     return this.statusService.update(id, updateStatusDto);
   }
 
   @Delete(':id')
+  @DynamicGuards(
+  new  AdminJwtAuthGuard()
+  )
   remove(@Param('id') id: string) {
     return this.statusService.remove(+id);
   }

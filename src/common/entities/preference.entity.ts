@@ -34,11 +34,15 @@ export class Preference extends CommonEntity {
   language: Language[];
 
   @ApiProperty()
+  @Column({type:'text', nullable: true})
+  otherLang?: string;
+
+  @ApiProperty()
   @Column('text')
   goal: string;
 
   @ApiProperty({ type: () => Level })
-  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Level, { nullable: true, onDelete: 'SET NULL', eager: true })
   level: Level;
 
   @ApiProperty({type: () => Availability})

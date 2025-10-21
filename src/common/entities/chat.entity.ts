@@ -50,7 +50,7 @@ export class Chat extends CommonEntity {
 
   // Inside Chat entity class
   @ApiProperty({ type: () => Message })
-  @OneToOne(() => Message, { nullable: true, cascade: true, eager: true })
+  @OneToOne(() => Message, { nullable: true, cascade: true, eager: true , onDelete: 'SET NULL' })
   @JoinColumn({ name: 'last_message_id' })
   lastMessage: Message;
 

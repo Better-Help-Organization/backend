@@ -1,10 +1,10 @@
-import { Column, Entity, ManyToMany, ManyToOne, OneToOne, Unique } from 'typeorm';
-import { Client } from './client.entity';
-import { Question } from './question.entity';
-import { Option } from './option.entity';
-import { CommonEntity } from './common.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Column, Entity, ManyToMany, ManyToOne, Unique } from 'typeorm';
+import { Client } from './client.entity';
+import { CommonEntity } from './common.entity';
 import { Modal } from './modal.entity';
+import { Option } from './option.entity';
+import { Question } from './question.entity';
 
 @Unique(['client', 'question'])
 @Entity()

@@ -7,6 +7,7 @@ import * as speakeasy from 'speakeasy';
 import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
 import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { User } from 'src/common/entities/user.entity';
@@ -19,7 +20,6 @@ import { ClientSignupDto } from './dto/ client-signup.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { TherapistSignupDto } from './dto/therapist-signup.dto';
-import { Admin } from 'src/common/entities/admin.entity';
 
 @Injectable()
 export class AuthService {
@@ -63,7 +63,7 @@ export class AuthService {
     }
   }
 
-  private _generateTokens({ id, type, status }: TokenPayload): [string, string, Date, Date] {
+  private _generateTokens({ id, type, status, name }: TokenPayload): [string, string, Date, Date] {
     
     const expiresAccessToken = new Date();
     
@@ -87,7 +87,7 @@ export class AuthService {
       ),
     );
   
-    const tokenPayload: TokenPayload = { id, type, status };
+    const tokenPayload: TokenPayload = { id, type, status, name };
   
     const accessTokenSecret = this._getAccessTokenSecret(type);
     const refreshTokenSecret = this._getRefreshTokenSecret(type);
@@ -119,9 +119,10 @@ export class AuthService {
   private _generateOTP(): [string, Date] {
 
     let secret = null;
-    process.env.NODE_ENV === 'prod' 
-    ? secret = (speakeasy.generateSecret()).base32
-    : secret = this.configService.getOrThrow<string>('OTP_SECRET')
+    //process.env.NODE_ENV === 'prod' 
+   // ? 
+    secret = (speakeasy.generateSecret()).base32
+   // : secret = this.configService.getOrThrow<string>('OTP_SECRET')
   
     const OTP = speakeasy.totp({
       secret,
@@ -153,6 +154,9 @@ export class AuthService {
   // }
 
   async emailOtp<T extends User>(type: UserTypes, user: T) {
+    
+    // todo: turned off
+    return;
     this.logger.debug(`[emailOtp] Sending OTP to ${user.email} (type: ${type})`);
     const repo = await this.getRepo(type);
     const [OTP, OTPExpires] = this._generateOTP();
@@ -221,6 +225,7 @@ export class AuthService {
           id: client.id,
           type: UserTypes.CLIENT,
           status: client.status,
+          name: client.firstName,
       });
     
     client.refreshToken = refreshToken;
@@ -251,6 +256,7 @@ export class AuthService {
           id: therapist.id,
           type: UserTypes.THERAPIST,
           status: therapist.status,
+          name: therapist.firstName
       });
     
     therapist.refreshToken = refreshToken;
@@ -280,6 +286,7 @@ export class AuthService {
           id: admin.id,
           type: UserTypes.ADMIN,
           status: admin.status,
+          name: admin.firstName
       });
     
     admin.refreshToken = refreshToken;
@@ -324,6 +331,7 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
+          name: user.firstName
       });
 
       user.refreshToken = refreshToken;
@@ -359,6 +367,7 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
+          name: user.firstName
       });
 
       user.refreshToken = refreshToken;
@@ -378,6 +387,7 @@ export class AuthService {
         id: user.id,
         type,
         status: user.status,
+        name: user.firstName,
       });
 
     user.refreshToken = refreshToken;
@@ -491,6 +501,7 @@ export class AuthService {
         id: user.id,
         type,
         status: user.status,
+        name: user.firstName,
       });
 
       user.refreshToken = refreshToken;
@@ -603,26 +614,28 @@ export class AuthService {
   }
 
 
-  // async _allowAdminAccess(user: TokenPayload, userId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
-  //   try {
+  async _allowAdminAccess(user: TokenPayload, mockId: string, accessTo:Exclude<UserTypes, UserTypes.ADMIN>) {
+    try {
       
-  //     let userToken: TokenPayload = null;
+      let userToken: TokenPayload = null;
       
-  //     if (user.type === UserTypes.ADMIN) {
-  //       const service = this._getServiceByKind(accessTo);
-  //         const { id, status  } = await service.findOne(id );
-  //         userToken = {
-  //         id: id,
-  //         status: status,
-  //         type: accessTo,
-  //       }
-  //     }
-  //     else userToken = user;
+      if (user.type === UserTypes.ADMIN) {
+        const service = this._getServiceByKind(accessTo);
+          const { id, status, firstName  } = await service.findOne(mockId);
+          userToken = {
+          id: id,
+          name: firstName,
+          status: status,
+          type: accessTo,
+        }
+      }
+      else userToken = user;
       
-  //     return userToken;
-  //   } catch (error) {
-  //     this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
-  //     throw error;
-  //   }
-  // }
+      return userToken;
+    } catch (error) {
+      this.logger.error(`Error handling admin or driver or user token: ${error.message}`);
+      throw error;
+    }
+  }
+
 }

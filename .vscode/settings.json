@@ -1,0 +1,19 @@
+{
+  "editor.foldingStrategy": "auto",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+"explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "*.entity.ts": "${capture}.entity.*.ts",
+    "compose.base.yml": "compose.dev.yml, compose.prod.yml, compose.test.yml",
+    ".env": ".env.*",
+    "Dockerfile": "Dockerfile.*",
+    "_global.mk": "*.mk"
+  },
+  "[typescript]": {
+    "editor.defaultFoldLevel": 2
+  }
+}

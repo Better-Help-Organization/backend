@@ -2,11 +2,12 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
-import { AdminJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AddToSessionDto } from './dto/add-session.dto';
-import { CreateSessionDto } from './dto/create-session.dto';
-import { UpdateSessionDto } from './dto/update-session.dto';
+import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
+import { SelectSessionDto } from './dto/select-session.dto';
+import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
 @Controller('session')
@@ -20,9 +21,20 @@ export class SessionController {
   //   return this.sessionService.create(createSessionDto);
   // }
 
-  @Post()
+
+  @Post("group")
   @DynamicGuards(
     new AdminJwtAuthGuard(),
+  )
+  bookAGroupSession(
+    @CurrentUser() user: TokenPayload,
+    @Body() createGroupSessionDto: CreateGroupSession
+  ) {
+    return this.sessionService.createGroupSession(createGroupSessionDto);
+  }
+
+  @Post()
+  @DynamicGuards(
     new TherapistJwtAuthGuard()
   )
   bookASession(
@@ -30,6 +42,15 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);
+  }
+
+  @Post('select')
+  @DynamicGuards(new ClientJwtAuthGuard())
+  selectSession(
+    @CurrentUser() user: TokenPayload,
+    @Body() dto: SelectSessionDto
+  ) {
+    return this.sessionService.selectSession(user, dto);
   }
 
   @Post(":sessionId/add-to-session")
@@ -46,6 +67,9 @@ export class SessionController {
   }
 
   @Get()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   @ApiFindAllQueryParams()
   findAll(
     @Query() queryparams?: FindAllQueryParams
@@ -54,6 +78,9 @@ export class SessionController {
   }
 
   @Get(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   @ApiFindOneQueryParams()
   findOne(
     @Param('id') id: string,
@@ -73,7 +100,32 @@ export class SessionController {
     return this.sessionService.update(id, updateSessionDto);
   }
 
+  @Patch('attendance/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard()
+  )
+  attendance(
+    @Param('id') id: string, 
+    @Body() updateSessionDto: AttendanceDto) {
+    return this.sessionService.update(id, updateSessionDto);
+  }
+
+
+  @Patch('assign/:id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
+  assign(
+    @Param('id') id: string, 
+    @Body() assignSessionDto: AssignSessionDto) {
+    return this.sessionService.update(id, assignSessionDto);
+  }
+
+
   @Delete(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   remove(@Param('id') id: string) {
     return this.sessionService.remove(id);
   }

@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionNotif, TokenPayload, UserTypes } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
-import { FindAllQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
@@ -26,12 +26,32 @@ export class MessageService {
   //   return 'This action adds a new ';
   // }
 
-  findAll() {
-    return `This action returns all `;
+  // findAll() {
+  //   return `This action returns all `;
+  // }
+
+  // findOne(id: number) {
+  //   return `This action returns a #${id} `;
+  // }
+  async findAll(queryParams?: FindAllQueryParams) {
+    try {
+      return await new APIFeatures(this.messageRepo, queryParams).getMany();
+    } catch (error) {
+      this.logger.error(`Error finding all msgs: ${error.message}`);
+      return error;
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} `;
+  async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Message> {
+  try {
+    console.log({id, queryParams})
+      const msg = await new APIFeatures(this.messageRepo, queryParams).getOne(id);
+      if (!msg) throw new NotFoundException('msg not found');
+      return msg
+    } catch (error) {
+      this.logger.error(`Error finding msg: ${error.message}`);
+      throw error;
+    }
   }
 
 async findAllBySession(id: string, queryParams?: FindAllQueryParams){
@@ -45,8 +65,9 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
 
   async createOneMessage(sessionId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
     try {
-      let therapist = null
-      let client = null
+      let therapist = null;
+      let client = null;
+      let profile = null;
 
       if (sender.type === UserTypes.CLIENT) client = sender.id 
       if (sender.type === UserTypes.THERAPIST) therapist = sender.id
@@ -67,31 +88,33 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
     const senderId = sender.id;
 
     // Collect all potential recipients
-    let tokens: string[] = [];
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (session.group.length > 0) {
-      tokens = session.group
+      tokens.client = session.group
         .filter(g => g.firebaseToken && g.id !== senderId)
         .map(g => g.firebaseToken);
     } else {
       // 1-on-1 session fallback
       if (sender.type === UserTypes.CLIENT && session.therapist.firebaseToken && session.therapist.id !== senderId) {
-        tokens.push(session.therapist.firebaseToken);
+        tokens.therapist.push(session.therapist.firebaseToken);
       }
 
       if (sender.type === UserTypes.THERAPIST && session.client.firebaseToken && session.client.id !== senderId) {
-        tokens.push(session.client.firebaseToken);
+        tokens.client.push(session.client.firebaseToken);
       }
     }
 
-    if (tokens.length > 0) {
       await this.firebaseService.sendPushNotification(
         tokens,
         JSON.stringify(msg),
         SessionNotif.NEW_MESSAGE,
         content
       );
-    }
 
     } catch (error) {
       this.logger.error(`Unable to send message: ${error.message}`);
@@ -100,7 +123,78 @@ async findAllBySession(id: string, queryParams?: FindAllQueryParams){
   }
 
 
-  remove(id: number) {
-    return `This action removes a #${id} `;
-  }
+  async remove(id: string, sender: TokenPayload) {
+      this.logger.log(`Removing message with ID: ${id}`);
+
+      // Step 1: find the message with its session
+      const message = await this.messageRepo.findOne({
+        where: { id },
+        relations: ['chat', 'chat.client', 'chat.therapist', 'chat.group'],
+      });
+
+      if (!message) {
+        throw new NotFoundException(`Message with ID ${id} not found`);
+      }
+
+      // Step 2: delete the message
+      const result = await this.messageRepo.delete(id);
+      if (result.affected === 0) {
+        throw new BadRequestException(`Unable to remove message with ID ${id}`);
+      }
+
+      this.logger.log(`Message with ID ${id} removed`);
+
+      // Step 3: prepare push notification
+      const senderId = sender.id;
+      const session = message.chat; // your chat/session
+
+      let tokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
+
+      if (session.group?.length > 0) {
+        tokens.client = session.group
+          .filter(g => g.firebaseToken && g.id !== senderId)
+          .map(g => g.firebaseToken);
+      } else {
+        // 1-on-1 session
+        if (sender.type === UserTypes.CLIENT && session.therapist?.firebaseToken && session.therapist.id !== senderId) {
+          tokens.therapist.push(session.therapist.firebaseToken);
+        }
+
+        if (sender.type === UserTypes.THERAPIST && session.client?.firebaseToken && session.client.id !== senderId) {
+          tokens.client.push(session.client.firebaseToken);
+        }
+      }
+
+      // Step 4: send notification
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ id, removed: true, chat:message.chat.id }),
+        SessionNotif.MESSAGE_REMOVED,
+        `A message was deleted`
+      );
+
+      return `Message removed`;
+    }
+
+
+  // async remove(id: string) {
+  //   console.log(id)
+  //   try {
+  //     this.logger.log(`Removing message with ID: ${id}`);
+  //     const result = await this.messageRepo.delete(id);
+  //     if (result.affected === 0) {
+  //       throw new NotFoundException(`message with ID ${id} not found`);
+  //     }
+  //     this.logger.log(`message with ID ${id} removed`);
+  //     return `message removed`;
+  //   } catch (error) {
+  //     this.logger.error(`Error removing message: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
+
 }

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, MethodNotAllowedException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, TokenPayload, UserTypes } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Chat } from 'src/common/entities/chat.entity';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
@@ -9,12 +9,12 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
+import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
-
 
 
 @Injectable()
@@ -53,12 +53,14 @@ export class ChatService {
     });
 
     const savedChat = await this.chatRepo.save(newChat);
-
+    const tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
     // Collect tokens
-    const tokens = [
-      ...clients.map(c => c.firebaseToken).filter(Boolean),
-      therapist.firebaseToken
-    ];
+    tokens.client = [...clients.map(c => c.firebaseToken).filter(Boolean)]
+    tokens.therapist= [therapist?.firebaseToken]
 
     this.firebaseService.sendPushNotification(
       tokens,
@@ -137,14 +139,152 @@ export class ChatService {
     //   }
     // }
 
-  async findAll(queryParams?: FindAllQueryParams) {
-    try {
-      return await new APIFeatures(this.chatRepo, queryParams).getMany();
-    } catch (error) {
-      this.logger.error(`Error finding all chats: ${error.message}`);
-      return error;
+  async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
+  try {
+    // Step 1: get chats with API features
+    let updatedFilters = queryParams?.filters || '';
+
+    // Add client or therapist filter
+    if (user?.type === UserTypes.CLIENT) {
+      if (updatedFilters) updatedFilters += ', ';
+      updatedFilters += `clientId:=${user.id}`;
+    } else if (user?.type === UserTypes.THERAPIST) {
+      if (updatedFilters) updatedFilters += ', ';
+      updatedFilters += `therapistId:=${user.id}`;
     }
+
+    // Then pass it to APIFeatures
+    const updatedQueryParams: FindAllQueryParams = {
+      ...queryParams,
+      filters: updatedFilters,
+    };
+
+    // Then call APIFeatures with the updated queryParams
+    const chats = await new APIFeatures(this.chatRepo, updatedQueryParams).getMany();
+    // Step 2: extract chat IDs
+    const ids = chats.data.map(c => c.id);
+    if (!ids.length) return chats;
+
+    // Step 3: count unread messages grouped by chatId
+    const qb = this.msgRepo
+      .createQueryBuilder('m')
+      .select('m.chatId', 'chatId')
+      .addSelect('COUNT(*)', 'unreadCount')
+      .where('m.isRead = false')
+      .andWhere('m.chatId IN (:...ids)', { ids });
+
+      if (user?.type === UserTypes.CLIENT) {
+        qb.andWhere('m.therapistId IS NOT NULL') // must be from therapist
+      } else if (user?.type === UserTypes.THERAPIST) {
+        qb.andWhere('m.clientId IS NOT NULL') // must be from client
+      }
+
+    const counts = await qb.groupBy('m.chatId').getRawMany();
+
+    // Step 4: put counts into a map for quick lookup
+    const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
+      acc[row.chatId] = parseInt(row.unreadCount, 10);
+      return acc;
+    }, {});
+
+    // Step 5: attach unreadCount to each chat`
+    let data = chats.data.map(chat => ({
+      ...chat,
+      unreadCount: countsMap[chat.id] || 0,
+    }));
+    return {data, pagination:chats.pagination}
+  } catch (error) {
+    this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+    return error;
   }
+
+
+    // try {
+  //   console.log({ user });
+
+  //   // Step 1: get chats
+  //   const { data, pagination } = await new APIFeatures(this.chatRepo, queryParams).getMany();
+
+  //   const ids = data.map(c => c.id);
+  //   if (!ids.length) return { data, pagination };
+
+  //   // Step 2: build query for unread counts
+  //   const qb = this.msgRepo
+  //     .createQueryBuilder('m')
+  //     .select('m.chatId', 'chatId')
+  //     .addSelect('COUNT(*)', 'unreadCount')
+  //     .where('m.isRead = false')
+  //     .andWhere('m.chatId IN (:...ids)', { ids });
+
+  //   // Step 3: add role-specific condition
+  //   if (user?.type === 'client') {
+  //     // count messages sent by therapists (ignore messages from same client)
+  //     qb.andWhere('m.therapistId IS NOT NULL');
+  //     qb.andWhere('m.clientId != :clientId', { clientId: user.id });
+  //   } else if (user?.type === 'therapist') {
+  //     // count messages sent by clients (ignore messages from same therapist)
+  //     qb.andWhere('m.clientId IS NOT NULL');
+  //     qb.andWhere('m.therapistId != :therapistId', { therapistId: user.id });
+  //   }
+
+  //   const counts = await qb.groupBy('m.chatId').getRawMany();
+
+  //   // Step 4: map counts
+  //   const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
+  //     acc[row.chatId] = parseInt(row.unreadCount, 10);
+  //     return acc;
+  //   }, {});
+
+  //   // Step 5: attach unreadCount to each chat
+  //   const datas = data.map(chat => ({
+  //     ...chat,
+  //     unreadCount: countsMap[chat.id] || 0,
+  //   }));
+
+  //   return { data: datas, pagination };
+  // } catch (error) {
+  //   this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+  //   throw error;
+  // }
+}
+
+  // async findAll(queryParams?: FindAllQueryParams, user?:TokenPayload ) {
+  // try {
+  //   console.log({user})
+  //   // Step 1: get chats with API features
+  //   const {data, pagination} = await new APIFeatures(this.chatRepo, queryParams).getMany();
+  //   // Step 2: extract chat IDs
+  //   const ids = data.map(c => c.id);
+  //   if (!ids.length) return data;
+
+  //   // Step 3: count unread messages grouped by chatId
+  //   const counts = await this.msgRepo
+  //     .createQueryBuilder('m')
+  //     .select('m.chatId', 'chatId')
+  //     .addSelect('COUNT(*)', 'unreadCount')
+  //     .where('m.isRead = false')
+  //     .andWhere('m.chatId IN (:...ids)', { ids })
+  //     // .andWhere('m.senderId != :currentUserId', { currentUserId }) // exclude current user
+  //     .groupBy('m.chatId')
+  //     .getRawMany();
+
+  //   // Step 4: put counts into a map for quick lookup
+  //   const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
+  //     acc[row.chatId] = parseInt(row.unreadCount, 10);
+  //     return acc;
+  //   }, {});
+
+  //   // Step 5: attach unreadCount to each chat`
+  //   let datas = data.map(chat => ({
+  //     ...chat,
+  //     unreadCount: countsMap[chat.id] || 0,
+  //   }));
+  //   return {data:datas, pagination}
+  // } catch (error) {
+  //   this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+  //   return error;
+  // }
+  // }
 
   async getMessages(id: string, queryParams?: FindAllQueryParams){
     try {
@@ -168,44 +308,54 @@ export class ChatService {
   try {
     let client = null;
     let therapist = null;
+    let profile = null;
 
     if (sender.type === UserTypes.CLIENT) client = sender.id;
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
 
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
-
+    console.log({chat})
     const { content } = createMessageDto;
     const msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
     if (!msg) throw new BadRequestException("Unable to send message");
 
     // Build list of firebase tokens for all recipients except sender
-    let tokens: string[] = [];
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (chat.group?.length) {
       // Group chat: send to all group clients except sender
-      tokens = chat.group
+      tokens.client = chat.group
         .filter(c => c.id !== sender.id)
         .map(c => c.firebaseToken)
         .filter(Boolean);
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        console.log(chat.therapist.firebaseToken, "osdmksmdflsmdlsmdlkdsf")
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat?.therapist?.firebaseToken);
       }
 
     } else {
       // One-to-one chat
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat.therapist.firebaseToken);
+        profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
-        tokens.push(chat.client.firebaseToken);
+        tokens.client.push(chat?.client?.firebaseToken);
+        profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
-
-    if (tokens.length > 0) {
-      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content);
-    }
+    console.log({tk:tokens})
+      await this.firebaseService.sendPushNotification(
+        tokens, 
+        JSON.stringify(msg), 
+        {...SessionNotif.NEW_MESSAGE, title:sender.name}, 
+        content,
+        profile
+      );
 
   } catch (error) {
     this.logger.error(`Error sending message: ${error.message}`);
@@ -247,6 +397,7 @@ export class ChatService {
   try {
     let client = null;
     let therapist = null;
+    let profile = null
 
     if (sender.type === UserTypes.CLIENT) client = sender.id;
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
@@ -270,25 +421,29 @@ export class ChatService {
     if (!editedMsg) throw new BadRequestException("Error while editing the message");
 
     // Build token list for notifications
-    let tokens: string[] = [];
+    let tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
     if (chat.group?.length) {
-      tokens = chat.group
+      tokens.client = chat.group
         .filter(c => c.id !== sender.id)
         .map(c => c.firebaseToken)
         .filter(Boolean);
     } else {
       if (sender.type === UserTypes.CLIENT && chat.therapist?.firebaseToken) {
-        tokens.push(chat.therapist.firebaseToken);
+        tokens.therapist.push(chat.therapist.firebaseToken);
+        profile = chat.client?.profile? chat.client?.profile : chat.client?.avatar.toString() 
       }
       if (sender.type === UserTypes.THERAPIST && chat.client?.firebaseToken) {
-        tokens.push(chat.client.firebaseToken);
+        tokens.client.push(chat.client.firebaseToken);
+        profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
 
-    if (tokens.length > 0) {
-      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content);
-    }
+      await this.firebaseService.sendPushNotification(tokens, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content, profile);
 
   } catch (error) {
     throw error;
@@ -366,16 +521,21 @@ export class ChatService {
     }
 
     const readBy = { [user.type.toLowerCase()]: user.id };
+    const token: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
-    const recipientToken = isClient ? chat.therapist?.firebaseToken : chat.client?.firebaseToken;
-    if (recipientToken) {
-      await this.firebaseService.sendPushNotification(
-        [recipientToken],
+    isClient ? token.therapist = [chat.therapist?.firebaseToken] : token.client = [chat.client?.firebaseToken];
+
+    await this.firebaseService.sendPushNotification(
+        token,
         JSON.stringify({ chatId, readBy, count: result.affected }),
         SessionNotif.MESSAGE_READ,
-        `Messages marked as read in chat ${chatId}`
+        `Messages marked as read in chat ${chatId}`,
       );
-    }
+
 
     return { success: true, affected: result.affected };
   }
@@ -405,15 +565,29 @@ export class ChatService {
     }
   }
 
-  async call(id: string, caller: TokenPayload, room: string) {
+  async call(id: string, caller: TokenPayload, createCallDto: CreateCallDto) {
     try {
 
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
     const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
     const isCallerClient = chat.client.id === caller.id;
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    // const recipient = 
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist ;
 
-    await this.firebaseService.sendPushNotification([recipient.firebaseToken], JSON.stringify({ room, callerData, chatId: id }), SessionNotif.INCOMING_CALL, `Incoming call from ${callerData.firstName}`)
+    const room = createCallDto.room;
+    const isVideoCall = createCallDto.isVideoCall;
+    await this.firebaseService.sendPushNotification(
+      tokens, 
+      JSON.stringify({ room, callerData, chatId: id, isVideoCall }), 
+      SessionNotif.INCOMING_CALL, 
+      `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString() 
+    )
 
     return chat;
     } catch (error) {
@@ -425,15 +599,21 @@ export class ChatService {
   async endCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
-
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
+    // const recipient = 
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist;
 
     await this.firebaseService.sendPushNotification(
-      [recipient.firebaseToken],
+      tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_ENDED,
-      `Call ended by ${callerData.firstName}`
+      `Call ended by ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString()
     );
 
     return { success: true, status: 'ended' };
@@ -442,15 +622,23 @@ export class ChatService {
   async rejectCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
+    
+    const tokens:Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
 
-    const recipient = isCallerClient ? chat.therapist : chat.client;
+    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
+    
     const callerData = isCallerClient ? chat.client : chat.therapist;
 
     await this.firebaseService.sendPushNotification(
-      [recipient.firebaseToken],
+      tokens,
       JSON.stringify({ chatId, callerData }),
       SessionNotif.CALL_REJECTED,
-      `Call rejected by ${callerData.firstName}`
+      `Call rejected by ${callerData.firstName}`,
+      callerData.profile? callerData.profile: callerData.avatar.toString()
     );
 
     return { success: true, status: 'rejected' };

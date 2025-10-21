@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsString, IsDateString, IsBoolean, IsOptional } from 'class-validator';
+import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpdateLicenseDto {
   @ApiProperty({
@@ -41,4 +41,45 @@ export class UpdateLicenseDto {
   @IsOptional()
   @IsString()
   filename: string;
+
+  @ApiProperty({
+    description: 'Degree certificate filename',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  degree_certificate: string;
+
+  @ApiProperty({
+    description: 'Government-issued ID filename',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  government_id: string;
+
+  @ApiProperty({
+    description: 'Professional license/certification file',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  professional_license: string;
+
+  @ApiProperty({
+    description: 'Work experience CV or reference file',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  work_experience: string;
+
+  @ApiProperty({
+    description: 'Special training certificate file',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  special_training: string;
+
 }

@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsString, IsUUID, IsNotEmpty, IsEnum, IsOptional, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { QuestionType } from 'src/common/constants';
 
@@ -26,4 +26,13 @@ export class CreateQuestionDto {
   @IsNotEmpty()
   @IsUUID()
   modalId: string;
+
+  @ApiProperty({
+    description: 'The order of the question within the modal',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  order?: number;
+
 }

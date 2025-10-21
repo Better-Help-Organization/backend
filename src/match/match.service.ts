@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, TokenPayload } from 'src/common/constants';
+import { SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
+import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
 import { Match } from 'src/common/entities/match.entity';
 import { Preference } from 'src/common/entities/preference.entity';
@@ -14,7 +15,6 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
-import { Client } from 'src/common/entities/client.entity';
 
 @Injectable()
 export class MatchService {
@@ -94,6 +94,7 @@ export class MatchService {
     // const therapists = await this.therapistService.findMatchingTherapists({
     //   gender: preference.gender,
     //   level: preference.level?.id,
+    // status: BaseStatus.ACTIVE
     //   availability: preference.availability.map(a => ({
     //     day: a.day,
     //     day_period: a.day_period,
@@ -121,11 +122,17 @@ export class MatchService {
 
     await this.matchTherapistRepository.save(matchTherapists);
 
-    const tokens = therapists
+    const tokens: Tokens = {
+      client: [],
+      therapist: [],
+      admin: [],
+    };
+    
+    tokens.therapist = therapists
       .map(t => t.firebaseToken)
       .filter(token => token);
 
-    if (tokens?.length > 0) {
+    // if (tokens?.length > 0) {
       const client: Pick<Client, 'firstName' | 'lastName' | 'gender' | 'dob'> = await this.clientService.findOne(token.id);
 
       await this.firebaseService.sendPushNotification(
@@ -134,14 +141,15 @@ export class MatchService {
           answerData: answerIds,
           matchData: match,
           clientData: client,
+          modal: preference.modal,
           availability: preference.availability,
         }),
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
       );
-    }
+    // }
 
-    this.logger.log(`Sent match request to ${tokens.length} therapists`);
+    this.logger.log(`Sent match request to ${tokens.therapist.length} therapists`);
 
     return { message: 'Match request created successfully' };
   }
@@ -157,10 +165,10 @@ export class MatchService {
         where: { id: acceptMatchDto.matchId },
         relations: ['client', 'matchedTherapist', 'matchedTherapist.therapist', 'accepted'],
       });
-      console.log({match})
       if (!match) {
         throw new NotFoundException('Match not found');
       }
+      console.log({match:match.client.activeSubscription})
 
       if (match.accepted) {
         throw new ConflictException('Match already accepted by another therapist');
@@ -175,11 +183,20 @@ export class MatchService {
       if (!therapist) {
         throw new NotFoundException('Therapist not found');
       }
+          const subscription = match.client.activeSubscription;
+    if (!subscription) {
+      throw new BadRequestException('Client has no active subscription');
+    }
+    subscription.therapist = therapist;
 
-      const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
-      if (!matchTherapist) {
-        throw new BadRequestException('Therapist not part of this match');
-      }
+    // Save subscription entity
+    await queryRunner.manager.save(subscription);
+
+
+    const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
+    if (!matchTherapist) {
+      throw new BadRequestException('Therapist not part of this match');
+    }
 
       matchTherapist.respondedAt = new Date();
       await queryRunner.manager.save(matchTherapist);
@@ -189,15 +206,20 @@ export class MatchService {
 
       const otherTherapists = match.matchedTherapist.filter(
         mt => mt.therapist.id !== therapist.id,
-      );
-
-      const otherTokens = otherTherapists
+      );  
+      const otherTokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
+      
+      otherTokens.therapist = otherTherapists
         .map(mt => mt.therapist.firebaseToken)
         .filter((token): token is string => Boolean(token)); // type-safe non-null filter
 
-      console.log("other tokens: - match.service.ts:193", otherTokens)
-      console.log("other tokens: - match.service.ts:194", otherTokens)
-      if (otherTokens.length > 0) {
+      console.log("other tokens: - match.service.ts:209", otherTokens)
+      console.log("other tokens: - match.service.ts:210", otherTokens)
+
         await this.firebaseService.sendPushNotification(
           otherTokens,
           JSON.stringify({ match: match }),
@@ -206,13 +228,14 @@ export class MatchService {
         );
 
         this.logger.log(`Sent notification letting others know`);
-      }
+
 
       if (match.client?.firebaseToken) {
         await this.firebaseService.sendPushNotification(
-          [match.client.firebaseToken],
+          {client:[match.client.firebaseToken]},
           JSON.stringify({
             AcceptedTherapist: match.accepted,
+            therapist
           }),
           SessionNotif.MATCH_ACCEPTED,
           'Your match request has been accepted!'

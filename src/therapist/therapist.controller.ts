@@ -6,56 +6,138 @@ import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-que
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
+import { StatusDto } from 'src/common/dto/status.dto';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
+import { PreferenceService } from 'src/preference/preference.service';
+import { RatingService } from 'src/rating/rating.service';
+import { SessionService } from 'src/session/session.service';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 import { TherapistService } from './therapist.service';
+import { TherapistStatisticsService } from './therapist.stats';
 
 @Controller('therapist')
 export class TherapistController {
   constructor(
     private readonly therapistService: TherapistService,
-        private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly sessionService: SessionService,
+    private readonly firebaseService: FirebaseService,
+    private readonly prefService: PreferenceService,
+    private readonly stats: TherapistStatisticsService,
+    private readonly ratingService: RatingService,
   ) {}
+
 
   @Get('me')
   @UseGuards(TherapistJwtAuthGuard)
   @ApiFindOneQueryParams()
   async getMe(
-  @Query() queryParams,
-  @CurrentUser() user: TokenPayload,
+    @Query() queryParams,
+    @CurrentUser() user: TokenPayload,
   ) {
-    return await this.therapistService.findOne(user.id,queryParams);
+    return await this.therapistService.findOne(user.id, queryParams);
   }
 
+  @Get('stats')
+  @ApiFilterByDate()
+  @UseGuards(TherapistJwtAuthGuard)
+  async statistics(
+    @CurrentUser() therapist: TokenPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
+  }
 
-    @ApiFindAllQueryParams()
-    @Get('me/chats')
-    @UseGuards(TherapistJwtAuthGuard)
-    async findMyChats(
-      @CurrentUser() _: TokenPayload,
-      @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
-    ) {
-      return this.chatService.findAll(queryParams);
-    }
-  
-    @ApiFindOneQueryParams()
-    @Get('me/chats/:id')
-    @UseGuards(TherapistJwtAuthGuard)
-    async findOneChat(
-      @CurrentUser() _: TokenPayload,
-      @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
-      @Param('id') id: string
-    ) {
-      return this.chatService.findOne(id, queryParams);
-    }
-  
-  
+  @ApiFindAllQueryParams()
+  @Get('me/chats')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyChats(
+    @CurrentUser() therapist: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.chatService.findAll(queryParams, therapist);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/notifications')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyNotifications(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.firebaseService.findAll(queryParams, _);
+  }
+
+  @ApiFindAllQueryParams()
+  @Post('me/notifications/read')
+  @UseGuards(TherapistJwtAuthGuard)
+  async readMyNotifications(
+    @CurrentUser() _: TokenPayload,
+  @Query() queryParams,
+  ) {
+    return this.firebaseService.markAsRead(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/preferences')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyPreferences(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.prefService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/chats/:id')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findOneChat(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.chatService.findOne(id, queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/sessions')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMySession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.sessionService.findAll(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('me/ratings')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findMyRating(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
+  ) {
+    return this.ratingService.findAll(queryParams);
+  }
+
+  @ApiFindOneQueryParams()
+  @Get('me/sessions/:id')
+  @UseGuards(TherapistJwtAuthGuard)
+  async findOneSession(
+    @CurrentUser() _: TokenPayload,
+    @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
+    @Param('id') id: string
+  ) {
+    return this.sessionService.findOne(id, queryParams);
+  }
+
   @Get()
   @DynamicGuards(
-    new AdminJwtAuthGuard(),  
-    new ClientJwtAuthGuard()  
+    new AdminJwtAuthGuard(),
+    new ClientJwtAuthGuard()
   )
   @ApiFindAllQueryParams()
   findAll(
@@ -80,7 +162,7 @@ export class TherapistController {
   @DynamicGuards(
     new TherapistJwtAuthGuard()
   )
-  updateMe( @CurrentUser() user: TokenPayload, @Body() updateTherapistDto: UpdateTherapistDto ) {
+  updateMe(@CurrentUser() user: TokenPayload, @Body() updateTherapistDto: UpdateTherapistDto) {
     return this.therapistService.update(user.id, updateTherapistDto);
   }
 
@@ -107,7 +189,7 @@ export class TherapistController {
     name: 'folder',
     enum: Object.values(ValidFolders),
     required: true,
-    description: 'Target folder: licence, etc.',
+    description: 'Target folder: licence, profile, degree, gov_id, professional_license, work_experience, special_training.',
   })
   @ApiQuery({
     name: 'modalId',
@@ -132,12 +214,33 @@ export class TherapistController {
   })
   @UseInterceptors(UploadInterceptor)
   async upload(
+    @CurrentUser() token: TokenPayload,
     @UploadedFile() file: Express.Multer.File,
-    @ValidatedFolder() _: ValidFolders,
+    @ValidatedFolder() folder: ValidFolders,
+    @Query('modalId') modalId?: string,
   ) {
+    if (folder === ValidFolders.PROFILE) {
+      console.log({ file })
+      const finalFileName = await this.therapistService.uploadProfile(token, file.filename);
+      return {
+        message: 'Profile updated successfully',
+        filename: finalFileName,
+      };
+    }
+    // Handle all therapist documents mapped to License entity
+    const finalFileName = await this.therapistService.saveDocument(token, file.filename, folder, modalId);
+
     return {
       message: 'File uploaded successfully',
-      filename: file.filename,
+      filename: finalFileName,
     };
   }
+
+  @UseGuards(AdminJwtAuthGuard)
+  @Patch('/toggleStatus/:id')
+  toggleStatus(@Param('id') id: string, @Body() statusDto: StatusDto) {
+    return this.therapistService.toggleStatus(id, statusDto)
+  }
+
+
 }

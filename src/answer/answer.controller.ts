@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards,Req } from '@nestjs/common';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -7,6 +7,7 @@ import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindO
 import { AnswerService } from './answer.service';
 import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
+import { Request } from 'express';
 
 @Controller('answer')
 export class AnswerController {
@@ -16,6 +17,17 @@ export class AnswerController {
   @UseGuards(ClientJwtAuthGuard)
   create(@CurrentUser() client: TokenPayload, @Body() createAnswerDto: CreateAnswerDto) {
     return this.answerService.create(client, createAnswerDto);
+  }
+
+  @ApiFindAllQueryParams()
+    @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )  
+  @Get('user-ans')
+  findClientsWhoFilledAllGroupAnswers(
+  @Query() query: FindAllQueryParams
+  ) {
+    return this.answerService.findClientsWhoFilledAllGroupAnswers(query);
   }
 
   @ApiFindAllQueryParams()
@@ -38,6 +50,8 @@ export class AnswerController {
   findOne(@Param('id') id: string, @Query() query: FindOneQueryParams) {
     return this.answerService.findOne(id, query);
   }
+
+
 
   @Patch(':id')
   @UseGuards(ClientJwtAuthGuard)

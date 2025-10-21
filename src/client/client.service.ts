@@ -1,19 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
+import * as fs from 'fs';
+import * as path from 'path';
+import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { StatusDto } from 'src/common/dto/status.dto';
 import { Client } from 'src/common/entities/client.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { PresenceService } from 'src/presence/presence.service';
+import { Repository } from 'typeorm';
 import { UpdateClientDto } from './dto/update-client.dto';
 
 @Injectable()
 export class ClientService {
   constructor(
     private readonly logger: LoggerService,
+    private readonly firebaseService: FirebaseService,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
+    private readonly presenceService: PresenceService
   ) {}
 
   async create(data: Partial<Client>) {
@@ -102,5 +109,59 @@ export class ClientService {
       isOnline: false,
       lastSeenAt: new Date(),
     });
+  }
+
+  async uploadProfile(token: TokenPayload, tmpFileName: string) {
+    const client = await this.findOne(token.id);
+    const ext = path.extname(tmpFileName) || '.jpg';
+    const tmpPath = path.join(Tmp_Files_Dir, tmpFileName);
+
+    if (!fs.existsSync(tmpPath)) {
+      throw new BadRequestException('Uploaded profile file not found');
+    }
+
+    const finalDir = path.join(Final_Files_Dir, ValidFolders.PROFILE);
+    fs.mkdirSync(finalDir, { recursive: true });
+
+    const existingFiles = fs
+      .readdirSync(finalDir)
+      .filter(file => file.startsWith(`${client.id}.`));
+    for (const file of existingFiles) {
+      fs.unlinkSync(path.join(finalDir, file));
+    }
+
+    const finalFileName = `${client.id}${ext}`;
+    const finalPath = path.join(finalDir, finalFileName);
+
+    client.profile = path.join(ValidFolders.PROFILE, finalFileName)
+    try {
+      await this.clientRepo.save(client);
+
+      fs.renameSync(tmpPath, finalPath);
+      this.presenceService.notifyProfilePictureChange(token.id, UserTypes.CLIENT, client.profile);
+      
+      return path.join(ValidFolders.PROFILE, finalFileName);
+    } catch (err) {
+      this.logger.error(`Failed to update client profile: ${err.message}`);
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      throw new BadRequestException('Profile upload failed. Please try again.');
+    }
+  }
+
+  async toggleStatus(id: string, status: StatusDto) {
+    this.logger.log(`Toggling status for client with ID ${id}`);
+    try {
+      await this.clientRepo.update(id, status);
+      const {firebaseToken} = await this.findOne(id)
+      const message = `${status.status}`
+      const body = `Your account is now ${status.status}`
+      await this.firebaseService.sendPushNotification({client:[firebaseToken]}, message.toString(),SessionNotif.STATUS_CHANGED, body);
+
+      this.logger.log(`Status for client with ID ${id} updated successfully`);
+      return 'successfully updated';
+    } catch (error) {
+      this.logger.error(`Error toggling status for client with ID ${id}: ${error.message}`);
+      throw error;
+    }
   }
 }

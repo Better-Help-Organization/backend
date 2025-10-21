@@ -1,8 +1,8 @@
-import { IsArray, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { Gender } from 'src/common/constants';
 import { UpdatePreferenceAvailabilityDto } from './update-preference-availability.dto';
-import { Type } from 'class-transformer';
 
 export class UpdatePreferenceDto {
   @ApiProperty({ description: 'Modal UUID', example: '2ec3e1e3-6c62-4b10-8c3f-49d456011d60' })
@@ -23,6 +23,14 @@ export class UpdatePreferenceDto {
   @IsArray()
   @IsUUID('all', { each: true })
   languageIds?: string[];
+
+  @ApiProperty({
+    description: 'string',
+    example: 'Somalian',
+  })
+  @IsOptional()
+  @IsString()
+  otherLang?: string;
 
   @ApiProperty({ description: 'Personal goals for the session', example: 'Improve communication skills' })
   @IsOptional()

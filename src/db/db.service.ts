@@ -1,15 +1,18 @@
-import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'bcryptjs';
-import { BaseStatus, LangCode, LevelType, ModalName, QuestionType } from 'src/common/constants';
+import { BaseStatus, LangCode, LevelType, ModalName } from 'src/common/constants';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Language } from 'src/common/entities/language.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Modal } from 'src/common/entities/modal.entity';
 import { Option } from 'src/common/entities/option.entity';
+import { Parameter } from 'src/common/entities/parameter.entity';
 import { Question } from 'src/common/entities/question.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { defaultParams } from './default-params';
 
 @Injectable()
 export class DbService implements OnModuleInit {
@@ -18,10 +21,27 @@ export class DbService implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    @InjectRepository(Parameter)
+    private parameterRepository: Repository<Parameter>,
   ) {}
 
   async onModuleInit() {
     this.logger.log('DbService module initialized');
+  }
+
+
+  async seedParameters() {
+    this.logger.log('Seeding parameters...');
+    for (const parameter of defaultParams) {
+      const exists = await this.parameterRepository.findOne({ where: { name: parameter.name } });
+      
+      if (!exists) {
+      await this.parameterRepository.save(parameter);
+      this.logger.log(`Parameter ${parameter.name} saved`);
+      } else {
+      this.logger.log(`Parameter ${parameter.name} already exists`);
+      }
+    }
   }
 
   async seedAdmin(){
@@ -58,8 +78,9 @@ export class DbService implements OnModuleInit {
     const languages = [
         { code: LangCode.EN, name: 'English' },
         { code: LangCode.AM, name: 'Amharic' },
-        { code: LangCode.OR, name: 'Oromo' },
+        { code: LangCode.OR, name: 'Oromigna' },
         { code: LangCode.TI, name: 'Tigrigna' },
+        { code: LangCode.OTHER, name: 'Other' }
     ];
 
     for (const lang of languages) {
@@ -126,10 +147,22 @@ export class DbService implements OnModuleInit {
         if (!modal) {
         modal = await modalRepository.save({ name: modalEnumValue, description, order });
         this.logger.log(`Created Modal: ${modalEnumValue}`);
-        } else {
-        this.logger.log(`Modal "${modalEnumValue}" already exists`);
+        } 
+        else {
+            // ✅ update if order/type/text changed
+            let needsUpdate = false;
+            if (modal.order !== order) {
+            modal.order = order;
+            needsUpdate = true;
+            }
+            if (needsUpdate) {
+                await modalRepository.save(modal);
+                this.logger.log(`Updated modal: ${modalEnumValue}`);
+            } 
+            else {
+                this.logger.log(`Modal "${modalEnumValue}" already exists`);
+            }
         }
-
         // 🗑 Remove questions in DB that are not in the current data
         const currentQuestionTexts = questions.map(q => q.text);
         const existingQuestions = await questionRepository.find({
@@ -145,19 +178,9 @@ export class DbService implements OnModuleInit {
             }
         }
 
-        for (const questionData of questions) {
+        for (const [qIndex, questionData] of questions.entries()) {
             const { text, type, option } = questionData;
-            const typeMap: Record<string, QuestionType> = {
-                single: QuestionType.SINGLE,
-                multiple: QuestionType.MULTIPLE,
-                open: QuestionType.OPEN,
-            };
-
-            const questionType = typeMap[type];
-            if (!questionType) {
-            throw new BadRequestException("Type is not correct");
-            }
-
+            const questionType = type; // already an enum in onboardingData
             let question = await questionRepository.findOne({
                 where: { text, modal: { id: modal.id } },
                 relations: ['modal'],
@@ -165,34 +188,69 @@ export class DbService implements OnModuleInit {
 
             if (!question) {
                 question = questionRepository.create({
-                    text,
-                    type: questionType,
-                    modal,
+                text,
+                type: questionType,
+                modal,
+                order: qIndex + 1,   // ✅ set order from index
                 });
-
                 await questionRepository.save(question);
-                this.logger.log(` Created Question: ${text}`);
+                this.logger.log(`Created Question: ${text}`);
             } else {
-                this.logger.log(` Question "${text}" already exists`);
+                // ✅ update if order/type/text changed
+                let needsUpdate = false;
+                if (question.order !== qIndex + 1) {
+                question.order = qIndex + 1;
+                needsUpdate = true;
+                }
+                if (question.type !== questionType) {
+                question.type = questionType;
+                needsUpdate = true;
+                }
+                if (question.text !== text) {
+                question.text = text;
+                needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                await questionRepository.save(question);
+                this.logger.log(`Updated Question: ${text}`);
+                } else {
+                this.logger.log(`Question "${text}" already up-to-date`);
+                }
             }
 
+            // Handle Options
             if (option && option.length > 0) {
-                for (const optionText of option) {
-                    const exists = await optionRepository.findOne({
-                        where: { text: optionText, question: { id: question.id } },
-                        relations: ['question'],
+                for (const [oIndex, optionText] of option.entries()) {
+                let opt = await optionRepository.findOne({
+                    where: { text: optionText, question: { id: question.id } },
+                    relations: ['question'],
+                });
+                // return;
+                if (!opt) {
+                    opt = optionRepository.create({
+                    text: optionText,
+                    question,
+                    order: oIndex + 1,  // ✅ set order from index
                     });
-
-                    if (!exists) {
-                        const option = optionRepository.create({
-                            text: optionText,
-                            question,
-                        });
-
-                        await optionRepository.save(option);
-                        this.logger.log(` Created Option: ${optionText}`);
+                    await optionRepository.save(opt);
+                    this.logger.log(`Created Option: ${optionText}`);
+                } else {
+                    let needsUpdate = false;
+                    if (opt.order !== oIndex + 1) {
+                        opt.order = oIndex + 1;
+                        needsUpdate = true;
+                    }
+                    if (opt.text !== optionText) {
+                        opt.text = optionText;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
+                        await optionRepository.save(opt);
+                        this.logger.log(`Updated Option: ${optionText}`);
                     } else {
-                        this.logger.log(` Option "${optionText}" already exists`);
+                    this.logger.log(`Option "${optionText}" already up-to-date`);
+                        }
                     }
                 }
             }

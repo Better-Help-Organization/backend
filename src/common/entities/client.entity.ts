@@ -1,10 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { BaseStatus } from '../constants';
 import { Answer } from './answer.entity';
-import { Preference } from './preference.entity';
-import { User } from './user.entity';
-import { Rating } from './rating.entity';
+import { ClientSubscription } from './client-subscription.entity';
+import { Diary } from './diary.entity';
 import { Match } from './match.entity';
+import { Mood } from './mood.entity';
+import { Notification } from './notification.entity';
+import { Preference } from './preference.entity';
+import { Rating } from './rating.entity';
+import { User } from './user.entity';
 
 @Entity()
 export class Client extends User {
@@ -20,6 +25,18 @@ export class Client extends User {
   @ApiProperty({ nullable: true })
   @Column({ default: false })
   isVisible: boolean;
+
+  @ApiProperty()
+  @Column({ default: false })
+  isInGroup: boolean;
+
+  @ApiProperty({ enum: BaseStatus, default: BaseStatus.INACTIVE })
+  @Column({
+      type: "enum",
+      default: BaseStatus.ACTIVE,
+      enum: BaseStatus,
+  })
+  status: BaseStatus;
 
   @ApiProperty({ type: () => Preference })
   @OneToMany(() => Preference, preference => preference.client)
@@ -37,5 +54,30 @@ export class Client extends User {
   @OneToMany(() => Match, match => match.client)
   match: Match[];
 
-  // @ApiProperty({ type: () => Session })
+  @ApiProperty({ type: () => Mood })
+  @OneToMany(() => Mood, mood => mood.client)
+  moods: Mood[];
+
+  @ApiProperty({ type: () => Diary })
+  @OneToMany(() => Diary, diary => diary.client)
+  diary: Diary[];
+
+  @ApiProperty({ type: () => ClientSubscription, isArray: true })
+  @OneToMany(() => ClientSubscription, cs => cs.client)
+  subscription: ClientSubscription[];
+
+  @ApiProperty({ type: () => ClientSubscription })
+  @OneToOne(() => ClientSubscription, { nullable: true, eager: true })
+  @JoinColumn({ name: 'active_subscription_id' })
+  activeSubscription?: ClientSubscription;
+
+  @ApiProperty({ type: () => Notification, nullable: true })
+  @OneToOne(() => Notification, { nullable: true, cascade: true })
+  @JoinColumn()
+  hasNotification?: Notification | null;
+
+    // @Expose()
+    // get type() {
+    //   return this.activeSubscription?.subscription ?? null;
+    // }
 }
