@@ -66,16 +66,16 @@ services:
       - ./caddy_data:/data
 
 networks:
-# DONOT CHANGE THESE VALUES
+# # DONOT CHANGE THESE VALUES
   dev_default:
-    external: true
-    name: dev_default
+    # external: true
+    # name: dev_default
   prod_default:
-    external: true
-    name: prod_default
+    # external: true
+    # name: prod_default
   test_default:
-    external: true
-    name: test_default
+    # external: true
+    # name: test_default
 
 volumes:
   caddy_data:

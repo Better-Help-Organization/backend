@@ -159,6 +159,7 @@ export enum SubscriptionType {
 
 export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
+  TELEBIRR = 'telebirr',
 }
 
 export enum PaymentStatus {
