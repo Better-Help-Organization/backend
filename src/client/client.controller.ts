@@ -1,7 +1,8 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
-import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
+import { FILE_UPLOAD_KEY, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { AuthEnforcedQueryParams, GroupScope } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -41,19 +42,27 @@ export class ClientController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log("user - client.controller.ts:42", user);
     return await this.clientService.findOne(user.id,queryParams);
   }
 
   @Get('stats')
   @ApiFilterByDate()
-  @UseGuards(ClientJwtAuthGuard)
+  @ApiQuery({ 
+    name: 'mockId', 
+    required: false, 
+    type: String, 
+  })
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   async statistics(
-    @CurrentUser() client: TokenPayload,
+    @AllowAdminAccess(UserTypes.CLIENT) client: TokenPayload,
+    @Query('mockId') mockId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.stats.getClientAnalytics(startDate, endDate, client.id);
+    return this.stats.getClientAnalytics(client.id, startDate, endDate)
   }
 
   @ApiFindAllQueryParams()

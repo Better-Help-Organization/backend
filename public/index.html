@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirecr to telebirr payment</title>
+      <link
+      rel="stylesheet"
+      href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css"
+    />
+        <link
+      rel="stylesheet"
+      href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css"
+    />
+    <script
+      type="text/javascript"
+      src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.3/weui.min.js"
+    ></script>
+</head>
+<body>
+  <script defer>
+
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+     
+    function useAnchorOpen(link) {
+    
+    if (!link) {
+      document.getElementById("status").innerHTML = "No link provided";
+      console.error("No payment link has been provided");
+      return;
+    }
+
+        console.log(link)
+        let anchorEle = document.createElement("a");
+        anchorEle.setAttribute("href", (link));
+        // anchorEle.setAttribute("target", "_self");
+        anchorEle.setAttribute("target", "_blank"); // open in new tab
+        anchorEle.removeAttribute("rel");           // remove external
+
+        anchorEle.style.display = "none";
+        anchorEle.click();
+      } 
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const linkFromQuery = getQueryParam("link");
+        useAnchorOpen(linkFromQuery);
+  });
+
+</script>
+
+  <p id="status">Redirecting</p>
+</body>
+</html>

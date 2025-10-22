@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Mood } from 'src/common/entities/mood.entity';
 import { Rating } from 'src/common/entities/rating.entity';
-import { Subscription } from 'src/common/entities/subscription.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -15,8 +15,8 @@ export class ClientStatisticsService {
     private readonly diaryRepo: Repository<Diary>,
     @InjectRepository(Rating)
     private readonly ratingRepo: Repository<Rating>,
-    @InjectRepository(Subscription)
-    private readonly subscriptionRepo: Repository<Subscription>
+    @InjectRepository(ClientSubscription)
+    private readonly clientSubscriptionRepo: Repository<ClientSubscription>
   ) {}
 
 /** 😀 Mood entries over time */
@@ -58,18 +58,24 @@ async getMoodTrend(clientId: string, start?: string, end?: string) {
       .getRawOne();
   }
 
-  /** 💳 Subscription history */
-  async getSubscriptions(clientId: string) {
-    return this.subscriptionRepo.createQueryBuilder('subscription')
-      .select('subscription.type', 'type')
-      .addSelect('subscription.status', 'status')
-      .addSelect('subscription.start_date', 'startDate')
-      .addSelect('subscription.end_date', 'endDate')
-      .addSelect('subscription.price', 'price')
-      .where('subscription.clientId = :clientId', { clientId })
-      .orderBy('subscription.start_date', 'ASC')
-      .getRawMany();
-  }
+async getSubscriptions(clientId: string) {
+  return this.clientSubscriptionRepo
+    .createQueryBuilder('clientSubscription')
+    .innerJoin('clientSubscription.subscription', 'subscription')
+    .select([
+      'subscription.type AS type',
+      'clientSubscription.status AS status',
+      'clientSubscription.start_date AS startDate',
+      'clientSubscription.end_date AS endDate',
+      'subscription.price AS price',
+      'subscription.id AS subscriptionId',
+      'clientSubscription.id AS clientSubscriptionId',
+    ])
+    .where('clientSubscription.client = :clientId', { clientId })
+    .orderBy('clientSubscription.start_date', 'ASC')
+    .getRawMany();
+}
+
 
   async getClientAnalytics(clientId: string, start?: string, end?: string) {
     
