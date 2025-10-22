@@ -1,16 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { addDays, addMonths } from 'date-fns';
 import { SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
+import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 
@@ -26,6 +27,9 @@ export class SubscriptionService {
     @InjectRepository(Level)
     private readonly levelRepository: Repository<Level>,
 
+    @InjectRepository(Preference)
+    private readonly preferenceRepository: Repository<Preference>,
+
     @InjectRepository(Client)
     private readonly clientRepository: Repository<Client>,
 
@@ -35,56 +39,62 @@ export class SubscriptionService {
     
   ) {}
 
+  async createAdminSubscription(dto: CreateAdminSubscriptionDto) {
+    const level = await this.levelRepository.findOne({ where: { id: dto.levelId } });
+    if (!level) throw new NotFoundException(`Level ${dto.levelId} not found`);
+
+    if (dto.price && dto.price > level.price)
+      throw new BadRequestException('Price cannot be greater than level price');
+
+    const typeValue = String(SubscriptionType[dto.type]); // '0', '1'
+
+    const existing = await this.subscriptionRepo
+      .createQueryBuilder('subscription')
+      .where('subscription.levelId = :levelId', { levelId: dto.levelId })
+      .andWhere('subscription.type = :type', { type: typeValue }) // ← string!
+      .andWhere('subscription.is_admin_created = true')
+      .getOne();
+
+    if(existing) {
+      throw new BadRequestException(
+        `A ${dto.type} subscription already exists for this level. Update it instead of creating a new one.`
+      );
+    }
+
+    const subscription = this.subscriptionRepo.create({
+      type: SubscriptionType[dto.type],
+      old_price: level.price,
+      price: dto.price,
+      level,
+      is_admin_created: true
+    });
+
+    return this.subscriptionRepo.save(subscription);
+  }
+
   async create(token: TokenPayload, dto: CreateSubscriptionDto) {
     try {
-      const existingActive = await this.clientSubscriptionRepo.findOne({
-        where: {
-          client: { id: token.id },
-          subscription: { status: SubscriptionStatus.ACTIVE },
-        },
-        relations: ['subscription'],
-      });
-
-      if (existingActive) {
-        // throw new BadRequestException('Client already has an active subscription');
-      }
-
-      if (dto.price && dto.price > dto.old_price) {
-        throw new BadRequestException('Price cannot be greater than old price');
-      }
-
-      const level = await this.levelRepository.findOne({
-        where: { id: dto.levelId },
-      });
-      if (!level) {
-        throw new NotFoundException(`Level with ID ${dto.levelId} not found`);
-      }
-
-      const startDate = new Date(dto.start_date);
-      const endDate = dto.type == SubscriptionType.TRIAL ? addDays(startDate, 7) : addMonths(startDate, dto.type);
-      const subscription = this.subscriptionRepo.create({
-        type: dto.type,
-        start_date: startDate,
-        end_date: endDate,
-        old_price: dto.old_price,
-        price: dto.price,
-        level: { id: dto.levelId },
-      });
-      const savedSub = await this.subscriptionRepo.save(subscription);
-
       const client = await this.clientRepository.findOne({ where: { id: token.id } });
+      if (!client) throw new NotFoundException('Client not found');
+
+      const selectedSub = await this.subscriptionRepo.findOne({
+        where: { id: dto.subscriptionId, is_admin_created: true },
+        relations: ['level'],
+      });
+      if (!selectedSub) throw new NotFoundException('Admin-created subscription not found');
+
       const clientSub = this.clientSubscriptionRepo.create({
         client,
-        subscription: savedSub,
-        start_date: startDate,
-        end_date: endDate,
-        //activeSubscription: savedSub
+        subscription: selectedSub,
+        status: SubscriptionStatus.INACTIVE, // will become ACTIVE later
+        start_date: null,
+        end_date: null,
       });
+
       const csub = await this.clientSubscriptionRepo.save(clientSub);
       client.activeSubscription = csub
       await this.clientRepository.save(client)
       console.log({client})
-
 
       return clientSub;
     } catch (err) {
@@ -109,6 +119,19 @@ export class SubscriptionService {
       this.logger.error(`Failed to find subscriptions: ${error.message}`);
       throw error;
     }
+  }
+
+  async findAvailableSubscriptionsByPreference(preferenceId: string) {
+    const preference = await this.preferenceRepository.findOne({ 
+      where: { id: preferenceId },
+      relations: ['level'],
+    });
+    if (!preference) throw new NotFoundException(`Client Preference ${preferenceId} not found`);
+
+    return this.subscriptionRepo.find({
+      where: { level: { id: preference.level.id }, is_admin_created: true},
+      relations: ['level'],
+    });
   }
 
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Subscription> {
@@ -141,31 +164,50 @@ export class SubscriptionService {
 
   // Handle status change
   if (dto.status && dto.status !== subscription.status) {
-    // pause other active subs if activating
     if (dto.status === SubscriptionStatus.ACTIVE) {
-      const linkedClients = await this.clientSubscriptionRepo.find({
-        where: { subscription: { id: subscription.id } },
-        relations: ['client'],
+      const client = subscription.client;
+      const now = new Date();
+      const durationMonths = subscription.subscription.type;
+
+      // Always set correct start/end first
+      subscription.start_date = now;
+      subscription.end_date =
+        durationMonths === 0
+          ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+          : new Date(new Date(now).setMonth(now.getMonth() + durationMonths));
+
+      // Fetch existing active subscriptions
+      const activeClientSubs = await this.clientSubscriptionRepo.find({
+        where: { 
+          client: { id: client.id },
+          status: SubscriptionStatus.ACTIVE
+        },
+        relations: ['subscription'],
       });
 
-      for (const clientSub of linkedClients) {
-        const client = clientSub.client;
+      if (activeClientSubs.length === 0) {
+        subscription.status = SubscriptionStatus.ACTIVE;
+        client.activeSubscription = subscription;
+        await this.clientRepository.save(client);
+      } else {
+        // Include this one in the comparison
+        const candidates = [...activeClientSubs, subscription];
 
-        const otherClientSubs = await this.clientSubscriptionRepo.find({
-          where: { client: { id: client.id } },
-          relations: ['subscription'],
+        const latestSub = candidates.reduce((latest, curr) => {
+          if (!curr.end_date) return latest;
+          if (!latest.end_date) return curr;
+          return curr.end_date > latest.end_date ? curr : latest;
         });
 
-        for (const cs of otherClientSubs) {
-          if (
-            cs.subscription.status === SubscriptionStatus.ACTIVE &&
-            cs.subscription.id !== subscription.id
-          ) {
-            cs.subscription.status = SubscriptionStatus.PAUSED;
-            await this.subscriptionRepo.save(cs.subscription);
-          }
+        for (const cs of candidates) {
+          cs.status = cs.id === latestSub.id
+            ? SubscriptionStatus.ACTIVE
+            : SubscriptionStatus.PAUSED;
+
+          await this.clientSubscriptionRepo.save(cs);
         }
 
+        client.activeSubscription = latestSub;
         await this.clientRepository.save(client);
       }
     }
@@ -174,7 +216,16 @@ export class SubscriptionService {
     const client = subscription.client;
     if (client?.firebaseToken) {
       const message = 'Subscription Status Changed';
-      const body = `Your subscription is now ${dto.status}.`;
+
+      const start = subscription.start_date
+        ? subscription.start_date.toLocaleDateString()
+        : 'N/A';
+      const end = subscription.end_date
+        ? subscription.end_date.toLocaleDateString()
+        : 'N/A';
+
+      const body = `Your subscription is now ${dto.status}. It started on ${start} and will end on ${end}.`;
+
 
       await this.firebaseService.sendPushNotification(
         { client: [client.firebaseToken] },
@@ -189,9 +240,15 @@ export class SubscriptionService {
 
   // ✅ Save subscription changes
   await this.clientSubscriptionRepo.save(subscription);
-  return subscription;
-}
 
+  // to return the subscription with updated client:
+  const result = await this.clientSubscriptionRepo.findOne({
+    where: { id },
+    relations: ['client', 'client.activeSubscription', 'subscription', 'subscription.level'],
+  });
+
+  return result;
+}
 
   // async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto) {
   //   const subscription = await this.clientSubscriptionRepo.findOne({
@@ -318,11 +375,6 @@ export class SubscriptionService {
 
   async remove(id: string): Promise<void> {
     try {
-      const subscription = await this.findOne(id);
-
-      subscription.status = SubscriptionStatus.CANCELED;
-      await this.subscriptionRepo.save(subscription);
-
       await this.subscriptionRepo.softDelete(id);
     } catch (err) {
       this.logger.error(`Delete subscription error: ${err.message}`);

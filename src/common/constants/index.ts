@@ -153,7 +153,7 @@ export enum SubscriptionType {
   TRIAL = 0,
   MONTHLY = 1,
   QUARTERLY = 3,
-  SEMI_ANNUAL = 6,
+  SEMI_ANNUALLY = 6,
   YEARLY = 12,
 }
 
@@ -202,6 +202,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   SUBSCRIPTION_EXPIRY: { code: "22", title: "⚠️ Subscription expiring soon", showNotification: true },
   SUBSCRIPTION_EXPIRED: { code: "23", title: "❌ Subscription expired", showNotification: true },
   GROUP_SCHEDULED: { code: "24", title: 'Group Session Created', showNotification: true },
+  ALL_SESSIONS_COMPLETED: { code: "25", title: "All Sessions Completed", showNotification: true },
 
 } as const;
 
