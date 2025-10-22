@@ -9,6 +9,7 @@ import { Match } from 'src/common/entities/match.entity';
 import { Modal } from 'src/common/entities/modal.entity';
 import { Mood } from 'src/common/entities/mood.entity';
 import { Notification } from 'src/common/entities/notification.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -23,7 +24,7 @@ import { AdminStatisticsService } from './admin.stats';
   imports: [
     TypeOrmModule.forFeature([
       Admin, Client, Therapist, Session,
-      Subscription, Match, Mood, Diary, Modal, ClientSubscription, Level,
+      Subscription, Match, Mood, Diary, Modal, ClientSubscription, Level, Preference,
       Notification, Therapist]),
       FirebaseModule,
   ],  
