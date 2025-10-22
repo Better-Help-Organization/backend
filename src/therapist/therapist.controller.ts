@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from 'src/chat/chat.service';
-import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
+import { FILE_UPLOAD_KEY, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -43,11 +44,21 @@ export class TherapistController {
 
   @Get('stats')
   @ApiFilterByDate()
+  @ApiQuery({ 
+    name: 'mockId', 
+    required: false, 
+    type: String, 
+  })
+  @DynamicGuards(
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   @UseGuards(TherapistJwtAuthGuard)
   async statistics(
-    @CurrentUser() therapist: TokenPayload,
+    @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('mockId') mockId?: string
   ) {
     return this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
   }
