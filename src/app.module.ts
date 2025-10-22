@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -12,6 +12,7 @@ import { BankModule } from './bank/bank.module';
 import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './client/client.module';
 import { LoggingInterceptor } from './common/interceptors/logger.interceptor';
+import { AuthServiceMiddleware } from './common/middlewares/auth-service.middleware';
 import { DatabaseModule } from './db/db.module';
 import { DiaryModule } from './diary/diary.module';
 import { EmailModule } from './email/email.module';
@@ -34,8 +35,8 @@ import { QuoteModule } from './quote/quote.module';
 import { RatingModule } from './rating/rating.module';
 import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
-import { TherapistModule } from './therapist/therapist.module';
 import { TelebirrModule } from './telebirr/telebirr.module';
+import { TherapistModule } from './therapist/therapist.module';
 
 @Module({
   imports: [
@@ -71,11 +72,17 @@ import { TelebirrModule } from './telebirr/telebirr.module';
     TelebirrModule
   ],
   controllers: [AppController],
-  providers: [AppService,    
+  providers: [AppService,   
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
 ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthServiceMiddleware).forRoutes('*');
+  }
+}
+
+

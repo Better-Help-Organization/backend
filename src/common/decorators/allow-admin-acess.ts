@@ -12,17 +12,22 @@ export const AllowAdminAccess = (accessTo: Exclude<UserTypes, UserTypes.ADMIN>) 
     const request = ctx.switchToHttp().getRequest();
 
     const user = request.user as TokenPayload; // from JwtAuthGuard
-    const mockId = request.params?.id;
-
+    const mockId = request.query?.mockId;
+    // console.log({user})
+    console.log(mockId,'mockId  allowadminaccess.ts:16 - allow-admin-acess.ts:17');
     if (!mockId) {
       throw new InternalServerErrorException('Param "id" is required for AllowAdminAccess decorator');
     }
 
     // Resolve AuthService dynamically via request-scoped provider
-    const authService: AuthService = request.authService;
-    if (!authService) {
-      throw new InternalServerErrorException('AuthService not available in request. Attach it via middleware or use request-scoped DI.');
-    }
+    // const authService: AuthService = request.authService;
+  const authService: AuthService = request.authService;
+
+  // const authService = moduleRef.get(AuthService, { strict: false });
+  if (!authService) {
+    throw new InternalServerErrorException('Unable to resolve AuthService');
+  }
+
 
     // Call your original logic
     return authService._allowAdminAccess(user, mockId, accessTo);
