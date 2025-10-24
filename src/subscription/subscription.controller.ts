@@ -13,13 +13,13 @@ import { SubscriptionService } from './subscription.service';
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
-  @Post('select')
+  @Post()
   @UseGuards(ClientJwtAuthGuard)
   create(@CurrentUser() token: TokenPayload, @Body() dto: CreateSubscriptionDto) {
     return this.subscriptionService.create(token, dto);
   }
 
-  @Post()
+  @Post('admin')
   @UseGuards(AdminJwtAuthGuard)
   createAdmin(@Body() dto: CreateAdminSubscriptionDto) {
     return this.subscriptionService.createAdminSubscription(dto);

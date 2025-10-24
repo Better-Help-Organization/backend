@@ -84,14 +84,14 @@ export class UpdateSessionDto {
   @Type(() => StatusUpdateDto)
   status?: StatusUpdateDto;
 
-  @ApiProperty({
-    description: 'Indicates whether the client attended the session',
-    example: false,
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  hasclientAttended?: boolean;
+  // @ApiProperty({
+  //   description: 'Indicates whether the client attended the session',
+  //   example: false,
+  //   default: false,
+  // })
+  // @IsOptional()
+  // @IsBoolean()
+  // hasclientAttended?: boolean;
 }
 
 export class AttendanceDto {
