@@ -428,9 +428,6 @@ async update(
   updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
 ): Promise<Session> {
   try {
-    // const session = await this.findOne(id, {
-    //   fields: 'client.*, therapist.*, status.*, latestStatus, hasTherapistAttended',
-    // });
     const session = await this.sessionRepo.findOne(
       {
         where: {id},
@@ -498,29 +495,10 @@ async update(
         SessionNotif.STATUS_CHANGED,
         `Your session status is now ${session.latestStatus}`
       );
-
-      // const clientName = savedSession.client.firstName + " " + savedSession.client.lastName;
-      // const therapistName = savedSession.therapist.firstName + " " + savedSession.therapist.lastName
-
-      // //to client
-      // this.firebaseService.sendPushNotification(
-      //   { client: [savedSession.client.firebaseToken], therapist: [], admin: [] },
-      //   JSON.stringify(savedSession),
-      //   SessionNotif.STATUS_CHANGED,
-      //   `Your session status with therapist ${therapistName} is now ${session.latestStatus}`
-      // );
-
-      // //to therapist
-      // this.firebaseService.sendPushNotification(
-      //   { client: [], therapist: [savedSession.therapist.firebaseToken], admin: [] },
-      //   JSON.stringify(savedSession),
-      //   SessionNotif.STATUS_CHANGED,
-      //   `Your session status with client ${clientName} is now ${session.latestStatus}`
-      // );
     }
 
-    if('hasclientAttended' in sanitizedDto) {
-      await this.handleClientAttendanceCompletion(savedSession.client.id, savedSession.commonId);
+    if ('hasTherapistAttended' in sanitizedDto) {
+      await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
     }
 
     return savedSession;
@@ -853,7 +831,7 @@ async update(
     }
   }
 
-  private async handleClientAttendanceCompletion(clientId: string, commonId: string) {
+  private async handleTherapistAttendanceCompletion(clientId: string, commonId: string) {
     // Fetch all confirmed sessions for this client
     const sessions = await this.sessionRepo.find({
       where: {
@@ -867,13 +845,13 @@ async update(
     if (sessions.length === 0) return;
 
     // Check if all sessions are attended
-    const allAttended = sessions.every(s => s.hasclientAttended);
+    const allAttended = sessions.every(s => s.hasTherapistAttended);
 
     if (!allAttended) return; // Not yet completed — nothing to do
 
-    console.log("reached")
-    console.log("subscription id", sessions[0])
-    // Mark subscription inactive
+    this.logger.log(`All therapist attendances complete for client ${clientId}`);
+
+    // Mark client subscription inactive
     const clientSub = await this.clientSubscriptionRepo.findOne({
       where: {
         id: sessions[0].subscription.id,
@@ -881,8 +859,6 @@ async update(
       },
       relations: ['client', 'subscription'],
     });
-
-    console.log("client sub: ", clientSub)
 
     if (!clientSub) {
       this.logger.warn(`No active subscription found for client ${clientId}`);
@@ -909,7 +885,7 @@ async update(
         { client: [clientToken], therapist: [], admin: [] },
         JSON.stringify({ message: 'Program complete' }),
         SessionNotif.ALL_SESSIONS_COMPLETED,
-        'You’ve attended all your sessions. Please log out and await your next program cycle.'
+        'Your therapist has completed all sessions for your program. Please log out and await your next cycle.'
       );
     }
 
