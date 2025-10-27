@@ -11,7 +11,7 @@ export class CreatePreferenceDto {
   modalId: string;
 
   @ApiProperty({ description: 'Gender', enum: Gender })
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(Gender)
   gender: Gender;
 
@@ -19,7 +19,7 @@ export class CreatePreferenceDto {
     description: 'Array of Language UUIDs',
     example: ['fea90470-5563-403a-9b38-21c2aa62856d', 'd80c785f-6781-4cde-8511-12c9e1f44ef3'],
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @IsUUID('all', { each: true })
   languageIds?: string[];
@@ -33,17 +33,17 @@ export class CreatePreferenceDto {
   otherLang?: string;
 
   @ApiProperty({ description: 'Personal goals for the session', example: 'Improve communication skills' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   goal: string;
 
   @ApiProperty({ description: 'level UUID', example: '2ec3e1e3-6c62-4b10-8c3f-49d456011d60' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID()
   levelId: string; 
   
   @ApiProperty({ type: () => [CreatePreferenceAvailabilityDto], required: true })
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePreferenceAvailabilityDto)
