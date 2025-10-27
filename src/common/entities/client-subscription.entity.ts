@@ -29,7 +29,7 @@ export class ClientSubscription extends CommonEntity {
   payment: Payment[];
 
   @ApiProperty({ type: () => Session, isArray: true })
-  @OneToMany(() => Session, session => session.subscription, { cascade: true })
+  @OneToMany(() => Session, session => session.subscription, { cascade: true, eager: true })
   session: Session[];
 
   @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
