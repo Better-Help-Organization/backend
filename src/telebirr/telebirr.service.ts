@@ -33,6 +33,7 @@ export class TelebirrService {
           title,
           amount,
         );
+        console.log({createOrderResult})
         const prepayId = createOrderResult.biz_content?.prepay_id;
         if (!prepayId) {
           throw new HttpException(
@@ -40,8 +41,9 @@ export class TelebirrService {
             HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
+        console.log({prepayId})
         const rawRequest = this.createRawRequest(prepayId);
-        
+        console.log({rawRequest})
         return `${this.configService.get<string>(
           'WEB_BASE_URL',
         )}${rawRequest}&version=1.0&trade_type=Checkout`;
