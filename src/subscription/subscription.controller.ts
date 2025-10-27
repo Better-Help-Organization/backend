@@ -4,6 +4,7 @@ import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { SubscriptionService } from './subscription.service';
@@ -16,6 +17,19 @@ export class SubscriptionController {
   @UseGuards(ClientJwtAuthGuard)
   create(@CurrentUser() token: TokenPayload, @Body() dto: CreateSubscriptionDto) {
     return this.subscriptionService.create(token, dto);
+  }
+
+  @Post('admin')
+  @UseGuards(AdminJwtAuthGuard)
+  createAdmin(@Body() dto: CreateAdminSubscriptionDto) {
+    return this.subscriptionService.createAdminSubscription(dto);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get(':preferenceId')
+  @UseGuards(ClientJwtAuthGuard)
+  getSubscriptionPackages(@Param('preferenceId') id: string, @Query() query: FindAllQueryParams) {
+    return this.subscriptionService.findAvailableSubscriptionsByPreference(id);
   }
 
   @ApiFindAllQueryParams()

@@ -91,7 +91,7 @@ export class UpdateSessionDto {
   // })
   // @IsOptional()
   // @IsBoolean()
-  // hasclientAttended: boolean;
+  // hasclientAttended?: boolean;
 }
 
 export class AttendanceDto {

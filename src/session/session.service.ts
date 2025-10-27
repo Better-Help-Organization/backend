@@ -7,7 +7,6 @@ import { ClientSubscription } from 'src/common/entities/client-subscription.enti
 import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Status } from 'src/common/entities/status.entity';
-import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -51,8 +50,9 @@ export class SessionService {
 
   constructor (
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
-    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Client) private clientRepo: Repository<Client>,
     @InjectRepository(ClientSubscription) private clientSubscriptionRepo: Repository<ClientSubscription>,
+    @InjectRepository(Availability) private availabilityRepo: Repository<Availability>,
     private readonly logger: LoggerService,
     private readonly firebaseService: FirebaseService,  
     private readonly clientService: ClientService,  
@@ -233,8 +233,6 @@ export class SessionService {
         order: { start_date: 'DESC' },
       });
 
-      console.log({cs})
-
       if (!cs) {
         throw new BadRequestException(
           'You must have an active subscription to confirm a session.',
@@ -283,6 +281,7 @@ export class SessionService {
 
       // Confirm selected
       selected.approvalStatus = ApprovalStatus.CONFIRMED;
+      selected.subscription = cs;
       const confirmed = await manager.save(selected);
       // Nullify client's hasNotification after successful confirmation
       await manager.update(Client, { id: confirmed.client.id }, { hasNotification: null });
@@ -326,7 +325,6 @@ export class SessionService {
 
       // Subscription-based recurring session
       const {subscription} = cs
-      console.log({subscription})
       if (subscription) {
         const weeks = subscription.type * 4;
         console.log(subscription.type)
@@ -344,8 +342,10 @@ export class SessionService {
             console.log("Trying to create recurring session at: - session.service.ts:344", schedule.toISOString());
         
             const newSession = this.sessionRepo.create({
+              id: uuidv4(),
               therapist: selected.therapist,
               client: selected.client,
+              subscription: cs,
               schedule,
               duration: selected.duration,
               type: selected.type,
@@ -361,6 +361,14 @@ export class SessionService {
         
             createdSchedules.push(schedule);
 
+            // Create availability for this session
+            const availability = manager.create(Availability, {
+              therapist: saved.therapist,
+              schedule: saved.schedule,
+              duration: saved.duration,
+            });
+            await manager.save(availability);
+
             // update subscription start and end dates to the first and last session
             const firstSessionDate = allSessions
               .map(s => s.schedule)
@@ -369,11 +377,6 @@ export class SessionService {
             const lastSessionDate = allSessions
               .map(s => s.schedule)
               .sort((a, b) => b.getTime() - a.getTime())[0];
-
-            // Update main Subscription entity
-            subscription.start_date = firstSessionDate;
-            subscription.end_date = lastSessionDate;
-            await manager.save(subscription);
 
             // Update the corresponding ClientSubscription
             const clientSub = await manager.findOne(ClientSubscription, {
@@ -399,9 +402,6 @@ export class SessionService {
         }
 
         this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
-        this.logger.log(`Generated ${allSessions.length - 1} recurring sessions`);
-        cs.session = allSessions
-        this.clientSubscriptionRepo.save(cs);
       }
 
       // Notify therapist about confirmed upcoming sessions WITH THIS CLIENT
@@ -428,9 +428,12 @@ async update(
   updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
 ): Promise<Session> {
   try {
-    const session = await this.findOne(id, {
-      fields: 'client.*, therapist.*, status.*, latestStatus, hasTherapistAttended',
-    });
+    const session = await this.sessionRepo.findOne(
+      {
+        where: {id},
+        relations: ['client', 'therapist'],
+      }
+    );
 
     // ✅ If therapist attended, restrict updates except 'note'
     if (session.hasTherapistAttended) {
@@ -492,6 +495,10 @@ async update(
         SessionNotif.STATUS_CHANGED,
         `Your session status is now ${session.latestStatus}`
       );
+    }
+
+    if ('hasTherapistAttended' in sanitizedDto) {
+      await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
     }
 
     return savedSession;
@@ -799,12 +806,89 @@ async update(
 
   async remove(id: string): Promise<void> {
     try {
-      const session = await this.findOne(id);
-      
+      const session = await this.sessionRepo.findOne({
+        where: {id},
+        relations: ['therapist']
+      });
+
+      if (!session) {
+        throw new NotFoundException(`Session with id ${id} not found`);
+      }
+
+      // Remove corresponding availability
+      if (session.therapist && session.schedule) {
+        await this.availabilityRepo.delete({
+          therapist: { id: session.therapist.id },
+          schedule: session.schedule,
+        });
+      }
+
+      // Remove the session itself
       await this.sessionRepo.remove(session);
     } catch (error) {
       this.logger.error(`Failed to remove session: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  private async handleTherapistAttendanceCompletion(clientId: string, commonId: string) {
+    // Fetch all confirmed sessions for this client
+    const sessions = await this.sessionRepo.find({
+      where: {
+        client: { id: clientId },
+        commonId: commonId,
+        approvalStatus: ApprovalStatus.CONFIRMED,
+      },
+      relations: ['client', 'subscription'],
+    });
+
+    if (sessions.length === 0) return;
+
+    // Check if all sessions are attended
+    const allAttended = sessions.every(s => s.hasTherapistAttended);
+
+    if (!allAttended) return; // Not yet completed — nothing to do
+
+    this.logger.log(`All therapist attendances complete for client ${clientId}`);
+
+    // Mark client subscription inactive
+    const clientSub = await this.clientSubscriptionRepo.findOne({
+      where: {
+        id: sessions[0].subscription.id,
+        client: { id: clientId },
+      },
+      relations: ['client', 'subscription'],
+    });
+
+    if (!clientSub) {
+      this.logger.warn(`No active subscription found for client ${clientId}`);
+      return;
+    }
+
+    if (clientSub.status !== SubscriptionStatus.INACTIVE) {
+      clientSub.status = SubscriptionStatus.INACTIVE;
+      await this.clientSubscriptionRepo.save(clientSub);
+
+      const client = clientSub.client;
+      client.activeSubscription = null;
+      await this.clientRepo.save(client);
+
+      this.logger.log(
+        `ClientSubscription ${clientSub.id} set to INACTIVE and client.activeSubscription cleared`
+      );
+    }
+
+    // Send Firebase push notification
+    const clientToken = sessions[0]?.client?.firebaseToken;
+    if (clientToken) {
+      await this.firebaseService.sendPushNotification(
+        { client: [clientToken], therapist: [], admin: [] },
+        JSON.stringify({ message: 'Program complete' }),
+        SessionNotif.ALL_SESSIONS_COMPLETED,
+        'Your therapist has completed all sessions for your program. Please log out and await your next cycle.'
+      );
+    }
+
+    this.logger.log(`Client ${clientId} completed all sessions for subscription ${sessions[0].subscription.id}`);
   }
 }

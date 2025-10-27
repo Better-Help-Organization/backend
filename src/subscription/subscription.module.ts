@@ -4,6 +4,7 @@ import { ClientSubscription } from 'src/common/entities/client-subscription.enti
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Notification } from 'src/common/entities/notification.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
@@ -14,7 +15,7 @@ import { SubscriptionService } from './subscription.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Client, Level, Subscription, ClientSubscription, Notification, Therapist]),
+    TypeOrmModule.forFeature([Client, Level, Subscription, ClientSubscription, Notification, Therapist, Preference]),
     LoggerModule,
     FirebaseModule
   ],
