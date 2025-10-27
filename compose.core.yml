@@ -68,13 +68,13 @@ services:
 networks:
 # # DONOT CHANGE THESE VALUES
   dev_default:
-    # external: true
+    external: true
     # name: dev_default
   prod_default:
-    # external: true
+    external: true
     # name: prod_default
   test_default:
-    # external: true
+    external: true
     # name: test_default
 
 volumes:
