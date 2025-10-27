@@ -13,5 +13,8 @@ export const defaultParams: Parameter[] = [
 {
     name: DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES,
     value: '0.1',
-}
-] as  Parameter[];
+},
+{
+    name: DefaultParameters.MATCH_EXPIRY_IN_MINUTES,
+    value: '4320',
+}] as  Parameter[];
