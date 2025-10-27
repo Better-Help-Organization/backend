@@ -209,6 +209,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
 export enum DefaultParameters {
   VAT="vat",
   NOTIFICATION_EXPIRY="notification expiry",
+  MATCH_EXPIRY_IN_MINUTES="MATCH expiry",
   PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes"
 }
 

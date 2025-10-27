@@ -67,6 +67,8 @@ export class ParameterService {
           return this.parseFloatParams(response.data[0]);
         case DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES:
           return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.MATCH_EXPIRY_IN_MINUTES:
+          return this.parseFloatParams(response.data[0]);
         default:
           throw new NotFoundException(`Default parameter with name ${name} not found`);
       }
