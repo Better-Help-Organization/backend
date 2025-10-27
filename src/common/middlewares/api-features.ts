@@ -439,6 +439,11 @@ export class APIFeatures {
     // if(!this.queryParams.options){
       this.field();
       this.filter();
+
+    if (this.target && this.tableName) {
+      this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
+    }
+
       return await this.query.where(`${this.tableName}.id = :id`, { id }).getOne();  
    }
 }
