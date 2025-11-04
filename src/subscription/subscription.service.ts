@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
@@ -13,7 +13,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { UpdateAdminSubscriptionDto, UpdateSubscriptionDto } from './dto/update-subscription.dto';
 
 @Injectable()
 export class SubscriptionService {
@@ -40,33 +40,39 @@ export class SubscriptionService {
   ) {}
 
   async createAdminSubscription(dto: CreateAdminSubscriptionDto) {
-    const level = await this.levelRepository.findOne({ where: { id: dto.levelId } });
-    if (!level) throw new NotFoundException(`Level ${dto.levelId} not found`);
+    const level = await this.levelRepository.findOne({ where: { id: dto.level } });
+    if (!level) throw new NotFoundException(`Level ${dto.level} not found`);
 
-    if (dto.price && dto.price > level.price)
-      throw new BadRequestException('Price cannot be greater than level price');
+    // if (dto.price && dto.price > level.price)
+    //   throw new BadRequestException('Price cannot be greater than level price');
 
     const typeValue = String(SubscriptionType[dto.type]); // '0', '1'
 
+    console.log(dto.type)
     const existing = await this.subscriptionRepo
       .createQueryBuilder('subscription')
-      .where('subscription.levelId = :levelId', { levelId: dto.levelId })
-      .andWhere('subscription.type = :type', { type: typeValue }) // ← string!
+      .where('subscription.level = :level', { level: dto.level })
+      .andWhere('subscription.type = :type', { type: String(dto.type) }) // ← string!
       .andWhere('subscription.is_admin_created = true')
+      .andWhere('subscription.modal = :modal', { modal: dto.modal })
       .getOne();
 
+
+      // console.log({existing}) 
     if(existing) {
-      throw new BadRequestException(
-        `A ${dto.type} subscription already exists for this level. Update it instead of creating a new one.`
+      throw new ConflictException(
+        `A ${SubscriptionType[dto.type]} with modal ${existing.modal} and level ${existing.level.type} subscription like this already exists. Update it instead of creating a new one.`
       );
     }
 
+    // return;
     const subscription = this.subscriptionRepo.create({
-      type: SubscriptionType[dto.type],
+      type: dto.type,
       old_price: level.price,
       price: dto.price,
       level,
-      is_admin_created: true
+      is_admin_created: true,
+      modal: { id: dto.modal }
     });
 
     return this.subscriptionRepo.save(subscription);
@@ -89,6 +95,8 @@ export class SubscriptionService {
         status: SubscriptionStatus.INACTIVE, // will become ACTIVE later
         start_date: null,
         end_date: null,
+        old_price: selectedSub.old_price,
+        price: selectedSub.price
       });
 
       const csub = await this.clientSubscriptionRepo.save(clientSub);
@@ -112,9 +120,14 @@ export class SubscriptionService {
     }
   }
 
-    async findAllUsersubs(queryParams?: FindAllQueryParams) {
+    async findAllUsersubs(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
-      return await new APIFeatures(this.clientSubscriptionRepo, queryParams).getMany();
+    const dateFilter = {
+      field: 'start_date', // 👈 dynamically choose the date field here
+      start,
+      end,
+    };
+      return await new APIFeatures(this.clientSubscriptionRepo, queryParams).getMany({dateFilter});
     } catch (error) {
       this.logger.error(`Failed to find subscriptions: ${error.message}`);
       throw error;
@@ -157,7 +170,7 @@ export class SubscriptionService {
     throw new NotFoundException(`Subscription with ID ${id} not found`);
   }
 
-  // Validate price
+  // TODO: Validate price with dto if instances like this are many
   if (dto.old_price && dto.price && dto.price > dto.old_price) {
     throw new BadRequestException('Price cannot be greater than old price');
   }
@@ -249,6 +262,21 @@ export class SubscriptionService {
 
   return result;
 }
+
+
+
+  async updateSub(id: string, updateDto: UpdateAdminSubscriptionDto) {
+    const sub = await this.findOne(id);
+    Object.assign(sub, updateDto);
+    try {
+      const updated = await this.subscriptionRepo.save(sub);
+      this.logger.log(`Updated sub with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating sub: ${error.message}`);
+      throw error;
+    }
+  }
 
   // async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto) {
   //   const subscription = await this.clientSubscriptionRepo.findOne({

@@ -44,6 +44,14 @@ export class ClientSubscription extends CommonEntity {
   @Column({ type: 'date', nullable: true })
   end_date: Date;
 
+  @ApiProperty({ example: 580, description: 'Original (old) price before discount' })
+  @Column('int',  { nullable: true })
+  old_price: number;
+
+  @ApiProperty({ example: 499, description: 'Discounted price (if applicable)' })
+  @Column('int', { nullable: true })
+  price: number;
+
   // @Expose()
   // get type() {
   //   return this.subscription?.type ?? null;

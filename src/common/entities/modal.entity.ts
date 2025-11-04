@@ -6,12 +6,13 @@ import { License } from './license.entity';
 import { Preference } from './preference.entity';
 import { Question } from './question.entity';
 import { Session } from './session.entity';
+import { Subscription } from './subscription.entity';
 
 @Entity()
 export class Modal extends CommonEntity {
   
   @ApiProperty()
-  @Column({unique: true})
+  @Column({unique: false})
   name: string;
 
   @ApiProperty()
@@ -45,5 +46,9 @@ export class Modal extends CommonEntity {
   @ApiProperty({type: () => Session})
   @OneToMany(() => Session, (session) => session.modal)
   session: Session[];
+
+  @OneToMany(() => Subscription, (subscription) => subscription.modal)
+  subscription: Subscription[];
+
 
 }
