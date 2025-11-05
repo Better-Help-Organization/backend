@@ -53,7 +53,6 @@ export class TherapistController {
     new TherapistJwtAuthGuard(),
     new AdminJwtAuthGuard()
   )
-  @UseGuards(TherapistJwtAuthGuard)
   async statistics(
     @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
     @Query('startDate') startDate?: string,
@@ -132,6 +131,15 @@ export class TherapistController {
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.ratingService.findAll(queryParams);
+  }
+
+  @ApiFindAllQueryParams()
+  @Get('candidates/:prefId')
+  @UseGuards(AdminJwtAuthGuard)
+  async findEligibleTherapists(
+    @Param('prefId') prefId: string
+  ) {
+    return this.therapistService.findEligibleTherapists(prefId);
   }
 
   @ApiFindOneQueryParams()

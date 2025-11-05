@@ -5,6 +5,7 @@ import * as path from 'path';
 import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
 import { StatusDto } from 'src/common/dto/status.dto';
 import { License } from 'src/common/entities/license.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -22,6 +23,8 @@ export class TherapistService {
     private readonly therapistRepo: Repository<Therapist>,
     @InjectRepository(License)
     private readonly licenseRepo: Repository<License>,
+    @InjectRepository(Preference)
+    private readonly preferenceRepo:Repository<Preference>,
     private readonly firebaseService: FirebaseService,
     @Inject(forwardRef(() => PresenceService))
     private readonly presenceService: PresenceService
@@ -75,14 +78,18 @@ export class TherapistService {
   async findMatchingTherapists(preference: {
     gender: string;
     level?: string;
-    availability: {
-      day: string;
-      day_period: string;
-    }[];
+    modal?: string;
+    // availability: {
+    //   day: string;
+    //   day_period: string;
+    // }[];
   }): Promise<Therapist[]> {
     const query = this.therapistRepo.createQueryBuilder('therapist')
-      .leftJoinAndSelect('therapist.availability', 'availability')
+      // .leftJoinAndSelect('therapist.availability', 'availability')
       .leftJoinAndSelect('therapist.level', 'level')
+      .leftJoinAndSelect('therapist.license', 'license')
+      // .leftJoinAndSelect('therapist.modal', 'modal')// ✅ join modal
+      .leftJoinAndSelect('license.modal', 'modal');        // ✅ join modal from license
       // .leftJoinAndSelect('therapist.license', 'license')
       
 
@@ -93,26 +100,31 @@ export class TherapistService {
     if (preference.level) {
       query.andWhere('level.id = :level', { level: preference.level });
     }
-
-    if (preference.availability?.length) {
-      const conditions: string[] = [];
-      const parameters: Record<string, any> = {};
-
-      preference.availability.forEach((slot, i) => {
-        conditions.push(`(
-          availability.day = :day${i}
-          AND availability.day_period = :period${i}
-        )`);
-
-        parameters[`day${i}`] = slot.day;
-        parameters[`period${i}`] = slot.day_period;
-      });
-
-      query.andWhere(conditions.join(' OR '), parameters);
+    
+    // ✅ NEW: apply modal filter
+    if (preference.modal) {
+      query.andWhere('modal.id = :modalId', { modalId: preference.modal });
     }
 
-    const therapists = await query.getMany();
+    // if (preference.availability?.length) {
+    //   const conditions: string[] = [];
+    //   const parameters: Record<string, any> = {};
 
+    //   preference.availability.forEach((slot, i) => {
+    //     conditions.push(`(
+    //       availability.day = :day${i}
+    //       AND availability.day_period = :period${i}
+    //     )`);
+
+    //     parameters[`day${i}`] = slot.day;
+    //     parameters[`period${i}`] = slot.day_period;
+    //   });
+
+    //   query.andWhere(conditions.join(' OR '), parameters);
+    // }
+
+    const therapists = await query.getMany();
+    console.log("sent to ", {therapists})
     return therapists;
   }
 
@@ -242,7 +254,58 @@ export class TherapistService {
       fs.renameSync(tmpPath, finalPath);
 
       return path.join(folder.toLowerCase(), finalFileName); // relative path to store in DB
-}
+  }
+
+  async findEligibleTherapists(preferenceId: string) {
+    const pref = await this.preferenceRepo.findOne({
+      where: { id: preferenceId },
+      relations: ['modal', 'level', 'language', 'availability', 'client'],
+    });
+
+    if (!pref) throw new NotFoundException('Preference not found');
+
+    const qb = this.therapistRepo.createQueryBuilder('therapist')
+      .leftJoin('therapist.license', 'license')
+      .leftJoin('license.modal', 'modal')
+      .leftJoin('therapist.level', 'level')
+      // .leftJoin('therapist.expertise', 'expertise')
+      // .leftJoin('therapist.availability', 'availability')
+      // .leftJoin('expertise.language', 'language')
+      .where('license.modalId = :modalId', { modalId: pref.modal.id })
+      .andWhere('therapist.status = :status', { status: 'ACTIVE' });
+
+    if (pref.level) {
+      qb.andWhere('level.id = :levelId', { levelId: pref.level.id });
+    }
+
+    if (pref.gender) {
+      qb.andWhere('therapist.gender = :gender', { gender: pref.gender });
+    }
+
+    // if (pref.language?.length) {
+    //   qb.andWhere('language.id IN (:...languageIds)', {
+    //     languageIds: pref.language.map(l => l.id),
+    //   });
+    // }
+
+    // // Optionally match "otherLang" text partially
+    // if (pref.otherLang) {
+    //   qb.orWhere('therapist.bio LIKE :otherLang', {
+    //     otherLang: `%${pref.otherLang}%`,
+    //   });
+    // }
+
+    // Optional: check overlapping availability
+    // (you can refine this logic later if availability has time ranges)
+    // if (pref.availability?.length) {
+    //   qb.andWhere('availability.day IN (:...days)', {
+    //     days: pref.availability.map(a => a.day),
+    //   });
+    // }
+
+    return qb.getMany();
+  }
+
 
   async saveDocument(token: TokenPayload, filename: string, folder: ValidFolders, modalId: string): Promise<string> {
 
