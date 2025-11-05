@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiQuery } from '@nestjs/swagger';
-import { IsNumberString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsNumberString, IsOptional, IsString } from 'class-validator';
 import { ConditionalGuards } from 'src/common/guard/conditional.guard';
 
 type Primitive = string | number | boolean | null | undefined;
@@ -71,6 +71,16 @@ export class FindAllQueryParams<T=any> {
   @IsOptional()
   @IsString()
   ids?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+
 
   // options: FindManyOptions<T> | FindOneOptions<T>
 }
