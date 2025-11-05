@@ -6,6 +6,7 @@ import { ClientSubscription } from 'src/common/entities/client-subscription.enti
 import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
+import { ParameterModule } from 'src/parameter/parameter.module';
 import { TherapistModule } from 'src/therapist/therapist.module';
 import { MessageModule } from './message/message.module';
 import { NotesModule } from './note/note.module';
@@ -20,6 +21,7 @@ import { StatusModule } from './status/status.module';
     MessageModule, 
     StatusModule,
     FirebaseModule,
+    ParameterModule,
     forwardRef(() => ClientModule),
     forwardRef(() => TherapistModule)
   ],

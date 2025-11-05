@@ -3,9 +3,10 @@ import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
+import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
 import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 import { SessionService } from './session.service';
@@ -66,15 +67,29 @@ export class SessionController {
     return this.sessionService.addToSession(sessionId, addToSession);
   }
 
+  @Post(':sessionId/remove-from-session')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  removeFromSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: TokenPayload,
+    @Body() removeFromSession: RemoveFromSessionDto
+  ) {
+    return this.sessionService.removeFromSession(sessionId, removeFromSession);
+  }
+
   @Get()
   @DynamicGuards(
     new AdminJwtAuthGuard(),
   )
   @ApiFindAllQueryParams()
+  @ApiFilterByDate()
   findAll(
     @Query() queryparams?: FindAllQueryParams
   ) {
-    return this.sessionService.findAll(queryparams);
+    return this.sessionService.findAll(queryparams, queryparams.startDate, queryparams.endDate);
   }
 
   @Get(':id')

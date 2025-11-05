@@ -81,4 +81,12 @@ export class UpdateTherapistDto extends UpdateUserDto {
     @Type(() => ExpertiseDto)
     expertise?: ExpertiseDto[];
 
+    @ApiProperty({
+      description: 'level UUID from the global bank list',
+      example: 'b3e6d68a-3931-4b90-b9d3-bbd3d40813b1',
+    })
+    @IsOptional()
+    @IsUUID()
+    level: string;
+
 }

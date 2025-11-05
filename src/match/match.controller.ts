@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
@@ -22,10 +23,19 @@ export class MatchController {
   }
 
   @Post('/accept')
-  @UseGuards(TherapistJwtAuthGuard)
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
+  @DynamicGuards(
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   async accept(
     @CurrentUser() therapist: TokenPayload,
-    @Body() acceptMatchDto: AcceptMatchDto
+    @Body() acceptMatchDto: AcceptMatchDto,
+    @Query('mockId') mockId?: string
   ) {
     return await this.matchService.acceptMatch(therapist, acceptMatchDto);
   }
