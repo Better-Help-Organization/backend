@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
-import { TokenPayload } from 'src/common/constants';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -33,7 +34,7 @@ export class MatchController {
     new AdminJwtAuthGuard()
   )
   async accept(
-    @CurrentUser() therapist: TokenPayload,
+    @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
     @Body() acceptMatchDto: AcceptMatchDto,
     @Query('mockId') mockId?: string
   ) {
