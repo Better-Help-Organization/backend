@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Match } from 'src/common/entities/match.entity';
+import { Modal } from 'src/common/entities/modal.entity';
 import { Mood } from 'src/common/entities/mood.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Session } from 'src/common/entities/session.entity';
-import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { Between, IsNull, Not, Repository } from 'typeorm';
 
@@ -18,15 +20,34 @@ export class AdminStatisticsService {
     private readonly therapistRepo: Repository<Therapist>,
      @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
-     @InjectRepository(Subscription)
-    private readonly subscriptionRepo: Repository<Subscription>,
+     @InjectRepository(ClientSubscription)
+    private readonly subscriptionRepo: Repository<ClientSubscription>,
      @InjectRepository(Match)
     private readonly matchRepo: Repository<Match>,
      @InjectRepository(Mood)
     private readonly moodRepo: Repository<Mood>,
      @InjectRepository(Diary)
     private readonly diaryRepo: Repository<Diary>,
+    @InjectRepository(Modal)
+    private readonly modalRepo: Repository<Modal>,
+
+    @InjectRepository(Preference)
+    private readonly preferenceRepo: Repository<Preference>,
+
   ) {}
+
+  /** 🎭 Users per Modal */
+  async getUsersPerModal() {
+    return this.preferenceRepo
+      .createQueryBuilder('pref')
+      .select('modal.name', 'modal')
+      .addSelect('COUNT(pref.clientId)', 'userCount')
+      .innerJoin('pref.modal', 'modal')
+      .groupBy('modal.id')
+      .orderBy('userCount', 'DESC')
+      .getRawMany();
+  }
+
 
   /** 👥 Clients stats */
   async getClientStats() {
@@ -114,6 +135,8 @@ async getSystemStats(start?: string, end?: string) {
   const revenueStats = await this.getRevenueStats(start, end);
   const matchStats = await this.getMatchStats();
   const engagementStats = await this.getEngagementStats(start, end);
+  const usersPerModal = await this.getUsersPerModal();
+
 
   return {
     clientStats,
@@ -122,6 +145,7 @@ async getSystemStats(start?: string, end?: string) {
     revenueStats,
     matchStats,
     engagementStats,
+    usersPerModal
   };
 }
 
