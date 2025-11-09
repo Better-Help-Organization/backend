@@ -297,6 +297,19 @@ export class APIFeatures {
       selectFields.push(`${this.tableName}.id`);
     }
 
+    // 🩹 Ensure sort fields are also selected
+    if (this.queryParams?.sort) {
+      const sortFields = this.queryParams.sort
+        .split(',')
+        .map((param: string) => param.trim().split('=')[0]);
+      for (const sortField of sortFields) {
+        const fullSortField = `${this.tableName}.${sortField}`;
+        if (!selectFields.includes(fullSortField)) {
+          selectFields.push(fullSortField);
+        }
+      }
+    }
+
     // Select the fields and add relations dynamically
     this.query.select(selectFields);
 
@@ -407,7 +420,13 @@ export class APIFeatures {
     return this;
   }
 
-  async getMany({useCache = false} = {}) {
+  async getMany({
+    useCache = false,
+    dateFilter,
+  }: {
+    useCache?: boolean;
+    dateFilter?: { field: string; start?: string; end?: string };
+  } = {}) {
     this.sort();
     this.field();
     this.filter();
@@ -419,6 +438,23 @@ export class APIFeatures {
     if (this.target && this.tableName) {
       this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
     }
+
+      // 🕒 Dynamic date filtering
+   if (dateFilter?.field) {
+    const { field, start, end } = dateFilter;
+
+    if (start && end) {
+        this.query = this.query.andWhere(`${this.tableName}.${field} BETWEEN :start AND :end`, {
+          start,
+          end,
+        });
+      } else if (start) {
+        this.query = this.query.andWhere(`${this.tableName}.${field} >= :start`, { start });
+      } else if (end) {
+        this.query = this.query.andWhere(`${this.tableName}.${field} <= :end`, { end });
+      }
+    }
+
 
     const data = await this.query.getMany()
     const totalItems = await this.query.getCount()
@@ -439,6 +475,11 @@ export class APIFeatures {
     // if(!this.queryParams.options){
       this.field();
       this.filter();
+
+    if (this.target && this.tableName) {
+      this.query = this.applyEagerRelations(this.query, this.target, this.tableName);
+    }
+
       return await this.query.where(`${this.tableName}.id = :id`, { id }).getOne();  
    }
 }

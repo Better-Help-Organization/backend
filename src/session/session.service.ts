@@ -12,11 +12,13 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { ParameterService } from 'src/parameter/parameter.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, DataSource, In, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession } from './dto/create-session.dto';
+import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
 import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
 
@@ -58,11 +60,18 @@ export class SessionService {
     private readonly clientService: ClientService,  
     private readonly therapistService: TherapistService,
     private readonly dataSource: DataSource,
+    private readonly parameterService: ParameterService,
   ) {}
 
-  async findAll(queryParams?: FindAllQueryParams) {
+  async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
-      return await new APIFeatures(this.sessionRepo, queryParams).getMany();
+    const dateFilter = {
+      field: 'createdAt', // 👈 dynamically choose the date field here
+      start,
+      end,
+    };
+
+      return await new APIFeatures(this.sessionRepo, queryParams).getMany({dateFilter});
     } catch (error) {
       this.logger.error(`Failed to find session: ${error.message}`);
       throw error;
@@ -102,7 +111,7 @@ export class SessionService {
       const therapistEntity = await this.therapistService.findOne(id);
       if (!therapistEntity) throw new BadRequestException('Invalid therapist ID');
 
-      const { dates, duration } = createSessionDto;
+      let { dates, duration } = createSessionDto;
 
       // basic guards
       if (!Array.isArray(dates) || dates.length === 0) {
@@ -167,6 +176,9 @@ export class SessionService {
             );
           }
 
+          console.log({createSessionDto})
+          delete createSessionDto.id
+
           const newSession = manager.create(Session, {
             ...createSessionDto,
             schedule,
@@ -216,7 +228,7 @@ export class SessionService {
       // Load all sessions in this batch
       const groupSessions = await manager.find(Session, {
         where: { commonId, client: { id: token.id } },
-        relations: ['therapist', 'client', 'modal'],
+        relations: ['therapist', 'client', 'modal', 'subscription'],
       });
 
       if (!groupSessions.length) {
@@ -341,8 +353,7 @@ export class SessionService {
             console.log("Creating schedule for iteration - session.service.ts:343", i, schedule.toISOString());
             console.log("Trying to create recurring session at: - session.service.ts:344", schedule.toISOString());
         
-            const newSession = this.sessionRepo.create({
-              id: uuidv4(),
+            const newSession = manager.create(Session, {
               therapist: selected.therapist,
               client: selected.client,
               subscription: cs,
@@ -352,7 +363,10 @@ export class SessionService {
               commonId,
               modal: selected.modal,
               approvalStatus: ApprovalStatus.CONFIRMED,
+              subscription: cs,
             });
+
+            delete newSession.id; // ensure no leftover ID from cache
         
             const saved = await manager.save(newSession);
             console.log("Saved recurring session: - session.service.ts:358", saved.id);
@@ -803,6 +817,86 @@ async update(
     return allUpdatedSessions;
   });
 }
+
+  async removeFromSession(sessionId: string, dto: RemoveFromSessionDto) {
+    return await this.sessionRepo.manager.transaction(async (manager) => {
+      const { groupClients } = dto; // array of client IDs
+
+      // 1️⃣ Load the reference session
+      const referenceSession = await this.sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['group', 'therapist'],
+      });
+
+      if (!referenceSession) {
+        throw new NotFoundException(`Session ${sessionId} not found`);
+      }
+
+      if (!referenceSession.commonId) {
+        throw new BadRequestException('This session is not part of a group series');
+      }
+
+      // 2️⃣ Find all related sessions
+      const relatedSessions = await this.sessionRepo.find({
+        where: { commonId: referenceSession.commonId },
+        relations: ['group'],
+        order: { schedule: 'ASC' },
+      });
+
+      if (!relatedSessions.length) {
+        throw new BadRequestException('No related sessions found for this group');
+      }
+
+      const updatedSessions: Session[] = [];
+
+      // 3️⃣ Iterate sessions and remove clients
+      for (const session of relatedSessions) {
+        const originalLength = session.group.length;
+
+        session.group = session.group.filter(
+          (c) => !groupClients.includes(c.id),
+        );
+
+        if (session.group.length !== originalLength) {
+          await manager.save(session);
+          updatedSessions.push(session);
+        }
+      }
+
+      // 4️⃣ Update client flags (if no longer in any group)
+      for (const clientId of groupClients) {
+        const stillInGroup = await manager
+          .createQueryBuilder(Session, 'session')
+          .leftJoin('session.group', 'client')
+          .where('client.id = :id', { id: clientId })
+          .getCount();
+
+        if (stillInGroup === 0) {
+          await manager.update(Client, { id: clientId }, { isInGroup: false });
+        }
+      }
+
+      // 5️⃣ Notify removed clients and therapist
+      const removedClients = await manager.findByIds(Client, groupClients);
+      const clientTokens = removedClients.map(c => c.firebaseToken).filter(Boolean);
+
+      const tokens: Tokens = { client: [], therapist: [], admin: [] };
+      if (clientTokens.length) tokens.client.push(...clientTokens);
+
+      const therapistToken = referenceSession.therapist?.firebaseToken;
+      if (therapistToken) tokens.therapist.push(therapistToken);
+
+      // await this.firebaseService.sendPushNotification(
+      //   tokens,
+      //   JSON.stringify({ commonId: referenceSession.commonId }),
+      //   SessionNotif.UPDATED,
+      //   `You have been removed from upcoming group sessions in this group.`
+      // );
+
+      return 'Clients successfully removed from group sessions';
+      
+    });
+  }
 
   async remove(id: string): Promise<void> {
     try {

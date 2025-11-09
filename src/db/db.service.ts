@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'bcryptjs';
-import { BaseStatus, LangCode, LevelType, ModalName } from 'src/common/constants';
+import { BaseStatus, LangCode, LevelType, ModalName, SubscriptionType } from 'src/common/constants';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Language } from 'src/common/entities/language.entity';
@@ -11,6 +11,7 @@ import { Modal } from 'src/common/entities/modal.entity';
 import { Option } from 'src/common/entities/option.entity';
 import { Parameter } from 'src/common/entities/parameter.entity';
 import { Question } from 'src/common/entities/question.entity';
+import { Subscription } from 'src/common/entities/subscription.entity';
 import { DataSource, Repository } from 'typeorm';
 import { defaultParams } from './default-params';
 
@@ -23,6 +24,13 @@ export class DbService implements OnModuleInit {
     private readonly configService: ConfigService,
     @InjectRepository(Parameter)
     private parameterRepository: Repository<Parameter>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Modal)
+    private readonly modalRepo: Repository<Modal>,
+    @InjectRepository(Level)
+    private readonly levelRepo: Repository<Level>,
+
   ) {}
 
   async onModuleInit() {
@@ -257,4 +265,64 @@ export class DbService implements OnModuleInit {
         }
     }
   }
+
+
+  async seedSubscriptions() {
+    this.logger.log('Seeding admin subscriptions...');
+
+    const modals = await this.modalRepo.find();
+    const levels = await this.levelRepo.find();
+
+    const defaultPrice = 500;
+
+    const subscriptionTypes = Object.values(SubscriptionType).filter(
+      (v) => typeof v === 'number'
+    ) as number[];
+
+    for (const modal of modals) {
+      const isLevelRequired = ![ModalName.COUPLE_THERAPY, ModalName.GROUP_THERAPY].includes(
+        modal.name as ModalName
+      );
+
+      if (isLevelRequired) {
+        // 🔹 Modal requires levels (Individual / Teen)
+        for (const level of levels) {
+          for (const type of subscriptionTypes) {
+            const subscription = this.subscriptionRepo.create({
+              modal,
+              level,
+              type,
+              price: level.price,
+              old_price: null,
+              is_admin_created: true,
+            });
+            await this.subscriptionRepo.save(subscription);
+            this.logger.log(
+              `Created ${ModalName[modal.name]} – ${SubscriptionType[type]} – Level ${level.type}`
+            );
+          }
+        }
+      } else {
+        // 🔹 Modal does not require levels (Couple / Group)
+        for (const type of subscriptionTypes) {
+          const subscription = this.subscriptionRepo.create({
+            modal,
+            level: null,
+            type,
+            price: defaultPrice,
+            old_price: null,
+            is_admin_created: true,
+          });
+          await this.subscriptionRepo.save(subscription);
+          this.logger.log(
+            `Created ${ModalName[modal.name]} – ${SubscriptionType[type]} (no level)`
+          );
+        }
+      }
+    }
+
+    this.logger.log('✅ Finished seeding admin subscriptions.');
+  }
+
+
 }

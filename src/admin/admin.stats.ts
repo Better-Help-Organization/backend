@@ -31,7 +31,7 @@ export class AdminStatisticsService {
   /** 👥 Clients stats */
   async getClientStats() {
     const totalClients = await this.clientRepo.count();
-    const activeClients = await this.clientRepo.count({ where: { isVisible: true } });
+    const activeClients = await this.clientRepo.count({ where: { isOnline: true } });
     const inGroupClients = await this.clientRepo.count({ where: { isInGroup: true } });
 
     return { totalClients, activeClients, inGroupClients };

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
+import { DefaultParameters, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
@@ -11,6 +11,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { ParameterService } from 'src/parameter/parameter.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
@@ -35,6 +36,7 @@ export class MatchService {
     private readonly therapistService: TherapistService,
     private readonly firebaseService: FirebaseService,
     private readonly logger: LoggerService,
+    private readonly parameterService: ParameterService,
   ) {}
 
   async create(token: TokenPayload, createMatchDto: CreateMatchDto): Promise<{ message: string }> {
@@ -91,25 +93,30 @@ export class MatchService {
       .map(t => t.id)
       .filter(id => id);
 
-    // const therapists = await this.therapistService.findMatchingTherapists({
-    //   gender: preference.gender,
-    //   level: preference.level?.id,
-    // status: BaseStatus.ACTIVE
-    //   availability: preference.availability.map(a => ({
-    //     day: a.day,
-    //     day_period: a.day_period,
-    //   })),
-    // });
-    const {data:therapists} = await this.therapistService.findAll({take:'0'});
+    const therapists = await this.therapistService.findMatchingTherapists({
+      gender: preference.gender,
+      level: preference.level?.id,
+      modal: preference.modal?.id,
+      // status: BaseStatus.ACTIVE,
+      // availability: preference.availability.map(a => ({
+      //   day: a.day,
+      //   day_period: a.day_period,
+      // })),
+    });
+    // const {data:therapists} = await this.therapistService.findAll({take:'0'});
 
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');
     }
 
+    const expiryInMinutes = await this.parameterService.getDefaultByName(
+    DefaultParameters.MATCH_EXPIRY_IN_MINUTES,
+    );
+
     const match = this.matchRepository.create({
       client: { id: token.id },
       accepted: null,
-      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // set to 3 days
+      expiresAt: new Date(Date.now() + Number(expiryInMinutes) * 60 * 1000),
     });
     await this.matchRepository.save(match);
 

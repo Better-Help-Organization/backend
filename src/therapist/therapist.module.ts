@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { License } from 'src/common/entities/license.entity';
+import { Preference } from 'src/common/entities/preference.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
@@ -24,7 +25,8 @@ import { TherapistStatisticsService } from './therapist.stats';
       Therapist, 
       License,
       Session,
-      ClientSubscription
+      ClientSubscription,
+      Preference
     ]),
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),

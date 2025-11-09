@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { TokenPayload } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { MatchService } from './match.service';
@@ -22,10 +23,19 @@ export class MatchController {
   }
 
   @Post('/accept')
-  @UseGuards(TherapistJwtAuthGuard)
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
+  @DynamicGuards(
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   async accept(
     @CurrentUser() therapist: TokenPayload,
-    @Body() acceptMatchDto: AcceptMatchDto
+    @Body() acceptMatchDto: AcceptMatchDto,
+    @Query('mockId') mockId?: string
   ) {
     return await this.matchService.acceptMatch(therapist, acceptMatchDto);
   }
@@ -38,8 +48,10 @@ export class MatchController {
     new AdminJwtAuthGuard()
   )
   @ApiFindAllQueryParams()
-  findAll() {
-    return this.matchService.findAll();
+  findAll(
+        @Query() queryparams?: FindAllQueryParams
+  ) {
+    return this.matchService.findAll(queryparams);
   }
 
   @Get(':id')
@@ -49,8 +61,11 @@ export class MatchController {
     new AdminJwtAuthGuard()
   )
   @ApiFindOneQueryParams()
-  findOne(@Param('id') id: string) {
-    return this.matchService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Query() queryParams: FindOneQueryParams,
+  ) {
+    return this.matchService.findOne(id, queryParams);
   }
 
   // @Patch(':id')

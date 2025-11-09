@@ -159,6 +159,7 @@ export enum SubscriptionType {
 
 export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
+  TELEBIRR = 'telebirr',
 }
 
 export enum PaymentStatus {
@@ -180,7 +181,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
   EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
   MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: false },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
   CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
@@ -209,7 +210,9 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
 export enum DefaultParameters {
   VAT="vat",
   NOTIFICATION_EXPIRY="notification expiry",
-  PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes"
+  MATCH_EXPIRY_IN_MINUTES="MATCH expiry",
+  PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes",
+  SESSION_HOUR="SESSION_HOUR"
 }
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

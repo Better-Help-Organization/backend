@@ -11,7 +11,7 @@ export class CreateAdminSubscriptionDto {
     description: 'Subscription type key',
   })
   @IsEnum(SubscriptionType)
-  type: keyof typeof SubscriptionType;
+  type: SubscriptionType;
 
   @ApiProperty({ example: 580 })
   @IsOptional()
@@ -27,5 +27,9 @@ export class CreateAdminSubscriptionDto {
 
   @ApiProperty({ example: 'e48dbdc4-2152-45ef-91b8-4b76d0025b41' })
   @IsUUID()
-  levelId: string;
+  level: string;
+
+  @ApiProperty({ example: 'e48dbdc4-2152-45ef-91b8-4b76d0025b41' })
+  @IsUUID()
+  modal: string;
 }

@@ -10,10 +10,10 @@ services:
       service: db
 
 
-  phpmyadmin:
-    extends:
-      file: ./compose.base.yml
-      service: phpmyadmin
+  # phpmyadmin:
+  #   extends:
+  #     file: ./compose.base.yml
+  #     service: phpmyadmin
 
 volumes:
   test_db_data:

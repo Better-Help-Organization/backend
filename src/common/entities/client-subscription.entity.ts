@@ -29,7 +29,7 @@ export class ClientSubscription extends CommonEntity {
   payment: Payment[];
 
   @ApiProperty({ type: () => Session, isArray: true })
-  @OneToMany(() => Session, session => session.subscription, { cascade: true })
+  @OneToMany(() => Session, session => session.subscription, { cascade: true, eager: true })
   session: Session[];
 
   @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
@@ -43,6 +43,14 @@ export class ClientSubscription extends CommonEntity {
   @ApiProperty({ example: '2025-09-28', description: 'End date of subscription' })
   @Column({ type: 'date', nullable: true })
   end_date: Date;
+
+  @ApiProperty({ example: 580, description: 'Original (old) price before discount' })
+  @Column('int',  { nullable: true })
+  old_price: number;
+
+  @ApiProperty({ example: 499, description: 'Discounted price (if applicable)' })
+  @Column('int', { nullable: true })
+  price: number;
 
   // @Expose()
   // get type() {

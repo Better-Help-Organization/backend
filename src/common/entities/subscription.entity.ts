@@ -4,6 +4,7 @@ import { SubscriptionType } from '../constants';
 import { ClientSubscription } from './client-subscription.entity';
 import { CommonEntity } from './common.entity';
 import { Level } from './level.entity';
+import { Modal } from './modal.entity';
 
 @Entity()
 export class Subscription extends CommonEntity{
@@ -13,18 +14,6 @@ export class Subscription extends CommonEntity{
     })
     @Column({ type: 'enum', enum: SubscriptionType })
     type: SubscriptionType;
-
-    // @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
-    // @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.INACTIVE })
-    // status: SubscriptionStatus;
-
-    // @ApiProperty({ example: '2025-08-28', description: 'Start date of subscription' })
-    // @Column({ type: 'date' })
-    // start_date: Date;
-
-    // @ApiProperty({ example: '2025-09-28', description: 'End date of subscription' })
-    // @Column({ type: 'date', nullable: true })
-    // end_date: Date;
 
     @ApiProperty({ example: 580, description: 'Original (old) price before discount' })
     @Column('int',  { nullable: true })
@@ -38,9 +27,9 @@ export class Subscription extends CommonEntity{
     @OneToMany(() => ClientSubscription, cs => cs.subscription)
     client: ClientSubscription[];
 
-    // @ApiProperty({ type: () => Client })
-    // @OneToOne(() => Client, client => client.activeSubscription, { nullable: true, onDelete: 'CASCADE' })
-    // activeForClient?: Client;
+    @ApiProperty({ type: () => Modal, description: 'Associated therapy modal for subscription' })
+    @ManyToOne(() => Modal, (modal) => modal.subscription, { nullable:true, eager: true })
+    modal: Modal;
 
     @ApiProperty({ type: () => Level, description: 'Associated therapist level for subscription' })
     @ManyToOne(() => Level, (level) => level.subscription, { eager: true })

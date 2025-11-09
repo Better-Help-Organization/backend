@@ -1,5 +1,5 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateModalDto {
   @ApiProperty({
@@ -18,7 +18,13 @@ export class UpdateModalDto {
   @IsNumber()
   order: number;
   
-  
+  @ApiProperty({
+    description: 'Order to display the modal',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  code: number;
 
   @ApiProperty({
     description: 'Description of the therapy type',

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ModalService } from './modal.service';
-import { ModalController } from './modal.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LoggerModule } from 'src/logger/logger.module';
 import { Modal } from 'src/common/entities/modal.entity';
+import { LoggerModule } from 'src/logger/logger.module';
+import { ModalController } from './modal.controller';
+import { ModalService } from './modal.service';
 
 @Module({
   imports: [

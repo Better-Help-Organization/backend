@@ -1,17 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { Preference } from 'src/common/entities/preference.entity';
-import { CreatePreferenceDto } from './dto/create-preference.dto';
-import { UpdatePreferenceDto } from './dto/update-preference.dto';
-import { LoggerService } from 'src/logger/logger.service';
-import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
-import { APIFeatures } from 'src/common/middlewares/api-features';
 import { TokenPayload } from 'src/common/constants';
-import { Modal } from 'src/common/entities/modal.entity';
+import { Availability } from 'src/common/entities/availability.entity';
 import { Language } from 'src/common/entities/language.entity';
 import { Level } from 'src/common/entities/level.entity';
-import { Availability } from 'src/common/entities/availability.entity';
+import { Modal } from 'src/common/entities/modal.entity';
+import { Preference } from 'src/common/entities/preference.entity';
+import { APIFeatures } from 'src/common/middlewares/api-features';
+import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LoggerService } from 'src/logger/logger.service';
+import { In, Repository } from 'typeorm';
+import { CreatePreferenceDto } from './dto/create-preference.dto';
+import { UpdatePreferenceDto } from './dto/update-preference.dto';
 
 @Injectable()
 export class PreferenceService {
@@ -28,14 +28,18 @@ export class PreferenceService {
       const modal = await this.modalRepository.findOne({ where: { id: dto.modalId } });
       if (!modal) throw new NotFoundException(`Modal ${dto.modalId} not found`);
 
-      const languages = await this.languageRepository.find({
-        where: { id: In(dto.languageIds) },
-      });
+      let languages = null
 
-      if (languages.length !== dto.languageIds.length) {
-        const foundIds = languages.map(lang => lang.id);
-        const missingIds = dto.languageIds.filter(id => !foundIds.includes(id));
-        throw new NotFoundException(`Languages not found: ${missingIds.join(', ')}`);
+      if(dto.languageIds){
+        languages = await this.languageRepository.find({
+          where: { id: In(dto.languageIds) },
+        });
+        
+        if (languages.length !== dto.languageIds.length) {
+          const foundIds = languages.map(lang => lang.id);
+          const missingIds = dto.languageIds.filter(id => !foundIds.includes(id));
+          throw new NotFoundException(`Languages not found: ${missingIds.join(', ')}`);
+        }
       }
 
       if (dto.levelId) {
@@ -47,7 +51,7 @@ export class PreferenceService {
         ...dto,
         client: { id: client.id },
         modal: { id: dto.modalId },
-        language: dto.languageIds.map(id => ({ id })),
+        language: dto.languageIds ? dto.languageIds.map(id => ({ id })): null,
         ...(dto.levelId ? { level: { id: dto.levelId } } : {}),
         ...(dto.availability ? { availability: dto.availability } : {}),
       });
