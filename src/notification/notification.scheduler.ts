@@ -30,7 +30,7 @@ export class NotificationScheduler {
   ) {}
 
     // 1. Daily Mood & Diary reminder (for all active clients)
-    @Cron('0 0 23 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 23:00
+    @Cron('0 0 6 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 12:00
     async sendMoodAndDiaryReminders() {
         this.logger.log('Checking daily mood & diary entries...');
 
