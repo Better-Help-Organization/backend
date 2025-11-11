@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
 import { TokenPayload, UserTypes } from 'src/common/constants';
 import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
@@ -8,6 +8,7 @@ import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'sr
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
 import { MatchService } from './match.service';
 
 @Controller('match')
@@ -69,11 +70,11 @@ export class MatchController {
     return this.matchService.findOne(id, queryParams);
   }
 
-  // @Patch(':id')
-  // @UseGuards(ClientJwtAuthGuard)
-  // update(@CurrentUser() client: TokenPayload, @Param('id') id: string, @Body() updateMatchDto: UpdateMatchDto) {
-  //   return this.matchService.update(client, id, updateMatchDto);
-  // }
+  @Patch(':id')
+  @UseGuards(AdminJwtAuthGuard)
+  update(@CurrentUser() admin: TokenPayload, @Param('id') id: string, @Body() updateMatchDto: UpdateMatchDto) {
+    return this.matchService.update(admin, id, updateMatchDto);
+  }
 
   @Delete(':id')
   // @UseGuards(ClientJwtAuthGuard)

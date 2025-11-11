@@ -16,6 +16,7 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
 
 @Injectable()
 export class MatchService {
@@ -285,9 +286,18 @@ export class MatchService {
     }
   }
 
-  // update(token: TokenPayload, id: string, updateMatchDto: UpdateMatchDto) {
-  //   return `This action updates a #${id} match`;
-  // }
+  async update(token: TokenPayload, id: string, updateMatchDto: UpdateMatchDto) {
+    const match = await this.findOne(id);
+    Object.assign(match, updateMatchDto);
+    try {
+      const updated = await this.matchRepository.save(match);
+      this.logger.log(`Updated match with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating match: ${error.message}`);
+      throw error;
+    }  
+  }
 
   async remove(token: TokenPayload, id: string): Promise<void> {
     try {
