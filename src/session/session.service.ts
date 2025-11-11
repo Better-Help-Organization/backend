@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { ApprovalStatus, DayOfWeek, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
+import { ApprovalStatus, DayOfWeek, DefaultParameters, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
@@ -60,13 +60,13 @@ export class SessionService {
     private readonly clientService: ClientService,  
     private readonly therapistService: TherapistService,
     private readonly dataSource: DataSource,
-    private readonly parameterService: ParameterService,
+    private readonly paramService: ParameterService,
   ) {}
 
   async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
     const dateFilter = {
-      field: 'schedule', // 👈 dynamically choose the date field here
+      field: 'createdAt', // 👈 dynamically choose the date field here
       start,
       end,
     };
@@ -112,6 +112,7 @@ export class SessionService {
       if (!therapistEntity) throw new BadRequestException('Invalid therapist ID');
 
       let { dates, duration } = createSessionDto;
+      duration =  await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
 
       // basic guards
       if (!Array.isArray(dates) || dates.length === 0) {
@@ -652,12 +653,13 @@ export class SessionService {
         console.log({clientsForThisSession})
         if (!clientsForThisSession.length) continue; // skip if no clients for this week
 
+        let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
         const session = manager.create(Session, {
           therapist,
           group: clientsForThisSession,
           groupName: dto.groupName ?? 'Group Session',
           schedule,
-          duration: dto.duration,
+          duration: durationParam as number,
           type: dto.type,
           note: dto.note ?? null,
           approvalStatus: ApprovalStatus.CONFIRMED,
