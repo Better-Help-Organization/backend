@@ -157,7 +157,7 @@ export class MatchService {
     return { message: 'Match request created successfully' };
   }
   
-  async acceptMatch(token: TokenPayload, acceptMatchDto: AcceptMatchDto): Promise<{ message: string }> {
+  async acceptMatch(token: TokenPayload, acceptMatchDto: AcceptMatchDto, mockId?: String): Promise<{ message: string }> {
     const queryRunner = this.matchRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -177,7 +177,7 @@ export class MatchService {
         throw new ConflictException('Match already accepted by another therapist');
       }
 
-      if (match.expiresAt && match.expiresAt < new Date()) {
+      if (!mockId && match.expiresAt && match.expiresAt < new Date()) {
         throw new BadRequestException('This match request has expired');
       }
 
@@ -243,6 +243,20 @@ export class MatchService {
           SessionNotif.MATCH_ACCEPTED,
           'Your match request has been accepted!'
         );
+      }
+
+      // If mockId is present → send notification to that therapist
+      if (mockId) {
+        if (therapist.firebaseToken) {
+          await this.firebaseService.sendPushNotification(
+            { therapist: [therapist.firebaseToken], client: [], admin: [] },
+            JSON.stringify({ match }),
+            SessionNotif.NEW_MATCH,
+            'You have been matched with a new client by an admin.'
+          );
+        }
+        await queryRunner.commitTransaction();
+        return { message: 'Match assigned and therapist notified successfully' };
       }
 
       await queryRunner.commitTransaction();

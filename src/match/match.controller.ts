@@ -39,7 +39,7 @@ export class MatchController {
     @Body() acceptMatchDto: AcceptMatchDto,
     @Query('mockId') mockId?: string
   ) {
-    return await this.matchService.acceptMatch(therapist, acceptMatchDto);
+    return await this.matchService.acceptMatch(therapist, acceptMatchDto, mockId);
   }
 
 

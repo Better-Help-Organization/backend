@@ -188,6 +188,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   // Match-related notifications
   MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
   MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
+  NEW_MATCH: { code: '29', title: 'New client match', showNotification: true },
   STATUS_CHANGED: { code: '11', title: 'Status Update', showNotification: true  },
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
