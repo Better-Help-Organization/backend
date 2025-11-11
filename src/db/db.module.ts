@@ -25,9 +25,9 @@ export class DatabaseModule implements OnModuleInit {
   constructor(private readonly dbService: DbService) {}
   
   async onModuleInit() {
-    await this.dbService.seedParameters();
     return
     await this.dbService.seedSubscriptions();
+    await this.dbService.seedParameters();
     await this.dbService.seedAdmin();
     await this.dbService.seedOnboarding();
   }
