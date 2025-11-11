@@ -129,7 +129,7 @@ export class SubscriptionService {
     async findAllUsersubs(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
     const dateFilter = {
-      field: 'start_date', // 👈 dynamically choose the date field here
+      field: 'createdAt', // 👈 dynamically choose the date field here
       start,
       end,
     };
