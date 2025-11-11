@@ -5,8 +5,7 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
-  Repository,
-  Unique
+  Repository
 } from 'typeorm';
 import { ApprovalStatus, SessionStatus, SessionType } from '../constants';
 import { Client } from './client.entity';
@@ -20,7 +19,7 @@ import { Message } from './message.entity';
 import { Modal } from './modal.entity';
 
 @Entity('session')
-@Unique(['client', 'therapist', 'modal', 'schedule'])
+// @Unique(['client', 'therapist', 'modal', 'schedule'])
 export class Session extends CommonEntity {
 
   @ApiProperty({ type : () => Client})
