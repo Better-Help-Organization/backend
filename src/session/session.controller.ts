@@ -117,7 +117,8 @@ export class SessionController {
 
   @Patch('attendance/:id')
   @DynamicGuards(
-    new ClientJwtAuthGuard()
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
   )
   attendance(
     @Param('id') id: string, 

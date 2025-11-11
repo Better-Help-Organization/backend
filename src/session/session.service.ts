@@ -66,7 +66,7 @@ export class SessionService {
   async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
     const dateFilter = {
-      field: 'createdAt', // 👈 dynamically choose the date field here
+      field: 'schedule', // 👈 dynamically choose the date field here
       start,
       end,
     };

@@ -89,14 +89,20 @@ export class SubscriptionService {
       });
       if (!selectedSub) throw new NotFoundException('Admin-created subscription not found');
 
+      // Determine multiplier (TRIAL counts as 1 session week)
+      const multiplier = selectedSub.type === SubscriptionType.TRIAL ? 1 : selectedSub.type;
+
+      const finalPrice = selectedSub.price ? selectedSub.price * multiplier : null;
+      const finalOldPrice = selectedSub.old_price ? selectedSub.old_price * multiplier : null;
+
       const clientSub = this.clientSubscriptionRepo.create({
         client,
         subscription: selectedSub,
         status: SubscriptionStatus.INACTIVE, // will become ACTIVE later
         start_date: null,
         end_date: null,
-        old_price: selectedSub.old_price,
-        price: selectedSub.price
+        old_price: finalPrice,
+        price: finalOldPrice
       });
 
       const csub = await this.clientSubscriptionRepo.save(clientSub);

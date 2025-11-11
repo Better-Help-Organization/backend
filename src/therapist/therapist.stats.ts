@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Session } from 'src/common/entities/session.entity';
 import { Repository } from 'typeorm';
+import { ParameterService } from 'src/parameter/parameter.service';
+import { DefaultParameters } from 'src/common/constants';
+
 
 @Injectable()
 export class TherapistStatisticsService {
   constructor(
     @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
+    private readonly paramService: ParameterService
   ) {}
 
   /** ⏱️ Total hours (sum of attended session durations, no date filter) */
@@ -157,22 +161,68 @@ export class TherapistStatisticsService {
       .getRawMany();
   }
 
-  async getTotalRevenue(therapistId?: string) {
-    const qb = this.sessionRepo.createQueryBuilder('session')
-      .leftJoin('session.therapist', 'therapist')
-      .leftJoin('therapist.level', 'level')
-      .where('session.hasTherapistAttended = true');
+async getTotalRevenue(therapistId?: string) {
+  // Fetch the price percentages for session types
+  const ADVANCED_PRICE_PERCENTAGE = await this.paramService.getDefaultByName('ADVANCED_PRICE_PERCENTAGE') as number;
+  const ASSOCIATE_PRICE_PERCENTAGE = await this.paramService.getDefaultByName('ASSOCIATE_PRICE_PERCENTAGE') as number;
+  const COUPLE_PRICE_PERCENTAGE = await this.paramService.getDefaultByName('COUPLE_PRICE_PERCENTAGE') as number;
+  const GROUP_PRICE_PERCENTAGE = await this.paramService.getDefaultByName('GROUP_PRICE_PERCENTAGE') as number;
+  const MODERATE_PRICE_PERCENTAGE = await this.paramService.getDefaultByName('MODERATE_PRICE_PERCENTAGE') as number;
 
-    if (therapistId) {
-      qb.andWhere('session.therapistId = :therapistId', { therapistId });
-    }
+  const qb = this.sessionRepo.createQueryBuilder('session')
+    .leftJoin('session.therapist', 'therapist')
+    .leftJoin('therapist.level', 'level')
+    .where('session.hasTherapistAttended = true');
 
-    const { totalRevenue } = await qb
-      .select('SUM(level.price)', 'totalRevenue')
-      .getRawOne();
-
-    return Number(totalRevenue) || 0;
+  if (therapistId) {
+    qb.andWhere('session.therapistId = :therapistId', { therapistId });
   }
+
+  // Apply the session type percentages
+  qb.select(`SUM(level.price * (
+    CASE
+      WHEN level.type = 'ADVANCED' THEN :advanced
+      WHEN level.type = 'ASSOCIATE' THEN :associate
+      WHEN level.type = 'MODERATE' THEN :moderate
+      WHEN session.type = 'COUPLE' THEN :couple
+      WHEN session.type = 'GROUP' THEN :group
+      ELSE 1
+    END
+  ))`, 'totalRevenue')
+  .setParameters({
+    advanced: ADVANCED_PRICE_PERCENTAGE,
+    associate: ASSOCIATE_PRICE_PERCENTAGE,
+    moderate: MODERATE_PRICE_PERCENTAGE,
+    couple: COUPLE_PRICE_PERCENTAGE,
+    group: GROUP_PRICE_PERCENTAGE,
+  });
+
+
+  const { totalRevenue } = await qb.getRawOne();
+
+  // Convert null to 0 if no sessions
+  return Number(totalRevenue) || 0;
+}
+
+
+  // async getTotalRevenue(therapistId?: string) {
+  //   const qb = this.sessionRepo.createQueryBuilder('session')
+  //     .leftJoin('session.therapist', 'therapist')
+  //     .leftJoin('therapist.level', 'level')
+  //     .where('session.hasTherapistAttended = true');
+
+  //   if (therapistId) {
+  //     qb.andWhere('session.therapist = :therapistId', { therapistId });
+  //   }
+
+  //   const per = await this.paramService.getDefaultByName(DefaultParameters.ADVANCED_PRICE_PERCENTAGE)
+  //   console.log({per})
+  //   const { totalRevenue } = await qb
+  //     .select('SUM(level.price)', 'totalRevenue')
+  //     .getRawOne();
+
+  //   return Number(totalRevenue) || 0;
+  // }
 
   async getAnalyticsOverTime(start: string, end: string, therapistId: string) {
   // total sessions

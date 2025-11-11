@@ -13,6 +13,7 @@ import { ModalModule } from 'src/modal/modal.module';
 import { PreferenceModule } from 'src/preference/preference.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { RatingModule } from 'src/rating/rating.module';
+import { ParameterModule } from 'src/parameter/parameter.module';
 import { SessionModule } from 'src/session/session.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TherapistController } from './therapist.controller';
@@ -36,7 +37,8 @@ import { TherapistStatisticsService } from './therapist.stats';
     SessionModule,
     FirebaseModule,
     PreferenceModule,
-    RatingModule
+    RatingModule,
+    ParameterModule
   ],  
   controllers: [TherapistController],
   providers: [TherapistService, TherapistStatisticsService],

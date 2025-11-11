@@ -55,8 +55,9 @@ export class ParameterService {
       const queryParams: FindAllQueryParams<Parameter> = {
         filters: `name=${name}`,
       };
-
+      console.log({queryParams})
       const response = await this.findAll(queryParams);
+      console.log(response.data[0])
 
       if (!response.data?.[0]) {
         this.logger.warn(`Parameter "${name}" not found in database`);
@@ -73,6 +74,18 @@ export class ParameterService {
         case DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES:
           return this.parseFloatParams(response.data[0]);
         case DefaultParameters.MATCH_EXPIRY_IN_MINUTES:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.SESSION_HOUR:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.ADVANCED_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);        
+        case DefaultParameters.MODERATE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);        
+        case DefaultParameters.COUPLE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.GROUP_PRICE_PERCENTAGE:
           return this.parseFloatParams(response.data[0]);
         default:
           throw new NotFoundException(`Default parameter with name ${name} not found`);

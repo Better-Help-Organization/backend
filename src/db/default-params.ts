@@ -17,4 +17,29 @@ export const defaultParams: Parameter[] = [
 {
     name: DefaultParameters.MATCH_EXPIRY_IN_MINUTES,
     value: '4320',
-}] as  Parameter[];
+},
+{
+    name: DefaultParameters.SESSION_HOUR,
+    value: '45',
+},
+{
+    name: DefaultParameters.ADVANCED_PRICE_PERCENTAGE,
+    value: '0.5',
+},
+{
+    name: DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE,
+    value: '0.3',
+},
+{
+    name: DefaultParameters.MODERATE_PRICE_PERCENTAGE,
+    value: '0.3',
+},
+{
+    name: DefaultParameters.COUPLE_PRICE_PERCENTAGE,
+    value: '0.3',
+},
+{
+    name: DefaultParameters.GROUP_PRICE_PERCENTAGE,
+    value: '0.3',
+},
+] as  Parameter[];

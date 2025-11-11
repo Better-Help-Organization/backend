@@ -2,13 +2,13 @@ import { IsString, IsInt, IsOptional, Min, IsPositive } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateLevelDto {
-  @ApiProperty({
-    example: 'Beginner',
-    description: 'The unique name of the level, e.g., Beginner, Intermediate, Expert.',
-  })
-  @IsOptional()
-  @IsString()
-  type: string;
+  // @ApiProperty({
+  //   example: 'Beginner',
+  //   description: 'The unique name of the level, e.g., Beginner, Intermediate, Expert.',
+  // })
+  // @IsOptional()
+  // @IsString()
+  // type: string;
 
   @ApiProperty({
     example: 0,

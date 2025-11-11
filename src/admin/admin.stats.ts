@@ -21,7 +21,7 @@ export class AdminStatisticsService {
      @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
      @InjectRepository(ClientSubscription)
-    private readonly subscriptionRepo: Repository<ClientSubscription>,
+    private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
      @InjectRepository(Match)
     private readonly matchRepo: Repository<Match>,
      @InjectRepository(Mood)
@@ -90,7 +90,7 @@ export class AdminStatisticsService {
 
   /** 💰 Revenue stats */
   async getRevenueStats(start?: string, end?: string) {
-    const qb = this.subscriptionRepo.createQueryBuilder('sub');
+    const qb = this.clientSubscriptionRepo.createQueryBuilder('sub');
 
     if (start || end) {
       qb.where('sub.start_date BETWEEN :start AND :end', {
