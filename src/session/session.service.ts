@@ -362,8 +362,7 @@ export class SessionService {
               type: selected.type,
               commonId,
               modal: selected.modal,
-              approvalStatus: ApprovalStatus.CONFIRMED,
-              subscription: cs,
+              approvalStatus: ApprovalStatus.CONFIRMED
             });
 
             delete newSession.id; // ensure no leftover ID from cache
@@ -437,90 +436,136 @@ export class SessionService {
     });
   }
 
-async update(
-  id: string,
-  updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
-): Promise<Session> {
-  try {
-    const session = await this.sessionRepo.findOne(
-      {
-        where: {id},
-        relations: ['client', 'therapist'],
-      }
-    );
-
-    // ✅ If therapist attended, restrict updates except 'note'
-    if (session.hasTherapistAttended) {
-      const allowedField = 'note';
-
-      // Find which disallowed fields were sent in DTO
-      const invalidFields = Object.keys(updateSessionDto).filter(
-        (key) => key !== allowedField && updateSessionDto[key as keyof typeof updateSessionDto] !== undefined
+  async update(
+    id: string,
+    updateSessionDto: UpdateSessionDto | AssignSessionDto | AttendanceDto
+  ): Promise<Session> {
+    try {
+      const session = await this.sessionRepo.findOne(
+        {
+          where: {id},
+          relations: ['client', 'therapist'],
+        }
       );
 
-      if (invalidFields.length > 0) {
-        const readableFields = invalidFields
-          .map((f) => f.replace(/([A-Z])/g, ' $1').toLowerCase())
-          .join(', ');
-        throw new BadRequestException(
-          `You can’t change ${readableFields} for this session because sessoin is complete.`
+      // ✅ If therapist attended, restrict updates except 'note'
+      if (session.hasTherapistAttended) {
+        const allowedField = 'note';
+
+        // Find which disallowed fields were sent in DTO
+        const invalidFields = Object.keys(updateSessionDto).filter(
+          (key) => key !== allowedField && updateSessionDto[key as keyof typeof updateSessionDto] !== undefined
+        );
+
+        if (invalidFields.length > 0) {
+          const readableFields = invalidFields
+            .map((f) => f.replace(/([A-Z])/g, ' $1').toLowerCase())
+            .join(', ');
+          throw new BadRequestException(
+            `You can’t change ${readableFields} for this session because sessoin is complete.`
+          );
+        }
+      }
+
+      // ✅ Apply updates normally if allowed
+      const sanitizedDto = { ...(updateSessionDto as UpdateSessionDto) };
+
+      const previousTherapist = session.therapist;
+
+      // ✅ Check for therapist reassignment
+      if ('therapist' in sanitizedDto && sanitizedDto.therapist && session.therapist?.id !== sanitizedDto.therapist) {
+        const newTherapist = await this.therapistService.findOne(sanitizedDto.therapist);
+        if (!newTherapist) throw new NotFoundException('New therapist not found');
+
+        session.therapist = newTherapist;
+        
+        // --- Send push notifications ---
+
+        const clientToken = session.client?.firebaseToken;
+        const prevTherapistToken = previousTherapist?.firebaseToken;
+        const newTherapistToken = newTherapist?.firebaseToken;
+
+        // 🟢 Notify client
+        if (clientToken) {
+          await this.firebaseService.sendPushNotification(
+            { client: [clientToken], therapist: [], admin: [] },
+            JSON.stringify({ therapistId: newTherapist.id }),
+            SessionNotif.TH_REASSIGNED_CLIENT,
+            `Your therapist has been changed to ${newTherapist.fullName}.`
+          );
+        }
+
+        // 🟠 Notify previous therapist
+        if (prevTherapistToken) {
+          await this.firebaseService.sendPushNotification(
+            { client: [], therapist: [prevTherapistToken], admin: [] },
+            JSON.stringify({ clientId: session.client.id }),
+            SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
+            `Client ${session.client.firstName + " " + session.client.lastName} has been reassigned from you.`
+          );
+        }
+
+        // 🔵 Notify new therapist
+        if (newTherapistToken) {
+          await this.firebaseService.sendPushNotification(
+            { client: [], therapist: [newTherapistToken], admin: [] },
+            JSON.stringify({ clientId: session.client.id }),
+            SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
+            `You have been assigned to client ${session.client.firstName + " " + session.client.lastName}.`
+          );
+        }
+      }
+
+      // ✅ Handle status updates
+      if ('status' in sanitizedDto && sanitizedDto.status) {
+        const { status, reason } = sanitizedDto.status;
+
+        const newStatus = this.sessionRepo.manager.create(Status, {
+          session,
+          status,
+          reason,
+        });
+        await this.sessionRepo.manager.save(Status, newStatus);
+        session.latestStatus = status;
+        session.latestReason = reason;
+      }
+
+      // ✅ Apply all other updates
+      Object.assign(session, { ...sanitizedDto, status: undefined });
+      const savedSession = await this.sessionRepo.save(session);
+
+      // ✅ Notify schedule change
+      if ('schedule' in sanitizedDto) {
+        this.firebaseService.sendPushNotification(
+          { client: [], therapist: [], admin: [] },
+          JSON.stringify(savedSession),
+          SessionNotif.SCHEDULED,
+          `Your session has been updated for ${new Date(
+            session.schedule
+          ).toLocaleString()}`
         );
       }
+
+      // ✅ Notify status change
+      if ('status' in sanitizedDto) {
+        this.firebaseService.sendPushNotification(
+          { client: [], therapist: [], admin: [] },
+          JSON.stringify(savedSession),
+          SessionNotif.STATUS_CHANGED,
+          `Your session status is now ${session.latestStatus}`
+        );
+      }
+
+      if ('hasTherapistAttended' in sanitizedDto) {
+        await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
+      }
+
+      return savedSession;
+    } catch (error) {
+      this.logger.error(`Failed to update Session: ${error.message}`, error.stack);
+      throw error;
     }
-
-    // ✅ Apply updates normally if allowed
-    const sanitizedDto = { ...(updateSessionDto as UpdateSessionDto) };
-
-    // ✅ Handle status updates
-    if ('status' in sanitizedDto && sanitizedDto.status) {
-      const { status, reason } = sanitizedDto.status;
-
-      const newStatus = this.sessionRepo.manager.create(Status, {
-        session,
-        status,
-        reason,
-      });
-      await this.sessionRepo.manager.save(Status, newStatus);
-      session.latestStatus = status;
-      session.latestReason = reason;
-    }
-
-    // ✅ Apply all other updates
-    Object.assign(session, { ...sanitizedDto, status: undefined });
-    const savedSession = await this.sessionRepo.save(session);
-
-    // ✅ Notify schedule change
-    if ('schedule' in sanitizedDto) {
-      this.firebaseService.sendPushNotification(
-        { client: [], therapist: [], admin: [] },
-        JSON.stringify(savedSession),
-        SessionNotif.SCHEDULED,
-        `Your session has been updated for ${new Date(
-          session.schedule
-        ).toLocaleString()}`
-      );
-    }
-
-    // ✅ Notify status change
-    if ('status' in sanitizedDto) {
-      this.firebaseService.sendPushNotification(
-        { client: [], therapist: [], admin: [] },
-        JSON.stringify(savedSession),
-        SessionNotif.STATUS_CHANGED,
-        `Your session status is now ${session.latestStatus}`
-      );
-    }
-
-    if ('hasTherapistAttended' in sanitizedDto) {
-      await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
-    }
-
-    return savedSession;
-  } catch (error) {
-    this.logger.error(`Failed to update Session: ${error.message}`, error.stack);
-    throw error;
   }
-}
 
   async createGroupSession(dto: CreateGroupSession) {
     this.logger.log("Creating a group session")

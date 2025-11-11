@@ -204,15 +204,17 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   SUBSCRIPTION_EXPIRED: { code: "23", title: "❌ Subscription expired", showNotification: true },
   GROUP_SCHEDULED: { code: "24", title: 'Group Session Created', showNotification: true },
   ALL_SESSIONS_COMPLETED: { code: "25", title: "All Sessions Completed", showNotification: true },
-
+  // 🆕 Therapist reassignment notifications
+  TH_REASSIGNED_CLIENT: { code: "26", title: "Therapist Reassigned", showNotification: true },
+  TH_REASSIGNED_OLD_THERAPIST: { code: "27", title: "Client Reassigned", showNotification: true },
+  TH_REASSIGNED_NEW_THERAPIST: { code: "28", title: "New Client Assigned", showNotification: true },
 } as const;
 
 export enum DefaultParameters {
   VAT="vat",
   NOTIFICATION_EXPIRY="notification expiry",
   MATCH_EXPIRY_IN_MINUTES="MATCH expiry",
-  PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes",
-  SESSION_HOUR="SESSION_HOUR"
+  PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes"
 }
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];

@@ -58,6 +58,11 @@ export class ParameterService {
 
       const response = await this.findAll(queryParams);
 
+      if (!response.data?.[0]) {
+        this.logger.warn(`Parameter "${name}" not found in database`);
+        throw new NotFoundException(`Parameter "${name}" not found`);
+      }
+
       this.logger.log(`Successfully fetched default parameter by name: ${name}`);
 
       switch (name) {
@@ -68,8 +73,6 @@ export class ParameterService {
         case DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES:
           return this.parseFloatParams(response.data[0]);
         case DefaultParameters.MATCH_EXPIRY_IN_MINUTES:
-          return this.parseFloatParams(response.data[0]);
-        case DefaultParameters.SESSION_HOUR:
           return this.parseFloatParams(response.data[0]);
         default:
           throw new NotFoundException(`Default parameter with name ${name} not found`);
