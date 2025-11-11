@@ -100,8 +100,28 @@ export class NotificationScheduler {
 
         const targetMinutes = [24 * 60, 2 * 60, 15]; // [1440, 120, 15]
 
+        function toEthiopianTime(date: Date): string {
+            // Convert to Addis Ababa/EAT time first
+            const options = { timeZone: "Africa/Addis_Ababa", hour: "numeric", minute: "numeric", hour12: false } as const;
+            const formatter = new Intl.DateTimeFormat("en-US", options);
+            const parts = formatter.formatToParts(date);
+
+            let hour = Number(parts.find(p => p.type === "hour")?.value ?? 0);
+            const minute = parts.find(p => p.type === "minute")?.value ?? "00";
+
+            // Ethiopian clock shift: subtract 6 hours
+            hour = hour - 6;
+            if (hour <= 0) hour += 12;
+            if (hour > 12) hour -= 12;
+
+            return `${hour}:${minute}`;
+            }
+
+
         for (const session of sessions) {
             const diffMinutes = Math.floor((session.schedule.getTime() - now.getTime()) / 60000);
+
+            const etTime = toEthiopianTime(session.schedule);
 
             if (targetMinutes.includes(diffMinutes)) {
                 // Client reminder
@@ -112,13 +132,7 @@ export class NotificationScheduler {
                         SessionNotif.SESSION_REMINDER_CLIENT,
                         `Reminder: You have a session with ${
                             session.therapist?.firstName ?? 'your therapist'
-                        } at ${session.schedule.toLocaleString('en-US', {
-                            timeZone: 'Africa/Addis_Ababa',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            month: 'short',
-                            day: 'numeric',
-                        })} (Addis Ababa time)`,
+                        } at ${etTime} (Addis Ababa time)`,
                     );
                 }
 
