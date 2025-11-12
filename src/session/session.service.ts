@@ -620,10 +620,15 @@ export class SessionService {
       const clientWeeksMap = new Map<string, number>();
       let maxWeeks = 0;
 
-      // Only consider clients with an active subscription
+      // if atleast one doesn't have an active subscription return error
       for (const client of clients) {
         console.log({client})
-        if (!client.activeSubscription || !client.activeSubscription.subscription) continue;
+        if (!client.activeSubscription || !client.activeSubscription.subscription) {
+          const fullname = client.firstName + " " + client.lastName; 
+          throw new BadRequestException(
+            `Client ${ fullname ?? client.id} does not have an active subscription`
+          );
+        }
 
         const typeValue = client.activeSubscription.subscription.type;
         const weeks = typeValue === SubscriptionType.TRIAL ? 1 : typeValue * 4;

@@ -229,7 +229,17 @@ export class SubscriptionService {
         client.activeSubscription = latestSub;
         await this.clientRepository.save(client);
       }
+    } else {
+      // ✅ LOGIC for deactivation
+      const client = subscription.client;
+
+      // If this subscription is currently the client's active one, remove it
+      if (client.activeSubscription?.id === subscription.id) {
+        client.activeSubscription = null;
+        await this.clientRepository.save(client);
+      }
     }
+
 
     // ✅ Send single push notification for status change
     const client = subscription.client;
@@ -237,10 +247,10 @@ export class SubscriptionService {
       const message = 'Subscription Status Changed';
 
       const start = subscription.start_date
-        ? subscription.start_date.toLocaleDateString()
+        ? new Date(subscription.start_date).toLocaleDateString()
         : 'N/A';
       const end = subscription.end_date
-        ? subscription.end_date.toLocaleDateString()
+        ? new Date(subscription.end_date).toLocaleDateString()
         : 'N/A';
 
       const body = `Your subscription is now ${dto.status}. It started on ${start} and will end on ${end}.`;
@@ -268,8 +278,6 @@ export class SubscriptionService {
 
   return result;
 }
-
-
 
   async updateSub(id: string, updateDto: UpdateAdminSubscriptionDto) {
     const sub = await this.findOne(id);
