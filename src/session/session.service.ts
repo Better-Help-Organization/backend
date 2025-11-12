@@ -653,6 +653,11 @@ export class SessionService {
         console.log({clientsForThisSession})
         if (!clientsForThisSession.length) continue; // skip if no clients for this week
 
+        // const clientsForThisSessionRefs = clientsForThisSession.map(c => {
+        //   return { id: c.id } as Client; // cast to entity type
+        // });
+
+        // console.log({clientsForThisSessionRefs})
         let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
         const session = manager.create(Session, {
           therapist,
@@ -667,7 +672,7 @@ export class SessionService {
           client: null,
           commonId
         });
-        console.log({session})
+        // console.log({session:session.group})
         const savedSession = await manager.save(session);
         allSessions.push(savedSession);
         scheduleDates.push(schedule);

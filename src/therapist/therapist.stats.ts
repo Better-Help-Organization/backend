@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DefaultParameters, ModalName } from 'src/common/constants';
 import { Session } from 'src/common/entities/session.entity';
-import { Repository } from 'typeorm';
 import { ParameterService } from 'src/parameter/parameter.service';
-import { DefaultParameters } from 'src/common/constants';
+import { Repository } from 'typeorm';
 
 
 @Injectable()
@@ -45,15 +45,16 @@ export class TherapistStatisticsService {
     }
 
     if (therapistId) {
-      qb.andWhere('session.therapistId = :therapistId', { therapistId });
+      qb.andWhere('session.therapist = :therapistId', { therapistId });
     }
 
-    return qb
-      .select("DATE(session.schedule)", "date")
-      .addSelect("COUNT(session.id)", "count")
-      .groupBy("DATE(session.schedule)")
-      .orderBy("date", "ASC")
-      .getRawMany();
+  return qb
+    .select(`DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00'))`, 'date') // adjust '+03:00' to your timezone
+    .addSelect('COUNT(session.id)', 'count')
+    .groupBy('DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00"))')
+    .orderBy('date', 'ASC')
+    .getRawMany();
+
   }
 
   /** 👥 Users treated over time (unique clients per therapist per day) */
@@ -82,29 +83,92 @@ export class TherapistStatisticsService {
   }
 
   /** 💰 Revenue (sessions * therapist.level.price) */
-  async getRevenueOverTime(start: string, end: string, therapistId: string) {
-    const qb = this.sessionRepo.createQueryBuilder('session')
-      .leftJoin('session.therapist', 'therapist')
-      .leftJoin('therapist.level', 'level');
+  // async getRevenueOverTime(start: string, end: string, therapistId: string) {
+  //   const qb = this.sessionRepo.createQueryBuilder('session')
+  //     .leftJoin('session.therapist', 'therapist')
+  //     .leftJoin('therapist.level', 'level');
 
-    if (start || end) {
-      qb.where('session.schedule BETWEEN :start AND :end', {
-        start: start ? new Date(start) : new Date('2000-01-01'),
-        end: end ? new Date(end) : new Date(),
-      });
-    }
+  //   if (start || end) {
+  //     qb.where('session.schedule BETWEEN :start AND :end', {
+  //       start: start ? new Date(start) : new Date('2000-01-01'),
+  //       end: end ? new Date(end) : new Date(),
+  //     });
+  //   }
 
-    if (therapistId) {
-      qb.andWhere('session.therapistId = :therapistId', { therapistId });
-    }
+  //   if (therapistId) {
+  //     qb.andWhere('session.therapistId = :therapistId', { therapistId });
+  //   }
 
-    return qb
-      .select("DATE(session.schedule)", "date")
-      .addSelect("SUM(level.price)", "revenue")
-      .groupBy("DATE(session.schedule)")
-      .orderBy("date", "ASC")
-      .getRawMany();
+  //   return qb
+  //     .select("DATE(session.schedule)", "date")
+  //     .addSelect("SUM(level.price)", "revenue")
+  //     .groupBy("DATE(session.schedule)")
+  //     .orderBy("date", "ASC")
+  //     .getRawMany();
+  // }
+async getRevenueOverTime(start: string, end: string, therapistId: string) {
+  // Fetch percentage parameters
+  const ADVANCED = await this.paramService.getDefaultByName(DefaultParameters.ADVANCED_PRICE_PERCENTAGE) as number;
+  const ASSOCIATE = await this.paramService.getDefaultByName(DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE) as number;
+  const MODERATE = await this.paramService.getDefaultByName(DefaultParameters.MODERATE_PRICE_PERCENTAGE) as number;
+  const COUPLE = await this.paramService.getDefaultByName(DefaultParameters.COUPLE_PRICE_PERCENTAGE) as number;
+  const GROUP = await this.paramService.getDefaultByName(DefaultParameters.GROUP_PRICE_PERCENTAGE) as number;
+
+  // VAT (example: 0.15 means 15%)
+  const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number; 
+
+  const qb = this.sessionRepo.createQueryBuilder('session')
+    .innerJoin('session.therapist', 'therapist')
+    .innerJoin('therapist.level', 'level')
+    .innerJoin('session.subscription', 'sub')
+    .innerJoin('session.modal', 'modal')
+    .where('session.hasTherapistAttended = true')
+    .andWhere('sub.price IS NOT NULL'); // ensure sessions have a price
+
+  if (start && end) {
+    qb.andWhere('session.schedule BETWEEN :start AND :end', {
+      start: new Date(start),
+      end: new Date(end),
+    });
   }
+
+  if (therapistId) {
+    qb.andWhere('therapist.id = :therapistId', { therapistId });
+  }
+
+  qb
+    .select(`DATE(session.schedule)`, 'date')
+    .addSelect(`
+      SUM(
+        sub.price * (1 - :vat) * 
+        (
+          CASE
+            WHEN level.type = 'ADVANCED' THEN :advanced
+            WHEN level.type = 'ASSOCIATE' THEN :associate
+            WHEN level.type = 'MODERATE' THEN :moderate
+            WHEN modal.name = :coupleModal THEN :couple
+            WHEN modal.name = :groupModal THEN :group
+            ELSE 1
+          END
+        )
+      )
+    `, 'revenueOverTime')
+    .groupBy('DATE(session.schedule)')
+    .orderBy('date', 'ASC')
+    .setParameters({
+      vat: VAT,
+      advanced: ADVANCED,
+      associate: ASSOCIATE,
+      moderate: MODERATE,
+      couple: COUPLE,
+      group: GROUP,
+      coupleModal: ModalName.COUPLE_THERAPY,
+      groupModal: ModalName.GROUP_THERAPY,
+
+    });
+
+  return await qb.getRawMany();
+}
 
   /** 🔍 Therapist workload (scoped to therapist if ID given) */
   async getTherapistWorkload(start: string, end: string, therapistId: string) {
@@ -201,7 +265,7 @@ async getTotalRevenue(therapistId?: string) {
   const { totalRevenue } = await qb.getRawOne();
 
   // Convert null to 0 if no sessions
-  return Number(totalRevenue) || 0;
+  return Number(totalRevenue) || 'N/A';
 }
 
 
