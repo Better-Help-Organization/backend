@@ -181,7 +181,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
   EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
   MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: false },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
   CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
