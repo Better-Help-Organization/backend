@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpdateChatDto {
   
@@ -16,4 +16,12 @@ export class UpdateChatDto {
   @IsUUID()
   @IsNotEmpty()
   therapist: string;
+
+  @ApiProperty({
+    description: 'Name of the group',
+    example: 'Anxiety Support Group',
+  })
+  @IsOptional()
+  @IsString()
+  groupName: string;
 }

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ModalName, QuestionType, TokenPayload } from 'src/common/constants';
+import { ModalName, QuestionType, SubscriptionStatus, TokenPayload } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Modal } from 'src/common/entities/modal.entity';
@@ -161,7 +161,13 @@ export class AnswerService {
 
   // 2️⃣ Base query for clients who answered all group questions
   const qb = this.clientRepo.createQueryBuilder('client')
-    .where(qb => {
+      // join client subscription
+    .innerJoin('client.activeSubscription', 'clientSubscription')
+    // ensure active subscription
+    .andWhere('clientSubscription.status = :activeStatus', {
+      activeStatus: SubscriptionStatus.ACTIVE,
+    })
+    .andWhere(qb => {
       const sub = qb.subQuery()
         .select('answer.clientId')
         .from(Answer, 'answer')
@@ -169,7 +175,7 @@ export class AnswerService {
         .groupBy('answer.clientId')
         .having('COUNT(DISTINCT answer.questionId) = :totalQuestions', { totalQuestions })
         .getQuery();
-      return 'client.id NOT IN ' + sub;
+      return 'client.id IN ' + sub;
     })
     .andWhere('client.isInGroup = false')
     .setParameter('modalId', groupModal.id);

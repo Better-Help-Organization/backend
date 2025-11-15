@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { TokenPayload } from 'src/common/constants';
+import { ApiQuery } from '@nestjs/swagger';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -34,12 +36,18 @@ export class SessionController {
     return this.sessionService.createGroupSession(createGroupSessionDto);
   }
 
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+  })
   @Post()
   @DynamicGuards(
-    new TherapistJwtAuthGuard()
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
   )
   bookASession(
-    @CurrentUser() user: TokenPayload,
+    @AllowAdminAccess(UserTypes.THERAPIST) user: TokenPayload,
     @Body() createSessionDto: CreateSessionDto
   ) {
     return this.sessionService.create(user.id, createSessionDto);

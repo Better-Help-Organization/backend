@@ -1,4 +1,5 @@
 import {
+  Column,
   Entity,
   JoinColumn,
   JoinTable,
@@ -20,11 +21,12 @@ import { Message } from './message.entity';
 @Entity('chat')
 export class Chat extends CommonEntity {
 
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  groupName: string;
+  
   @ApiProperty({ type : () => [Client] })
-  @ManyToMany(() => Client, {
-    nullable: true,
-    // eager:true
-  })
+  @ManyToMany(() => Client, client => client.chats, { nullable: true })
   @JoinTable({
     name: 'chat_group_clients',
     joinColumn: { name: 'chat_id', referencedColumnName: 'id' },

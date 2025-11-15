@@ -161,6 +161,7 @@ export class MatchService {
     const queryRunner = this.matchRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    let isAdmin = Boolean(mockId);
 
     try {
       console.log({acceptMatchDto})
@@ -181,8 +182,9 @@ export class MatchService {
         throw new BadRequestException('This match request has expired');
       }
 
-      const therapist = await this.therapistService.findOne(token.id);
-
+      const therapistId =  mockId ? mockId.toString() : token.id;
+      const therapist = await this.therapistService.findOne(therapistId);
+      console.log({therapist})
       if (!therapist) {
         throw new NotFoundException('Therapist not found');
       }
@@ -197,12 +199,14 @@ export class MatchService {
 
 
     const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
-    if (!matchTherapist) {
+    if (!isAdmin && !matchTherapist) {
       throw new BadRequestException('Therapist not part of this match');
     }
 
-      matchTherapist.respondedAt = new Date();
-      await queryRunner.manager.save(matchTherapist);
+      // matchTherapist.respondedAt = new Date();
+      !isAdmin ?
+      await queryRunner.manager.save(matchTherapist) :
+      await queryRunner.manager.save(therapist);
 
       match.accepted = therapist;
       await queryRunner.manager.save(match);

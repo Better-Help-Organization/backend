@@ -2,11 +2,12 @@ import { BadRequestException } from '@nestjs/common';
 import { getMetadataArgsStorage, SelectQueryBuilder } from 'typeorm';
 import { FindAllQueryParams, FindOneQueryParams } from './api-features.dto';
 
+
 export class APIFeatures {
 
   protected target: any;
-  private query: any;
-  private tableName: string
+  protected query: any;
+  protected tableName: string
   private joinedRelations: Set<string> = new Set();
   private parsedPage: number;
   private parsedLimit: number;
@@ -312,9 +313,24 @@ export class APIFeatures {
 
     // Select the fields and add relations dynamically
     this.query.select(selectFields);
+    // merge selectFields with joined relation aliases
+    const finalSelections = new Set(selectFields);
+
+    // ALWAYS preserve relations needed for filters
+    this.joinedRelations.forEach(rel => {
+      finalSelections.add(rel);
+    });
+
+    this.query.select([...finalSelections]);
+
 
     // Add relations to ensure they're included in the join
-    this.query.relation(relations);
+    // this.query.relation(relations);
+    // Perform joins for relations
+    relations.forEach(rel => {
+      this.query.leftJoinAndSelect(`${this.tableName}.${rel}`, rel);
+    });
+
   return this;
   }
 }
@@ -482,4 +498,11 @@ export class APIFeatures {
 
       return await this.query.where(`${this.tableName}.id = :id`, { id }).getOne();  
    }
+}
+
+export class ChatFeatures extends APIFeatures {
+  joinGroupMembers() {
+    this.query.leftJoinAndSelect(`${this.tableName}.group`, 'groupMembers');
+    return this;
+  }
 }

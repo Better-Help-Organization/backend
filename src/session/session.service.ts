@@ -558,6 +558,13 @@ export class SessionService {
       }
 
       if ('hasTherapistAttended' in sanitizedDto) {
+        const name = session.client ? `${session.client.firstName} ${session.client.lastName}` : 'group';
+        await this.firebaseService.sendPushNotification(
+          { therapist: [session.therapist?.firebaseToken]},
+          JSON.stringify({sessionId:session.id}),
+          SessionNotif.THERAPIST_ATTENDANCE_MARKED,
+          `Attendace marked for session with ${name}`
+        );
         await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
       }
 
@@ -593,6 +600,7 @@ export class SessionService {
       const [hours, minutes] = dto.date.startTime.split(':').map(Number);
       targetDate.setHours(hours, minutes, 0, 0);
 
+      console.log({clients})
       // 4️⃣ Fetch subscriptions for all clients
       const clientSubs = await manager.find(ClientSubscription, {
         where: {

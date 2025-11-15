@@ -19,6 +19,7 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
 import { TherapistStatisticsService } from './therapist.stats';
+import { Language } from 'src/common/entities/language.entity';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { TherapistStatisticsService } from './therapist.stats';
       License,
       Session,
       ClientSubscription,
-      Preference
+      Preference,
+      Language
     ]),
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),

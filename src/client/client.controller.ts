@@ -8,6 +8,7 @@ import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { StatusDto } from 'src/common/dto/status.dto';
+import { GroupScopeGuard } from 'src/common/guard/group-scope,guard';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -67,10 +68,10 @@ export class ClientController {
 
   @ApiFindAllQueryParams()
   @Get('me/chats')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
   async findMyChats(
-    @CurrentUser() client: TokenPayload,
     @GroupScope() _gs: boolean,
+    @CurrentUser() client: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.chatService.findAll(queryParams,client );
@@ -78,7 +79,7 @@ export class ClientController {
 
   @ApiFindOneQueryParams()
   @Get('me/chats/:id')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
   async findOneChat(
     @CurrentUser() _: TokenPayload,
     @GroupScope() _gs: boolean,
@@ -154,8 +155,9 @@ export class ClientController {
 
   @ApiFindAllQueryParams()
   @Get('me/sessions')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
   async findMySession(
+    @GroupScope() _gs: boolean,
     @CurrentUser() _: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {

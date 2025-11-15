@@ -33,40 +33,68 @@ export class TherapistStatisticsService {
     return Number(totalHours.toFixed(2)); // round to 2 decimals
   }
 
-  /** 📊 Sessions over time (optionally filter by therapist) */
-  async getSessionsOverTime(start: string, end: string, therapistId: string) {
-    const qb = this.sessionRepo.createQueryBuilder('session');
+  // /** 📊 Sessions over time (optionally filter by therapist) */
+  // async getSessionsOverTime(start: string, end: string, therapistId: string) {
+  //   const qb = this.sessionRepo.createQueryBuilder('session');
 
-    if (start || end) {
-      qb.where('session.schedule BETWEEN :start AND :end', {
-        start: start ? new Date(start) : new Date('2000-01-01'),
-        end: end ? new Date(end) : new Date(),
-      });
-    }
+  //   if (start || end) {
+  //     qb.where('session.schedule BETWEEN :start AND :end', {
+  //       start: start ? new Date(start) : new Date('2000-01-01'),
+  //       end: end ? new Date(end) : new Date(),
+  //     });
+  //   }
 
-    if (therapistId) {
-      qb.andWhere('session.therapist = :therapistId', { therapistId });
-    }
+  //   if (therapistId) {
+  //     qb.andWhere('session.therapist = :therapistId', { therapistId });
+  //   }
 
-  return qb
-    .select(`DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00'))`, 'date') // adjust '+03:00' to your timezone
-    .addSelect('COUNT(session.id)', 'count')
-    .groupBy('DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00"))')
+  // return qb
+  //   .select(`DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00'))`, 'date') // adjust '+03:00' to your timezone
+  //   .addSelect('COUNT(session.id)', 'count')
+  //   .groupBy('DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00"))')
+  //   .orderBy('date', 'ASC')
+  //   .getRawMany();
+
+  // }
+async getSessionsOverTime(start: string | null, end: string | null, therapistId: string | null) {
+  const qb = this.sessionRepo.createQueryBuilder('session');
+
+  // Prepare date filters
+  if (start || end) {
+    qb.where('session.schedule BETWEEN :start AND :end', {
+      start: start ? new Date(start).toISOString() : '2000-01-01',  // Default start
+      end: end ? new Date(end).toISOString() : new Date().toISOString(),  // Default to now
+    });
+  }
+
+  if (therapistId) {
+    qb.andWhere('session.therapist = :therapistId', { therapistId });
+  }
+
+  // Execute the raw SQL with timezone conversion and add one day
+  const results = await qb
+    .select(`DATE_ADD(DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00')), INTERVAL 1 DAY) AS date`)
+    .addSelect('COUNT(session.id) AS count')
+    .groupBy('DATE_ADD(DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00")), INTERVAL 1 DAY)')
     .orderBy('date', 'ASC')
     .getRawMany();
 
-  }
-
-  /** 👥 Users treated over time (unique clients per therapist per day) */
-  async getUsersTreatedOverTime(start: string, end: string, therapistId: string) {
+  return results.map(r => ({
+    date: new Date(r.date).toISOString(),  // Return in UTC
+    count: r.count
+  }));
+}
+/** 👥 Users treated over time (unique clients per therapist per day) */
+async getUsersTreatedOverTime(start: string | null, end: string | null, therapistId: string | null) {
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.client', 'client')
       .leftJoin('session.group', 'groupClients');
 
+    // Prepare date filters
     if (start || end) {
       qb.where('session.schedule BETWEEN :start AND :end', {
-        start: start ? new Date(start) : new Date('2000-01-01'),
-        end: end ? new Date(end) : new Date(),
+        start: start ? new Date(start).toISOString() : '2000-01-01', // Default start
+        end: end ? new Date(end).toISOString() : new Date().toISOString(), // Default to now
       });
     }
 
@@ -75,13 +103,12 @@ export class TherapistStatisticsService {
     }
 
     return qb
-      .select("DATE(session.schedule)", "date")
-      .addSelect("COUNT(DISTINCT client.id) + COUNT(DISTINCT groupClients.id)", "treatedUsers")
-      .groupBy("DATE(session.schedule)")
+      .select("DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY) AS date")  // Add 1 day here
+      .addSelect("COUNT(DISTINCT client.id) + COUNT(DISTINCT groupClients.id) AS treatedUsers")
+      .groupBy("DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY)")  // Ensure grouping matches
       .orderBy("date", "ASC")
       .getRawMany();
-  }
-
+}
   /** 💰 Revenue (sessions * therapist.level.price) */
   // async getRevenueOverTime(start: string, end: string, therapistId: string) {
   //   const qb = this.sessionRepo.createQueryBuilder('session')
@@ -143,11 +170,11 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
         sub.price * (1 - :vat) * 
         (
           CASE
+            WHEN modal.name LIKE :coupleModal THEN :couple
+            WHEN modal.name LIKE :groupModal THEN :group
             WHEN level.type = 'ADVANCED' THEN :advanced
             WHEN level.type = 'ASSOCIATE' THEN :associate
             WHEN level.type = 'MODERATE' THEN :moderate
-            WHEN modal.name = :coupleModal THEN :couple
-            WHEN modal.name = :groupModal THEN :group
             ELSE 1
           END
         )
@@ -241,18 +268,22 @@ async getTotalRevenue(therapistId?: string) {
   if (therapistId) {
     qb.andWhere('session.therapistId = :therapistId', { therapistId });
   }
-
+  console.log({qb})
   // Apply the session type percentages
-  qb.select(`SUM(level.price * (
-    CASE
-      WHEN level.type = 'ADVANCED' THEN :advanced
-      WHEN level.type = 'ASSOCIATE' THEN :associate
-      WHEN level.type = 'MODERATE' THEN :moderate
-      WHEN session.type = 'COUPLE' THEN :couple
-      WHEN session.type = 'GROUP' THEN :group
-      ELSE 1
-    END
-  ))`, 'totalRevenue')
+    qb.select(`
+        SUM(
+          COALESCE(level.price, 0) * (
+            CASE
+              WHEN session.type = 'COUPLE' THEN :couple
+              WHEN session.type = 'GROUP' THEN :group
+              WHEN level.type = 'ADVANCED' THEN :advanced
+              WHEN level.type = 'ASSOCIATE' THEN :associate
+              WHEN level.type = 'MODERATE' THEN :moderate
+              ELSE 1
+            END
+          )
+        )
+    `, 'totalRevenue')
   .setParameters({
     advanced: ADVANCED_PRICE_PERCENTAGE,
     associate: ASSOCIATE_PRICE_PERCENTAGE,
@@ -260,10 +291,10 @@ async getTotalRevenue(therapistId?: string) {
     couple: COUPLE_PRICE_PERCENTAGE,
     group: GROUP_PRICE_PERCENTAGE,
   });
-
-
+  
   const { totalRevenue } = await qb.getRawOne();
-
+  
+  console.log({totalRevenue})
   // Convert null to 0 if no sessions
   return Number(totalRevenue) || 'N/A';
 }

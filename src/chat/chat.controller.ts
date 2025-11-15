@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
-import { TokenPayload } from 'src/common/constants';
+import { ApiQuery } from '@nestjs/swagger';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -20,12 +22,18 @@ export class ChatController {
   ) {}
 
   @DynamicGuards(
-    // new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
   @Post()
   async create(
-    @CurrentUser() user:TokenPayload, 
+    @AllowAdminAccess(UserTypes.THERAPIST) user: TokenPayload,
+    @Query('mockId') mockId: string,
     @Body() createChatDto: CreateChatDto) {
        return this.chatService.create(user.id, createChatDto);  
   }
@@ -197,6 +205,9 @@ export class ChatController {
   //   return this.chatService.update(id, updateChatDto);
   // }
 
+  @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return this.chatService.remove(id);

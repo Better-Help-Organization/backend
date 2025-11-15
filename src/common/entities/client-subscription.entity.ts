@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { SubscriptionStatus } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
@@ -9,7 +9,6 @@ import { Subscription } from './subscription.entity';
 import { Therapist } from './therapist.entity';
 
 @Entity()
-@Unique(['client', 'subscription']) // prevent duplicates
 export class ClientSubscription extends CommonEntity {
   
   @ApiProperty({ type: () => Client })

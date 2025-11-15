@@ -181,7 +181,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
   EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
   MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: false },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
   CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
@@ -209,6 +209,10 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   TH_REASSIGNED_CLIENT: { code: "26", title: "Therapist Reassigned", showNotification: true },
   TH_REASSIGNED_OLD_THERAPIST: { code: "27", title: "Client Reassigned", showNotification: true },
   TH_REASSIGNED_NEW_THERAPIST: { code: "28", title: "New Client Assigned", showNotification: true },
+  // Therapist attendance
+  THERAPIST_ATTENDANCE_MARKED: { code: "29", title: "Attendance has been marked", showNotification: true },
+  INCOMING_GROUP_CALL: { code: "30", title: 'Incoming  Group Call', showNotification: true },
+
 } as const;
 
 export enum DefaultParameters {
@@ -234,7 +238,7 @@ export const FILE_UPLOAD_KEY = 'file';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_FILE_COUNT = 15;
-export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf','  "application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const Tmp_Files_Dir = join(process.cwd(),'uploads','tmp')

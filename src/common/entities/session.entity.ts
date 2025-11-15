@@ -57,6 +57,13 @@ export class Session extends CommonEntity {
   })
   therapist: Therapist;
 
+    @ApiProperty({type : () => Client})
+  @ManyToOne(() => Client, { 
+    nullable: true,
+    // cascade: true
+  })
+  Client: Client;
+
   @ApiProperty({ default: false })
   @Column({default: false })
   hasclientAttended: boolean;
@@ -121,6 +128,7 @@ export class Session extends CommonEntity {
   @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
   @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
   subscription: ClientSubscription;
+
 
   async addMessage(
     msgRepo: Repository<Message>,

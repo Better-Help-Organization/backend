@@ -60,7 +60,7 @@ export const onboardingData = [
       { text: 'How long have you been together?', type: QuestionType.SINGLE, option: ['Less than 1 year', '1–3 years', '3–5 years', 'More than 5 years'] },
       { text: 'What are your main reasons for seeking couples therapy?', type: QuestionType.MULTIPLE, option: ['Communication problems', 'Trust issues', 'Intimacy or sexual concerns', 'Parenting challenges', 'Conflict resolution', 'Other'] },
       { text: 'Have either of you been to therapy before?', type: QuestionType.SINGLE, option: ['Yes', 'No'] },
-      { text: 'What are your goals for therapy?', type: QuestionType.OPEN, option: [] },
+      // { text: 'What are your goals for therapy?', type: QuestionType.OPEN, option: [] },
       // { text: 'Preferred therapist gender:', type: QuestionType.SINGLE, option: ['Male', 'Female', 'No preference'] },
       // { text: 'Preferred session format:', type: QuestionType.SINGLE, option: ['Video Call', 'Phone Call', 'Text Chat'] },
       // { text: 'What days and times work best for both of you?', type: QuestionType.SINGLE, option: ['Weekday Mornings', 'Weekend Mornings', 'Weekday Afternoon', 'Weekend Afternoon', 'Weekday Evening', 'Weekend Evening'] }

@@ -32,7 +32,8 @@ export const AuthEnforcedQueryParams = createParamDecorator(
           const userIdFilter = `${user.id}`;
 
       // Include sessions where client is the user OR user is in the group
-        if (request.groupScope) {
+      console.log(`request.groupScope`, request.groupScope);  
+      if (request.groupScope) {
           enforcedFilter = `(client.id:=${user.id}||group.id:=${user.id})`;
         }
         else{
