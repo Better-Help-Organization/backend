@@ -164,11 +164,10 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
   }
 
   qb
-  .select(`DATE(session.schedule)`, 'date')
-  .addSelect(
-    `
+    .select(`DATE(session.schedule)`, 'date')
+    .addSelect(`
       SUM(
-        (sub.price / :vatDivisor) *
+        sub.price * (1 - :vat) * 
         (
           CASE
             WHEN modal.name LIKE :coupleModal THEN :couple
@@ -180,22 +179,20 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
           END
         )
       )
-    `,
-    'revenueOverTime'
-  )
-  .groupBy('DATE(session.schedule)')
-  .orderBy('date', 'ASC')
-  .setParameters({
-    vatDivisor: 1 + VAT,     // 1.15 if VAT is 0.15
-    advanced: ADVANCED,
-    associate: ASSOCIATE,
-    moderate: MODERATE,
-    couple: COUPLE,
-    group: GROUP,
-    coupleModal: ModalName.COUPLE_THERAPY,
-    groupModal: ModalName.GROUP_THERAPY,
-  });
+    `, 'revenueOverTime')
+    .groupBy('DATE(session.schedule)')
+    .orderBy('date', 'ASC')
+    .setParameters({
+      vat: VAT,
+      advanced: ADVANCED,
+      associate: ASSOCIATE,
+      moderate: MODERATE,
+      couple: COUPLE,
+      group: GROUP,
+      coupleModal: ModalName.COUPLE_THERAPY,
+      groupModal: ModalName.GROUP_THERAPY,
 
+    });
 
   return await qb.getRawMany();
 }
