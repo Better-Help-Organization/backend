@@ -463,7 +463,7 @@ export class SessionService {
             .map((f) => f.replace(/([A-Z])/g, ' $1').toLowerCase())
             .join(', ');
           throw new BadRequestException(
-            `You can’t change ${readableFields} for this session because sessoin is complete.`
+            `You can’t change ${readableFields} for this session because session is complete.`
           );
         }
       }
