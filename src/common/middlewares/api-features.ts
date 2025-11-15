@@ -44,199 +44,137 @@ export class APIFeatures {
     return raw; // fallback: string
   }
 
+  private resolveNestedRelation(path: string): string {
+    const parts = path.split(".");
+    let parentAlias = this.tableName;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      const relation = parts[i];
+
+      // Create alias that is globally unique:
+      const alias = `${parentAlias}_${relation}_${this.joinedRelations.size}`;
+
+      if (!this.joinedRelations.has(alias)) {
+        this.query.leftJoinAndSelect(`${parentAlias}.${relation}`, alias);
+        this.joinedRelations.add(alias);
+      }
+
+      parentAlias = alias;
+    }
+
+    const finalField = parts[parts.length - 1];
+    return `${parentAlias}.${finalField}`;
+  }
+
   filter() {
     if (!this.queryParams?.filters) return this;
 
-    const filters = this.queryParams.filters.split(',').map((f: string) => f.trim());
+    const filters = this.queryParams.filters
+      .split(",")
+      .map(f => f.trim())
+      .filter(Boolean);
 
-    filters.forEach((filter: string, index: number) => {
-      // OR clause support: (field=value|field2=value2)
-      if (filter.startsWith('(') && filter.endsWith(')') && filter.includes('|')) {
-        const orConditions = filter.slice(1, -1).split('|');
+    const processFilterExpression = (expr: string, index: number, orIndex?: number) => {
+      const match = expr.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
+      if (!match) return null;
 
-        const orWhereClauses = orConditions.map((orCond, i) => {
-          const match = orCond.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
-          if (!match) return '';
+      let [, field, operator, rawValue] = match;
+      field = field.trim();
+      rawValue = rawValue.trim();
 
-          let [_, field, operator, rawValue] = match;
-          field = field.trim();
-          rawValue = rawValue.trim();
+      // --- DISTINCT detection ---
+      const distinctMatch = rawValue.match(/^@distinct(?::(\d+))?$/);
+      if (distinctMatch) {
+        this.distinctField = field;
+        return null;
+      }
+      const inlineDistinctMatch = rawValue.match(/@distinct(?::(\d+))?$/);
+      if (inlineDistinctMatch) {
+        this.distinctField = field;
+        rawValue = rawValue.replace(/@distinct(?::\d+)?$/, "").trim();
+      }
 
-          // Handle @distinct in OR clause
-          const distinctMatch = rawValue.match(/^@distinct(?::(\d+))?$/);
-          if (distinctMatch) {
-            this.distinctField = field;
-            return ''; // skip WHERE clause
-          }
-          const inlineDistinctMatch = rawValue.match(/@distinct(?::(\d+))?$/);
-          if (inlineDistinctMatch) {
-            this.distinctField = field;
-            rawValue = rawValue.replace(/@distinct(?::\d+)?$/, '').trim();
-          }
+      // --- Resolve deeply nested relations ---
+      const fieldPath = field.includes(".")
+        ? this.resolveNestedRelation(field)
+        : `${this.tableName}.${field}`;
 
-          const fieldParts = field.split('.');
-          let fieldPath: string;
-          if (fieldParts.length > 1) {
-            const relation = fieldParts[0];
-            const relationField = fieldParts[1];
+      // --- NULL handling ---
+      if (rawValue === "null") return `${fieldPath} IS NULL`;
+      if (rawValue === "!null" || rawValue === "!=null") return `${fieldPath} IS NOT NULL`;
+      if (rawValue === "") return null; // empty after @distinct strip
 
-            if (!this.joinedRelations.has(relation)) {
-              this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
-              this.joinedRelations.add(relation);
-            }
-            fieldPath = `${relation}.${relationField}`;
-          } else {
-            fieldPath = `${this.tableName}.${fieldParts[0]}`;
-          }
+      // --- Param name ---
+      const paramName = `${field.replace(/\W+/g, "_")}_${index}` + (orIndex != null ? `_${orIndex}` : "");
+      let queryValue = this.parseValue(rawValue);
 
-          const paramName = `${field.replace(/\W+/g, '_')}_${index}_${i}`;
-          let clause = '';
-          let queryValue = this.parseValue(rawValue);
+      // --- Date handling (rangeable YYYY-MM-DD) ---
+      if (queryValue instanceof Date) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+          const nextDay = new Date(queryValue);
+          nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-          // Handle nulls
-          if (queryValue && queryValue.notNull) {
-            return `${fieldPath} IS NOT NULL`;
-          } else if (rawValue === 'null') {
-            return `${fieldPath} IS NULL`;
-          }
+          this.query.setParameter(`${paramName}Start`, queryValue);
+          this.query.setParameter(`${paramName}End`, nextDay);
 
-          // Handle dates
-          if (queryValue instanceof Date) {
-            if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
-              const nextDay = new Date(queryValue);
-              nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+          return `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
+        }
 
-              clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
-              this.query.setParameter(`${paramName}Start`, queryValue);
-              this.query.setParameter(`${paramName}End`, nextDay);
-            } else {
-              clause = `${fieldPath} ${operator} :${paramName}`;
-              this.query.setParameter(paramName, queryValue);
-            }
-          }
-          // Strings / numbers
-          else if (operator === '=') {
-            clause = `${fieldPath} LIKE :${paramName}`;
-            queryValue = `%${queryValue}%`;
-            this.query.setParameter(paramName, queryValue);
-          } else if (operator === ':=') {
-            clause = `${fieldPath} = :${paramName}`;
-            this.query.setParameter(paramName, queryValue);
-          } else {
-            clause = `${fieldPath} ${operator} :${paramName}`;
-            this.query.setParameter(paramName, queryValue);
-          }
+        this.query.setParameter(paramName, queryValue);
+        return `${fieldPath} ${operator} :${paramName}`;
+      }
 
-          return clause;
+      // --- Strings & LIKE behavior ---
+      if (operator === "=") {
+        queryValue = `%${queryValue}%`;
+        this.query.setParameter(paramName, queryValue);
+        return `${fieldPath} LIKE :${paramName}`;
+      }
+
+      // --- Exact match ---
+      if (operator === ":=") {
+        this.query.setParameter(paramName, queryValue);
+        return `${fieldPath} = :${paramName}`;
+      }
+
+      // --- All other operators ---
+      this.query.setParameter(paramName, queryValue);
+      return `${fieldPath} ${operator} :${paramName}`;
+    };
+
+    // === MAIN LOOP ===
+    filters.forEach((filter, index) => {
+      // OR GROUP: (a.b.c=1|x.y.z=2)
+      if (filter.startsWith("(") && filter.endsWith(")") && filter.includes("|")) {
+        const sub = filter.slice(1, -1).split("|");
+        const orClauses: string[] = [];
+
+        sub.forEach((expr, orIndex) => {
+          const clause = processFilterExpression(expr.trim(), index, orIndex);
+          if (clause) orClauses.push(clause);
         });
 
-        const orSql = orWhereClauses.filter(Boolean).join(' OR ');
-        if (orSql) {
-          index === 0
-            ? this.query.where(`(${orSql})`)
-            : this.query.andWhere(`(${orSql})`);
+        if (orClauses.length > 0) {
+          const sql = "(" + orClauses.join(" OR ") + ")";
+          index === 0 ? this.query.where(sql) : this.query.andWhere(sql);
         }
       }
 
-      // Standard filters
+      // STANDARD FILTER
       else {
-        const match = filter.match(/^(.*?)(=|:=|>=|<=|>|<|!=)(.*)$/);
-        if (!match) return;
-
-        let [_, field, operator, rawValue] = match;
-        field = field.trim();
-        rawValue = rawValue.trim();
-
-        // Handle @distinct
-        const distinctMatch = rawValue.match(/^@distinct(?::(\d+))?$/);
-        if (distinctMatch) {
-          this.distinctField = field;
-          return;
-        }
-        const inlineDistinctMatch = rawValue.match(/@distinct(?::(\d+))?$/);
-        if (inlineDistinctMatch) {
-          this.distinctField = field;
-          rawValue = rawValue.replace(/@distinct(?::\d+)?$/, '').trim();
-        }
-
-        const fieldParts = field.split('.');
-        let fieldPath: string;
-        if (fieldParts.length > 1) {
-          const relation = fieldParts[0];
-          const relationField = fieldParts[1];
-
-          if (!this.joinedRelations.has(relation)) {
-            this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
-            this.joinedRelations.add(relation);
-          }
-          fieldPath = `${relation}.${relationField}`;
-        } else {
-          fieldPath = `${this.tableName}.${fieldParts[0]}`;
-        }
-
-        // null handling
-        if (rawValue === 'null') {
-          const clause = `${fieldPath} IS NULL`;
+        const clause = processFilterExpression(filter, index);
+        if (clause) {
           index === 0 ? this.query.where(clause) : this.query.andWhere(clause);
-          return;
         }
-        if (rawValue === '!null' || rawValue === '!=null') {
-          const clause = `${fieldPath} IS NOT NULL`;
-          index === 0 ? this.query.where(clause) : this.query.andWhere(clause);
-          return;
-        }
-
-        // skip if distinct stripped value is empty
-        if (rawValue === '') {
-          return;
-        }
-
-        const paramName = `${field.replace(/\W+/g, '_')}_${index}`;
-        let clause = '';
-        let queryValue = this.parseValue(rawValue);
-
-        // date handling
-        if (queryValue instanceof Date) {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
-            const nextDay = new Date(queryValue);
-            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-
-            clause = `${fieldPath} >= :${paramName}Start AND ${fieldPath} < :${paramName}End`;
-            this.query.setParameter(`${paramName}Start`, queryValue);
-            this.query.setParameter(`${paramName}End`, nextDay);
-          } else {
-            clause = `${fieldPath} ${operator} :${paramName}`;
-            this.query.setParameter(paramName, queryValue);
-          }
-        }
-        // string/other operators
-        else if (operator === '=') {
-          clause = `${fieldPath} LIKE :${paramName}`;
-          queryValue = `%${queryValue}%`;
-          this.query.setParameter(paramName, queryValue);
-        } else if (operator === ':=') {
-          clause = `${fieldPath} = :${paramName}`;
-          this.query.setParameter(paramName, queryValue);
-        } else {
-          clause = `${fieldPath} ${operator} :${paramName}`;
-          this.query.setParameter(paramName, queryValue);
-        }
-
-        index === 0
-          ? this.query.where(clause)
-          : this.query.andWhere(clause);
       }
     });
 
-    // Apply DISTINCT if requested
+    // === APPLY DISTINCT ===
     if (this.distinctField) {
-      const fieldParts = this.distinctField.split('.');
-      let fieldPath: string;
-      if (fieldParts.length > 1) {
-        fieldPath = `${fieldParts[0]}.${fieldParts[1]}`;
-      } else {
-        fieldPath = `${this.tableName}.${fieldParts[0]}`;
-      }
+      const fieldPath = this.distinctField.includes(".")
+        ? this.resolveNestedRelation(this.distinctField)
+        : `${this.tableName}.${this.distinctField}`;
+
       this.query.distinct(true).addSelect(fieldPath);
     }
 
