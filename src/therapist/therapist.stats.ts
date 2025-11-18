@@ -116,6 +116,7 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
     ])
     .where('session.hasTherapistAttended = true');
 
+  // Filter by schedule date
   if (start && end) {
     qb.andWhere('session.schedule BETWEEN :start AND :end', {
       start: new Date(start),
@@ -123,6 +124,7 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
     });
   }
 
+  // Filter by therapist
   if (therapistId) {
     qb.andWhere('therapist.id = :therapistId', { therapistId });
   }
