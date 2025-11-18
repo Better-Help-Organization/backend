@@ -30,6 +30,10 @@ export class ClientSubscription extends CommonEntity {
   @ApiProperty({ type: () => Session, isArray: true })
   @OneToMany(() => Session, session => session.subscription, { cascade: true, eager: true })
   session: Session[];
+  // chat 
+  // pref
+  // modal
+  // match
 
   @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.INACTIVE })

@@ -40,7 +40,7 @@ export class MatchService {
     private readonly parameterService: ParameterService,
   ) {}
 
-  async create(token: TokenPayload, createMatchDto: CreateMatchDto): Promise<{ message: string }> {
+  async create(token: TokenPayload, createMatchDto: CreateMatchDto, mockId?: string): Promise<{ message: string }> {
     const existingMatch = await this.matchRepository.findOne({
       where: {
         client: { id: token.id },
@@ -306,11 +306,59 @@ export class MatchService {
 
   async update(token: TokenPayload, id: string, updateMatchDto: UpdateMatchDto) {
     const match = await this.findOne(id);
-    Object.assign(match, updateMatchDto);
     try {
-      const updated = await this.matchRepository.save(match);
-      this.logger.log(`Updated match with ID: ${id}`);
-      return updated;
+      if ('accepted' in updateMatchDto)
+        {
+          const match = await this.matchRepository.findOne({
+            where: { id },
+            relations: ['accepted','client'],
+          });
+          const { accepted } = match
+          const newTherapist = await this.therapistService.findOne(updateMatchDto.accepted!);
+          if (!newTherapist) {
+            throw new NotFoundException('Therapist not found');
+          }
+
+          const prevTherapistToken = accepted?.firebaseToken;
+          const newTherapistToken = newTherapist?.firebaseToken;
+    
+            // // 🟢 Notify client
+            // if (clientToken) {
+            //   await this.firebaseService.sendPushNotification(
+            //     { client: [clientToken], therapist: [], admin: [] },
+            //     JSON.stringify({ therapistId: newTherapist.id }),
+            //     SessionNotif.TH_REASSIGNED_CLIENT,
+            //     `Your therapist has been changed to ${newTherapist.fullName}.`
+            //   );
+            // }
+    
+            // 🟠 Notify previous therapist
+            if (prevTherapistToken) {
+              await this.firebaseService.sendPushNotification(
+                { client: [], therapist: [prevTherapistToken], admin: [] },
+                JSON.stringify({ matchId: id }),
+                SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
+                `Client ${match.client.firstName + " " + match.client.lastName} has been reassigned from you.`
+              );
+            }
+    
+            // 🔵 Notify new therapist
+            if (newTherapistToken) {
+              await this.firebaseService.sendPushNotification(
+                { client: [], therapist: [newTherapistToken], admin: [] },
+                JSON.stringify({ clientId: match.client.id }),
+                SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
+                `You have been assigned to client ${match.client.firstName + " " + match.client.lastName}.`
+              );
+            }
+          // }
+          
+          // match.accepted = therapist;
+          Object.assign(match, updateMatchDto);
+          const updated = await this.matchRepository.save(match);
+          this.logger.log(`Updated match with ID: ${id}`);
+          return updated;
+        }
     } catch (error) {
       this.logger.error(`Error updating match: ${error.message}`);
       throw error;

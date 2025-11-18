@@ -18,7 +18,9 @@ export class TherapistStatisticsService {
   async getTotalHours(therapistId?: string) {
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')
-      .where('session.hasTherapistAttended = true');
+      .where('session.hasTherapistAttended = true')    
+      .andWhere('session.schedule < NOW()');  // ONLY COUNT PAST SESSIONS
+
 
     if (therapistId) {
       qb.andWhere('session.therapistId = :therapistId', { therapistId });
@@ -96,7 +98,6 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
   const COUPLE = await this.paramService.getDefaultByName(DefaultParameters.COUPLE_PRICE_PERCENTAGE) as number;
   const GROUP = await this.paramService.getDefaultByName(DefaultParameters.GROUP_PRICE_PERCENTAGE) as number;
 
-  // VAT (example: 0.15 means 15%)
   const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number; 
 
   const qb = this.sessionRepo.createQueryBuilder('session')
@@ -105,9 +106,9 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
     .innerJoin('session.subscription', 'sub')
     .leftJoin('sub.subscription', 'rootsub')
     .innerJoin('session.modal', 'modal')
-    .where('session.hasTherapistAttended = true')
-    .andWhere('sub.price IS NOT NULL'); // ensure sessions have a price
+    .where('session.hasTherapistAttended = true');
 
+  // Filter by schedule date
   if (start && end) {
     qb.andWhere('session.schedule BETWEEN :start AND :end', {
       start: new Date(start),
@@ -115,39 +116,49 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
     });
   }
 
+  // Filter by therapist
   if (therapistId) {
     qb.andWhere('therapist.id = :therapistId', { therapistId });
   }
 
   qb
     .select(`DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY)`, 'date')
-    .addSelect(`
-      SUM(
-         (
-        sub.price /
-        CASE rootsub.type
-          WHEN 0 THEN 1
-          WHEN 1 THEN 4
-          WHEN 3 THEN 12
-          WHEN 6 THEN 24
-          WHEN 12 THEN 48
-        END
+    .addSelect(
+      `
+      ROUND(
+        SUM(
+          -- REMOVE VAT
+          (COALESCE(sub.price, 0) / (1 + :vat))
+          *
+          -- APPLY SESSION-TYPE PERCENTAGE
+          (
+            CASE
+              WHEN COALESCE(modal.name, '') LIKE :coupleModal THEN :couple
+              WHEN COALESCE(modal.name, '') LIKE :groupModal THEN :group
+              WHEN level.type = 'ADVANCED' THEN :advanced
+              WHEN level.type = 'ASSOCIATE' THEN :associate
+              WHEN level.type = 'MODERATE' THEN :moderate
+              ELSE 1
+            END
+          )
+          /
+          -- SAFE DIVISION BY SUBSCRIPTION TYPE
+          COALESCE(
+            CASE rootsub.type
+              WHEN 0 THEN 1
+              WHEN 1 THEN 4
+              WHEN 3 THEN 12
+              WHEN 6 THEN 24
+              WHEN 12 THEN 48
+            END,
+            1  -- fallback if null
+          )
+        ), 2
       )
-      / (1 + :vat) * 
-        (
-          CASE
-            WHEN modal.name LIKE :coupleModal THEN :couple
-            WHEN modal.name LIKE :groupModal THEN :group
-            WHEN level.type = 'ADVANCED' THEN :advanced
-            WHEN level.type = 'ASSOCIATE' THEN :associate
-            WHEN level.type = 'MODERATE' THEN :moderate
-            ELSE 1
-          END
-        )
-      )
-    `, 'revenueOverTime')
-    .groupBy(`DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY)`)
-    .orderBy(`DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY)`, 'ASC')
+      `,
+      'revenueOverTime'
+    )
+    .groupBy('date')
     .orderBy('date', 'ASC')
     .setParameters({
       vat: VAT,
@@ -158,11 +169,11 @@ async getRevenueOverTime(start: string, end: string, therapistId: string) {
       group: GROUP,
       coupleModal: ModalName.COUPLE_THERAPY,
       groupModal: ModalName.GROUP_THERAPY,
-
     });
 
   return await qb.getRawMany();
 }
+
 
 
 async getTotalRevenue(therapistId?: string) {
@@ -175,13 +186,15 @@ async getTotalRevenue(therapistId?: string) {
 
   const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number; 
 
+  console.log({ADVANCED_PRICE_PERCENTAGE, ASSOCIATE_PRICE_PERCENTAGE, COUPLE_PRICE_PERCENTAGE, GROUP_PRICE_PERCENTAGE, MODERATE_PRICE_PERCENTAGE, VAT})
   const qb = this.sessionRepo.createQueryBuilder('session')
     .leftJoin('session.therapist', 'therapist')
     .leftJoin('session.subscription', 'sub')
     .leftJoin('sub.subscription', 'rootsub')
     .leftJoin('therapist.level', 'level')
     .innerJoin('session.modal', 'modal')
-    .where('session.hasTherapistAttended = true');
+    .where('session.hasTherapistAttended = true')
+    .andWhere('session.schedule < NOW()');  // ONLY COUNT PAST SESSIONS
 
   if (therapistId) {
     qb.andWhere('session.therapistId = :therapistId', { therapistId });
@@ -191,16 +204,8 @@ async getTotalRevenue(therapistId?: string) {
   qb.select(`
     ROUND(SUM(
       (
-        sub.price /
-        CASE rootsub.type
-          WHEN 0 THEN 1
-          WHEN 1 THEN 4
-          WHEN 3 THEN 12
-          WHEN 6 THEN 24
-          WHEN 12 THEN 48
-        END
+        COALESCE(sub.price, 0) / (1 + :vat)
       )
-      / (1 + :vat)
       *
       (
         CASE
@@ -212,8 +217,19 @@ async getTotalRevenue(therapistId?: string) {
           ELSE 1
         END
       )
-  ),2)`,
-  'totalRevenue')
+      /
+      COALESCE(
+        CASE rootsub.type
+          WHEN 0 THEN 1
+          WHEN 1 THEN 4
+          WHEN 3 THEN 12
+          WHEN 6 THEN 24
+          WHEN 12 THEN 48
+        END,
+        1
+      )
+    ), 2)
+  `, 'totalRevenue')
   .setParameters({
     vat: VAT,
     advanced: ADVANCED_PRICE_PERCENTAGE,
@@ -313,7 +329,7 @@ async getTotalRevenue(therapistId?: string) {
       totalUsersQb.where('session.therapistId = :therapistId', { therapistId });
     }
     const { totalUsers } = await totalUsersQb.getRawOne();
-
+    console.log({period: { start, end }})
     return {
       period: { start, end },
       totalSessions: Number(totalSessions) || 0,

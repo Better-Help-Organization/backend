@@ -16,12 +16,21 @@ export class MatchController {
   constructor(private readonly matchService: MatchService) {}
 
   @Post()
-  @UseGuards(ClientJwtAuthGuard)
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   async create(
-    @CurrentUser() client: TokenPayload,
-    @Body() createMatchDto: CreateMatchDto
+    @AllowAdminAccess(UserTypes.CLIENT) client: TokenPayload,
+    @Body() createMatchDto: CreateMatchDto,
+    @Query('mockId') mockId?: string
   ) {
-    return this.matchService.create(client, createMatchDto);
+    return this.matchService.create(client, createMatchDto, mockId);
   }
 
   @Post('/accept')

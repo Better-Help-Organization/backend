@@ -531,6 +531,16 @@ export class SessionService {
         session.latestReason = reason;
       }
 
+      if (session.hasTherapistAttended) {
+        if ('therapist' in updateSessionDto && updateSessionDto.therapist) {
+          if (updateSessionDto.therapist !== session.therapist?.id) {
+            throw new BadRequestException('Cannot reassign therapist after session has been attended.');
+          }
+        }
+      }
+
+
+
       // ✅ Apply all other updates
       Object.assign(session, { ...sanitizedDto, status: undefined });
       const savedSession = await this.sessionRepo.save(session);
@@ -692,6 +702,26 @@ export class SessionService {
 
         // ✅ Update isInGroup for clients
         for (const client of clientsForThisSession) {
+          if (!client.activeSubscription) throw new BadRequestException('Client missing active subscription') ;
+
+          const clientSub = await manager.findOne(ClientSubscription, {
+            where: { id: client.activeSubscription.id },
+            relations: ['session'],
+          });
+
+          if (clientSub) {
+            clientSub.session = [...(clientSub.session || []), savedSession];
+            
+            // Update subscription start/end based on sessions
+            const allClientSessions = [...(clientSub.session || [])];
+            const firstDate = allClientSessions.map(s => s.schedule).sort((a, b) => a.getTime() - b.getTime())[0];
+            const lastDate = allClientSessions.map(s => s.schedule).sort((a, b) => b.getTime() - a.getTime())[0];
+
+            clientSub.start_date = firstDate;
+            clientSub.end_date = lastDate;
+
+            await manager.save(clientSub);
+          }
           if (!client.isInGroup) {
             console.log({client})
             await manager.update(Client, { id: client.id }, { isInGroup: true });

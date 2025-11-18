@@ -126,7 +126,7 @@ export class Session extends CommonEntity {
   modal: Modal;
 
   @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
-  @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ClientSubscription, (sub) => sub.session, { onDelete: 'CASCADE' })
   subscription: ClientSubscription;
 
 

@@ -59,7 +59,10 @@ export class TherapistController {
     @Query('endDate') endDate?: string,
     @Query('mockId') mockId?: string
   ) {
-    return this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
+    if (mockId) {
+      therapist = { id: mockId } as TokenPayload;
+    }
+    return await this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
   }
 
   @ApiFindAllQueryParams()
