@@ -274,6 +274,49 @@ export class ChatService {
       return error;
     }
   }
+  private SENSITIVE_KEYS = [
+    'password',
+    'refreshToken',
+    'firebaseToken',
+    'OTP',
+    'OTPExpires',
+    // 'email',
+    // 'phoneNumber',
+    'dob',
+    'lastSeenAt',
+    'createdAt',
+    'updatedAt'
+  ];
+
+  protected maskValue(value: any) {
+      // return "***"; // If you prefer masking
+      return undefined; // remove key entirely
+    }
+
+  private sanitize(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+
+      // Arrays → sanitize each element
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.sanitize(item));
+      }
+
+      // Objects
+      const sanitized: any = {};
+
+      for (const [key, value] of Object.entries(obj)) {
+        // Remove sensitive keys
+        if (this.SENSITIVE_KEYS.includes(key)) {
+          sanitized[key] = this.maskValue(value);
+          continue;
+        }
+
+        // Recursively sanitize nested objects
+        sanitized[key] = this.sanitize(value);
+      }
+
+      return sanitized;
+    }
 
   async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto) {
   try {
@@ -287,7 +330,7 @@ export class ChatService {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
     console.log({chat})
     const { content } = createMessageDto;
-    const msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
+    let msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
     if (!msg) throw new BadRequestException("Unable to send message");
 
@@ -319,11 +362,14 @@ export class ChatService {
         profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
-    console.log({tk:tokens})
+
+    msg = this.sanitize(msg);
+
+    console.log({sanitized:msg})
       await this.firebaseService.sendPushNotification(
         tokens, 
         JSON.stringify(msg), 
-        {...SessionNotif.NEW_MESSAGE, title:sender.name}, 
+        SessionNotif.NEW_MESSAGE, 
         content,
         profile
       );
@@ -333,36 +379,6 @@ export class ChatService {
     throw error;
   }
 }
-
-  // async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
-  //   try {
-  //     let client = null
-  //     let therapist = null
-
-  //     if (sender.type === UserTypes.CLIENT) client = sender.id 
-  //     if (sender.type === UserTypes.THERAPIST) therapist = sender.id
-      
-  //     const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
-
-  //     const { content  } = createMessageDto
-  //     const msg = await chat.addMessage(this.msgRepo,content,therapist,client, this.chatRepo)
-
-  //     if(msg) {
-  //       let token: string[] = []
-  //       if (sender.type === UserTypes.CLIENT) token.push(chat.therapist.firebaseToken)
-  //       if( sender.type === UserTypes.THERAPIST) token.push(chat.client.firebaseToken)
-
-  //       await this.firebaseService.sendPushNotification(token, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content)
-  //     }
-  //     else {
-  //       throw new BadRequestException("Unable to send message")
-  //     }
-
-  //   } catch (error) {
-  //     this.logger.error(`Error finding all message: ${error.message}`);
-  //     return error;
-  //   }
-  // }
 
   async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto) {
   try {
@@ -421,46 +437,6 @@ export class ChatService {
   }
 }
 
-  // async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto){
-  //   try {
-  //     let client = null
-  //     let therapist = null
-  //     if (sender.type == UserTypes.CLIENT) client = sender.type 
-  //     if (sender.type == UserTypes.THERAPIST) therapist = sender.type
-  //     // console.log({client, therapist, id})
-  //     const { content } = updateMessageDto
-  //     const msg = await  this.msgRepo.findOne({
-  //       where: {id},
-  //       relations:["client","therapist"]
-  //     });
-
-  //   if(!msg) throw new NotFoundException("Message Not Found")
-
-  //   if (msg.client.id !== client ||  msg.therapist.id !== therapist)
-  //     throw new MethodNotAllowedException("You can't edit a message in this chat")
-      
-  //   const chat = await this.findOne(chatId, {fields:"client.firebaseToken, therapist.firebaseToken"})
-  //   const editedMsg = await chat.editMessage(this.msgRepo,id,content)
-
-  //   console.log({chat})
-  //   console.log({editedMsg})
-
-  //   if(editedMsg) {
-  //       let token: string[] = []
-  //     if (sender.type == UserTypes.THERAPIST) token.push(chat.therapist.firebaseToken)
-      
-  //     if( sender.type == UserTypes.CLIENT) token.push(chat.client.firebaseToken)
-
-  //     await this.firebaseService.sendPushNotification(token, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content)
-      
-  //   }
-  //   else {
-  //     throw new BadRequestException("Error while editing the message")
-  //   }
-  //   } catch (error) {
-  //     throw  error;
-  //   }
-  // }
 
   async markMessagesAsRead(chatId: string, user: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
@@ -522,10 +498,6 @@ export class ChatService {
       throw error;
     }
   }
-
-  // update(id: string, updateChatDto: UpdateChatDto) {
-  //   return `This action updates a #${id} chat`;
-  // }
 
   async remove(id: string) {
     try {
