@@ -10,6 +10,7 @@ import { Status } from 'src/common/entities/status.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { toEthiopianTime } from "src/common/utils/toEthiopianTime";
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
@@ -202,8 +203,8 @@ export class SessionService {
       if (clientEntity?.firebaseToken) tokens.client.push(clientEntity.firebaseToken);
       if (groupEntities)
         tokens.client.push(...groupEntities.data.map((c) => c.firebaseToken));
-      if (therapistEntity?.firebaseToken)
-        tokens.therapist.push(therapistEntity.firebaseToken);
+      // if (therapistEntity?.firebaseToken)
+      //   tokens.therapist.push(therapistEntity.firebaseToken);
 
       // Send one notification with all session IDs
       this.firebaseService.sendPushNotification(
@@ -547,20 +548,21 @@ export class SessionService {
 
       // ✅ Notify schedule change
       if ('schedule' in sanitizedDto) {
+        console.log('Schedule changed, sending notification',session.schedule);
+    const etTime = toEthiopianTime(session.schedule);
+
         this.firebaseService.sendPushNotification(
-          { client: [], therapist: [], admin: [] },
+          { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
           JSON.stringify(savedSession),
           SessionNotif.SCHEDULED,
-          `Your session has been updated for ${new Date(
-            session.schedule
-          ).toLocaleString()}`
+          `Your session has been updated for ${etTime}`
         );
       }
 
       // ✅ Notify status change
       if ('status' in sanitizedDto) {
         this.firebaseService.sendPushNotification(
-          { client: [], therapist: [], admin: [] },
+          { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
           JSON.stringify(savedSession),
           SessionNotif.STATUS_CHANGED,
           `Your session status is now ${session.latestStatus}`
