@@ -352,8 +352,8 @@ export class SessionService {
           schedule.setDate(schedule.getDate() + i * 7);
 
           try {
-            console.log("Creating schedule for iteration - session.service.ts:343", i, schedule.toISOString());
-            console.log("Trying to create recurring session at: - session.service.ts:344", schedule.toISOString());
+            console.log("Creating schedule for iteration - session.service.ts:355", i, schedule.toISOString());
+            console.log("Trying to create recurring session at: - session.service.ts:356", schedule.toISOString());
         
             const newSession = manager.create(Session, {
               therapist: selected.therapist,
@@ -370,7 +370,7 @@ export class SessionService {
             delete newSession.id; // ensure no leftover ID from cache
         
             const saved = await manager.save(newSession);
-            console.log("Saved recurring session: - session.service.ts:358", saved.id);
+            console.log("Saved recurring session: - session.service.ts:373", saved.id);
         
             allSessions.push(saved);
         
@@ -412,7 +412,7 @@ export class SessionService {
               `Updated subscription ${subscription.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
             );
           } catch (err) {
-              console.error("Failed to save recurring session at - session.service.ts:397", schedule.toISOString(), err.message);
+              console.error("Failed to save recurring session at - session.service.ts:415", schedule.toISOString(), err.message);
           }
         }
 
@@ -548,7 +548,7 @@ export class SessionService {
 
       // ✅ Notify schedule change
       if ('schedule' in sanitizedDto) {
-        console.log('Schedule changed, sending notification',session.schedule);
+        console.log('Schedule changed, sending notification - session.service.ts:551',session.schedule);
     const etTime = toEthiopianTime(session.schedule);
 
         this.firebaseService.sendPushNotification(
@@ -697,7 +697,16 @@ export class SessionService {
           client: null,
           commonId
         });
-        // console.log({session:session.group})
+        console.log({session})
+
+        const subs: ClientSubscription[] = [];
+        for (const client of clientsForThisSession) {
+          if (client.activeSubscription && client.activeSubscription.subscription) {
+            subs.push(client.activeSubscription);
+          }
+        }
+        session.groupSubscription = subs;
+
         const savedSession = await manager.save(session);
         allSessions.push(savedSession);
         scheduleDates.push(schedule);

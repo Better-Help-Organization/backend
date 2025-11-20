@@ -129,6 +129,16 @@ export class Session extends CommonEntity {
   @ManyToOne(() => ClientSubscription, (sub) => sub.session, { onDelete: 'CASCADE' })
   subscription: ClientSubscription;
 
+  @ApiProperty({ type: () => [ClientSubscription] })
+  @ManyToMany(() => ClientSubscription, {
+    nullable: true,
+  })
+  @JoinTable({
+    name: 'session_group_subscriptions',
+    joinColumn: { name: 'session_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'subscription_id', referencedColumnName: 'id' },
+  })
+  groupSubscription: ClientSubscription[];
 
   async addMessage(
     msgRepo: Repository<Message>,

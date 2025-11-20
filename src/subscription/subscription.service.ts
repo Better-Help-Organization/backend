@@ -213,9 +213,13 @@ export class SubscriptionService {
         const candidates = [...activeClientSubs, subscription];
 
         const latestSub = candidates.reduce((latest, curr) => {
-          if (!curr.end_date) return latest;
-          if (!latest.end_date) return curr;
-          return curr.end_date > latest.end_date ? curr : latest;
+          const currEnd = curr.end_date ? new Date(curr.end_date) : null;
+          const latestEnd = latest.end_date ? new Date(latest.end_date) : null;
+
+          if (!currEnd) return latest;
+          if (!latestEnd) return curr;
+
+          return currEnd > latestEnd ? curr : latest;
         });
 
         for (const cs of candidates) {
