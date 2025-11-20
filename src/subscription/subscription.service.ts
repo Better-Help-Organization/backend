@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
+import { ModalName, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
@@ -10,6 +10,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { ParameterService } from 'src/parameter/parameter.service';
 import { Repository } from 'typeorm';
 import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -36,6 +37,9 @@ export class SubscriptionService {
     private readonly logger: LoggerService,
 
     private readonly firebaseService: FirebaseService,
+
+    private readonly paramService: ParameterService
+
     
   ) {}
 
@@ -85,7 +89,7 @@ export class SubscriptionService {
 
       const selectedSub = await this.subscriptionRepo.findOne({
         where: { id: dto.subscriptionId, is_admin_created: true },
-        relations: ['level'],
+        relations: ['level','modal'],
       });
       if (!selectedSub) throw new NotFoundException('Admin-created subscription not found');
 
@@ -95,6 +99,22 @@ export class SubscriptionService {
       // const finalPrice = selectedSub.price ? selectedSub.price * multiplier : null;
       // const finalOldPrice = selectedSub.old_price ? selectedSub.old_price * multiplier : null;
 
+      const ADVANCED = await this.paramService.getDefaultByName('ADVANCED_PRICE_PERCENTAGE') as number;
+      const ASSOCIATE = await this.paramService.getDefaultByName('ASSOCIATE_PRICE_PERCENTAGE') as number;
+      const MODERATE = await this.paramService.getDefaultByName('MODERATE_PRICE_PERCENTAGE') as number;
+      const COUPLE = await this.paramService.getDefaultByName('COUPLE_PRICE_PERCENTAGE') as number;
+      const GROUP = await this.paramService.getDefaultByName('GROUP_PRICE_PERCENTAGE') as number;
+
+      let sessionPercent = 1;
+      const modalName = selectedSub.modal.name.toUpperCase();
+      const levelType = selectedSub.level.type.toUpperCase();
+
+      if (selectedSub.modal.name.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+      else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+      else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
+      else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+      else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+      
       const clientSub = this.clientSubscriptionRepo.create({
         client,
         subscription: selectedSub,
@@ -102,7 +122,8 @@ export class SubscriptionService {
         start_date: null,
         end_date: null,
         old_price: selectedSub.old_price,
-        price: selectedSub.price
+        price: selectedSub.price,
+        therapistPercentage: sessionPercent
       });
 
       const csub = await this.clientSubscriptionRepo.save(clientSub);

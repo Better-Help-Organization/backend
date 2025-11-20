@@ -110,6 +110,7 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
       'session.id',
       'session.schedule',
       'sub.price',
+      'sub.therapistPercentage',
       'modal.name',
       'level.type',
       'rootsub.type'
@@ -138,16 +139,21 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
     const dateKey = new Date(s.session_schedule).toISOString().slice(0, 10); // YYYY-MM-DD
 
     const basePrice = (s.sub_price || 0) / (1 + VAT);
-
-    let sessionPercent = 1;
+    let sessionPercent = 1;;
+    
     const modalName = s.modal_name || '';
     const levelType = s.level_type?.toUpperCase();
 
-    if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
-    else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
-    else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
-    else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
-    else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+    if (s.therapist_percentage) {
+        sessionPercent = s.therapist_percentage
+    }
+    else {
+        if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+        else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+        else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
+        else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+        else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+    }
 
     let subDivisor = 1;
     const rootsubType = Number(s.rootsub_type);
@@ -193,6 +199,7 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
       .innerJoin('session.modal', 'modal')
       .select([
         'sub.price',
+        'sub.therapistPercentage',
         'modal.name',
         'level.type',
         'rootsub.type'
@@ -211,16 +218,22 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
 
     for (const s of sessions) {
       const basePrice = (s.sub_price || 0) / (1 + VAT);
-
       let sessionPercent = 1;
+
       const modalName = s.modal_name || '';
       const levelType = s.level_type?.toUpperCase();
 
-      if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
-      else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
-      else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
-      else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
-      else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+      if (s.therapist_percentage) {
+        sessionPercent = s.therapist_percentage
+      }
+      else {
+
+        if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+        else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+        else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
+        else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+        else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+      }
 
       let subDivisor = 1;
       const rootsubType = Number(s.rootsub_type);
