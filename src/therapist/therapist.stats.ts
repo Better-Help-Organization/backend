@@ -101,11 +101,11 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
 
   // 1️⃣ Fetch raw session data
   const qb = this.sessionRepo.createQueryBuilder('session')
-    .innerJoin('session.therapist', 'therapist')
-    .innerJoin('therapist.level', 'level')
-    .innerJoin('session.subscription', 'sub')
+    .leftJoin('session.therapist', 'therapist')
+    .leftJoin('therapist.level', 'level')
+    .leftJoin('session.subscription', 'sub')
     .leftJoin('sub.subscription', 'rootsub')
-    .innerJoin('session.modal', 'modal')
+    .leftJoin('session.modal', 'modal')
     .select([
       'session.id',
       'session.schedule',
@@ -131,10 +131,10 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
   }
 
   const sessions = await qb.getRawMany();
-
+  console.log({therapistId})
   // 2️⃣ Calculate revenue in JS
   const revenueMap: Record<string, number> = {};
-
+  console.log({sessions})
   for (const s of sessions) {
     const dateKey = new Date(s.session_schedule).toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -142,7 +142,7 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
     let sessionPercent = 1;;
     
     const modalName = s.modal_name || '';
-    const levelType = s.level_type?.toUpperCase();
+    const levelType = s.level_type ? s.level_type.toUpperCase():null;
 
     if (s.therapist_percentage) {
         sessionPercent = s.therapist_percentage

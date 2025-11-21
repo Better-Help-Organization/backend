@@ -27,8 +27,8 @@ export class ClientSubscription extends CommonEntity {
   @OneToMany(() => Payment, payment => payment.subscription, { cascade: true })
   payment: Payment[];
 
-  @ApiProperty({ example: 0.4, description: 'var percentage at time of subscription (if applicable)' })
-  @Column('int', { nullable: true })
+  @ApiProperty({ example: 0.4, description: 'percentage at time of subscription (if applicable)' })
+  @Column('float', { nullable: true })
   therapistPercentage: number;
 
   @ApiProperty({ type: () => Session, isArray: true })

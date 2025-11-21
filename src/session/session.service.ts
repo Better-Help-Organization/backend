@@ -554,7 +554,7 @@ export class SessionService {
         this.firebaseService.sendPushNotification(
           { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
           JSON.stringify(savedSession),
-          SessionNotif.SCHEDULED,
+          SessionNotif.RE_SCHEDULED,
           `Your session has been updated for ${etTime}`
         );
       }
