@@ -53,9 +53,17 @@ export class DiaryService {
   }
 
 
-  update(id: string, updateDiaryDto: UpdateDiaryDto) {
-    return `This action updates a #${id} diary`;
-  }
+  async update(id: string, updateDiaryDto: UpdateDiaryDto) {
+    const diary = await this.findOne(id);
+    Object.assign(diary, updateDiaryDto);
+    try {
+      const updated = await this.diaryRepo.save(diary);
+      this.logger.log(`Updated diary with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating diary: ${error.message}`);
+      throw error;
+    }  }
 
   async remove(id: string) {
     try {

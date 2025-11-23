@@ -61,11 +61,32 @@ export class MoodService {
   }
 
 
-  update(id: number, updateMoodDto: UpdateMoodDto) {
-    return `This action updates a #${id} mood`;
+  async update(id: string, updateMoodDto: UpdateMoodDto) {
+    const mood = await this.findOne(id);
+    Object.assign(mood, updateMoodDto);
+    try {
+      const updated = await this.mooodRepo.save(mood);
+      this.logger.log(`Updated mood with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating mood: ${error.message}`);
+      throw error;
+    }  }
+
+
+  async remove(id: string) {
+    try {
+      this.logger.log(`Removing mood with ID: ${id}`);
+      const result = await this.mooodRepo.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`mood with ID ${id} not found`);
+      }
+      this.logger.log(`mood with ID ${id} removed`);
+      return `mood removed`;
+    } catch (error) {
+      this.logger.error(`Error removing mood: ${error.message}`);
+      throw error;
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} mood`;
-  }
 }

@@ -81,9 +81,17 @@ export class QuoteService {
 
   
 
-  update(id: string, updateQuoteDto: UpdateQuoteDto) {
-    return `This action updates a #${id} quote`;
-  }
+  async update(id: string, updateQuoteDto: UpdateQuoteDto) {
+    const quote = await this.findOne(id);
+    Object.assign(quote, updateQuoteDto);
+    try {
+      const updated = await this.quoteRepo.save(quote);
+      this.logger.log(`Updated quote with ID: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Error updating quote: ${error.message}`);
+      throw error;
+    }  }
 
   async remove(id: string) {
     try {
