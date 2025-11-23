@@ -109,8 +109,8 @@ export class SubscriptionService {
       const modalName = selectedSub.modal.name.toUpperCase();
       const levelType = selectedSub?.level?.type.toUpperCase();
 
-      if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
-      else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+      if (modalName === ModalName.COUPLE_THERAPY.toUpperCase()) sessionPercent = COUPLE;
+      else if (modalName === ModalName.GROUP_THERAPY.toUpperCase()) sessionPercent = GROUP;
       else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
       else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
       else if (levelType === 'MODERATE') sessionPercent = MODERATE;
