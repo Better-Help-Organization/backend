@@ -37,6 +37,7 @@ import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { TelebirrModule } from './telebirr/telebirr.module';
 import { TherapistModule } from './therapist/therapist.module';
+import { LivekitModule } from './livekit/livekit.module';
 
 @Module({
   imports: [
@@ -69,7 +70,8 @@ import { TherapistModule } from './therapist/therapist.module';
     PaymentModule,
     BankModule,
     NotificationModule,
-    TelebirrModule
+    TelebirrModule,
+    LivekitModule
   ],
   controllers: [AppController],
   providers: [AppService,   
