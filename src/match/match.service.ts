@@ -94,12 +94,12 @@ export class MatchService {
       .map(t => t.id)
       .filter(id => id);
 
-    // const therapists = await this.therapistService.findMatchingTherapists({
-    //   gender: preference.gender,
-    //   level: preference.level?.id,
-    //   modal: preference.modal?.id,
-    // });
-    const {data:therapists} = await this.therapistService.findAll({take:'0'});
+    const therapists = await this.therapistService.findMatchingTherapists({
+      gender: preference.gender,
+      level: preference.level?.id,
+      modal: preference.modal?.id,
+    });
+    // const {data:therapists} = await this.therapistService.findAll({take:'0'});
 
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');
