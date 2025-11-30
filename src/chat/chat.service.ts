@@ -8,6 +8,7 @@ import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { LivekitService } from 'src/livekit/livekit.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Repository } from 'typeorm';
@@ -28,6 +29,7 @@ export class ChatService {
     private readonly logger: LoggerService,  
     private readonly clientService: ClientService,  
     private readonly therapistService: TherapistService,  
+    private readonly livekitService: LivekitService,
 
   ) {}
   async create(id: string, createChatDto: CreateChatDto) {
@@ -280,12 +282,23 @@ export class ChatService {
     'firebaseToken',
     'OTP',
     'OTPExpires',
-    // 'email',
-    // 'phoneNumber',
+    'email',
+    'phoneNumber',
     'dob',
     'lastSeenAt',
     'createdAt',
-    'updatedAt'
+    'updatedAt',
+    'gender',
+    'isEmailAuthenticated',
+    'isPhoneNumberAuthenticated',
+    'status',
+    'gender',
+    'isLinked',
+    'emergencyContact',
+    'isVisible',
+    'address',
+    'bio',
+    'isInGroup'
   ];
 
   protected maskValue(value: any) {
@@ -519,46 +532,109 @@ export class ChatService {
     let  isGroupCall = createCallDto.calleeIds && createCallDto.calleeIds.length > 0 ? true : false;
     let chat;
 
-    if(!isGroupCall){
+      if (!isGroupCall) {
+    chat = await this.findOne(id, { fields: "client.*,therapist.*" });
 
-    chat = await this.findOne(id, {fields:"client.*,therapist.*"});
     const isCallerClient = chat.client.id === caller.id;
-    
-    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
-    const callerData = isCallerClient ? chat.client : chat.therapist ;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
+    const calleeData = isCallerClient ? chat.therapist : chat.client;
+        console.log({callerData, calleeData})
+    const room = `chat_${id}`;
 
-    const room = createCallDto.room;
-    const isVideoCall = createCallDto.isVideoCall;
-    
+    // Generate tokens uniquely for each participant
+    const callerToken = await this.livekitService.createToken(
+      callerData.firstName,
+      room,
+    );
+
+    const calleeToken = await this.livekitService.createToken(
+      calleeData.firstName,
+      room,
+    );
+
+    const payload = {
+      room,
+      callerData:this.sanitize(callerData),
+      chatId: id,
+      isVideoCall: createCallDto.isVideoCall,
+      isGroupCall: false,
+    };
+
+    // Send token only to the callee
     await this.firebaseService.sendPushNotification(
-      tokens, 
-      JSON.stringify({ room, callerData, chatId: id, isVideoCall, isGroupCall }), 
-      SessionNotif.INCOMING_CALL, 
-      `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`,
-      callerData.profile? callerData.profile: callerData.avatar.toString() 
-    )
+      {
+        client: isCallerClient ? [] : [chat.client.firebaseToken],
+        therapist: isCallerClient ? [chat.therapist.firebaseToken] : [],
+        admin: [],
+      },
+      JSON.stringify({
+        ...payload,
+        token: calleeToken, // THE IMPORTANT PART
+      }),
+      SessionNotif.INCOMING_CALL,
+      `Incoming call from ${callerData.firstName}`,
+      callerData.profile || callerData.avatar.toString(),
+    );
+
+    // Return caller's own token in API response
+    return {
+      room,
+      token: callerToken,
+      chat,
+    };
   }
 
   else {
-    chat = await this.findAll({fields:"group.*", ids: `${id}`});
-    console.log({chat:chat.data[0].group})
-    tokens.client = chat.data[0].group
-      .filter(c => createCallDto.calleeIds.includes(c.id))
-      .map(c => c.firebaseToken)
-      .filter(Boolean);
-    
+    chat = await this.findAll({ fields: "group.*", ids: `${id}` });
+
+    const room = `group_${id}`;
     const callerData = await this.therapistService.findOne(caller.id);
 
-    const room = createCallDto.room;
-    const isVideoCall = createCallDto.isVideoCall;
+    const callerToken = await this.livekitService.createToken(
+      callerData.firstName,
+      room,
+    );
 
-    await this.firebaseService.sendPushNotification(
-      tokens, 
-      JSON.stringify({ room, callerData, chatId: id, isVideoCall, isGroupCall }), 
-      SessionNotif.INCOMING_GROUP_CALL, 
-      `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`,
-      callerData.profile? callerData.profile: callerData.avatar.toString() 
-    )
+    const groupMembers = chat.data[0].group;
+    const callees = groupMembers.filter(c => createCallDto.calleeIds.includes(c.id));
+
+    const notifications = [];
+
+    for (const callee of callees) {
+      const calleeToken = await this.livekitService.createToken(
+        callee.firstName,
+        room,
+      );
+
+      notifications.push(
+        this.firebaseService.sendPushNotification(
+          {
+            client: [callee.firebaseToken],
+            therapist: [],
+            admin: [],
+          },
+          JSON.stringify({
+            room,
+            callerData:this.sanitize(callerData),
+            chatId: id,
+            isVideoCall: createCallDto.isVideoCall,
+            isGroupCall: true,
+            token: calleeToken, 
+          }),
+          SessionNotif.INCOMING_GROUP_CALL,
+          `Incoming group call from ${callerData.firstName}`,
+          callerData.profile || callerData.avatar.toString(),
+        )
+      );
+    }
+
+    await Promise.all(notifications);
+
+    return {
+      room,
+      token: callerToken,  // caller's token
+      chat,
+    };
   }
 
     return chat;
@@ -582,7 +658,7 @@ export class ChatService {
 
     await this.firebaseService.sendPushNotification(
       tokens,
-      JSON.stringify({ chatId, callerData }),
+      JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
       SessionNotif.CALL_ENDED,
       `Call ended by ${callerData.firstName}`,
       callerData.profile? callerData.profile: callerData.avatar.toString()
@@ -607,7 +683,7 @@ export class ChatService {
 
     await this.firebaseService.sendPushNotification(
       tokens,
-      JSON.stringify({ chatId, callerData }),
+      JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
       SessionNotif.CALL_REJECTED,
       `Call rejected by ${callerData.firstName}`,
       callerData.profile? callerData.profile: callerData.avatar.toString()
