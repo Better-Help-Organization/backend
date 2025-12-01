@@ -15,7 +15,7 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Between, DataSource, In, Not, Repository } from 'typeorm';
+import { Between, DataSource, In, MoreThan, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession } from './dto/create-session.dto';
@@ -775,6 +775,7 @@ export class SessionService {
       relations: [
         'client',
         'group',
+        'groupSubscription',
         'therapist',
         'modal',
         'status',
@@ -797,7 +798,7 @@ export class SessionService {
     // 2️⃣ Find all sessions in the same group series
     const relatedSessions = await this.sessionRepo.find({
       where: { commonId: referenceSession.commonId },
-      relations: ['group', 'therapist', 'client'],
+      relations: ['group', 'therapist', 'client', 'groupSubscription'],
       order: { schedule: 'ASC' },
     });
 
@@ -819,6 +820,7 @@ export class SessionService {
     }
 
     const now = new Date();
+
     const allUpdatedSessions: Session[] = [...relatedSessions];
 
     // 5️⃣ Process each new client
@@ -845,10 +847,25 @@ export class SessionService {
         if (subEnd >= sessionDate) {
           if (!session.group.find((c) => c.id === client.id)) {
             session.group.push(client);
+            // session.groupSubscription.push(activeSub);
+            await manager
+            .createQueryBuilder()
+            .relation(Session, "groupSubscription")
+            .of(session.id)  // session entity or session.id
+            .add(activeSub);
+        // TODO: Should be added here
+        // Attach subscription to session 
+          // if (!session.groupSubscription) session.groupSubscription = [];
+            // const subToAttach = client.activeSubscription;
+            // console.count(subToAttach)
+            // if (subToAttach && !session.groupSubscription.find(s => s.id === subToAttach.id)) {
+            // session.groupSubscription.push(subToAttach);
+            // }
           }
         } else {
           // Extend subscription if session is beyond current end date
           const existingSub = await manager.findOne(ClientSubscription, {
+
             where: {
               client: { id: client.id },
               subscription: { id: activeSub.subscription.id },
@@ -870,7 +887,16 @@ export class SessionService {
 
           if (!session.group.find((c) => c.id === client.id)) {
             session.group.push(client);
+            session.groupSubscription.push(client.activeSubscription);
           }
+          // TODO: Should be added here
+          // Attach subscription to session
+          // if (!session.groupSubscription) session.groupSubscription = [];
+          // const subToAttach = client.activeSubscription;
+          // console.log({subToAttach})
+          // if (subToAttach && !session.groupSubscription.find(s => s.id === subToAttach.id)) {
+            // session.groupSubscription.push(subToAttach);
+          // }
         }
       }
 
@@ -903,7 +929,7 @@ export class SessionService {
 
     // 8️⃣ Save all updated sessions
     for (const session of relatedSessions) {
-      await manager.save(session);
+      await manager.save(Session, session);
     }
 
     // 9️⃣ Send notifications
@@ -922,87 +948,416 @@ export class SessionService {
     );
     return allUpdatedSessions;
   });
-}
+  }
+
+  // async addToSession(sessionId: string, dto: AddToSessionDto) {
+  //   const { groupClients = [] } = dto;
+
+  //   // We'll run a transaction and then send notifications after commit
+  //   const result = await this.sessionRepo.manager.transaction(async (manager) => {
+  //     // 1️⃣ Load reference session with relations we need
+  //     const referenceSession = await manager.findOne(Session, {
+  //       where: { id: sessionId },
+  //       relations: [
+  //         'client',
+  //         'group',
+  //         'therapist',
+  //         'modal',
+  //         'status',
+  //         'message',
+  //         'groupSubscription',
+  //       ],
+  //     });
+
+  //     if (!referenceSession) {
+  //       throw new NotFoundException(`Session ${sessionId} not found`);
+  //     }
+
+  //     if (referenceSession.client != null) {
+  //       throw new BadRequestException('Cannot add clients to a 1-on-1 session');
+  //     }
+
+  //     if (!referenceSession.commonId) {
+  //       throw new BadRequestException('This session is not part of a group series');
+  //     }
+
+  //     // 2️⃣ Load clients requested to be added (with their activeSubscription)
+  //     const clients = await this.clientService.findAll({ ids: groupClients.join(',') });
+  //     const clientsToProcess = clients.data || [];
+
+  //     if (!clientsToProcess.length) {
+  //       throw new BadRequestException('No valid clients found');
+  //     }
+
+  //     // 3️⃣ Prepare collections to save once
+  //     const sessionsToSave: Session[] = [];
+  //     const clientsToSave: Client[] = [];
+  //     const clientSubscriptionsToSave: ClientSubscription[] = [];
+  //     const notificationsToInsert: Notification[] = [];
+
+  //     const now = new Date();
+
+  //     // ensure group arrays are initialized
+  //     if (!referenceSession.group) referenceSession.group = [];
+  //     if (!referenceSession.groupSubscription) referenceSession.groupSubscription = [];
+
+  //     // 4️⃣ For each client: attach to THIS session only (if not already)
+  //     for (const client of clientsToProcess) {
+  //       // Ensure client entity includes activeSubscription (best-effort)
+  //       // If clientService returned lightweight objects, you may need to re-fetch via manager.findOne(Client,...)
+  //       let loadedClient = client;
+  //       if (!('activeSubscription' in client)) {
+  //         // fetch minimal relations for safety
+  //         loadedClient = await manager.findOne(Client, {
+  //           where: { id: client.id },
+  //           relations: ['activeSubscription', 'activeSubscription.subscription', 'activeSubscription.session'],
+  //         }) as Client;
+  //         if (!loadedClient) continue; // can't find client — skip
+  //       }
+
+  //       // 4.a ensure isInGroup flag persisted
+  //       if (!loadedClient.isInGroup) {
+  //         loadedClient.isInGroup = true;
+  //         clientsToSave.push(loadedClient);
+  //       }
+
+  //       const activeSub = loadedClient.activeSubscription;
+  //       // If no active subscription, skip or throw depending on policy
+  //       if (!activeSub || !activeSub.subscription) {
+  //         // skip adding this client (keep behavior consistent)
+  //         continue;
+  //       }
+
+  //       const sessionDate = new Date(referenceSession.schedule);
+  //       const subEnd = activeSub.end_date ? new Date(activeSub.end_date) : null;
+
+  //       // 4.b If subscription covers this session date -> attach
+  //       let subToAttach: ClientSubscription | null = null;
+
+  //       if (subEnd && subEnd >= sessionDate) {
+  //         subToAttach = activeSub;
+  //       } else {
+  //         // 4.c Subscription doesn't cover session:
+  //         // create an extension subscription that covers exactly this session date
+  //         const existingSub = await manager.findOne(ClientSubscription, {
+  //           where: {
+  //             client: { id: loadedClient.id },
+  //             subscription: { id: activeSub.subscription.id },
+  //           },
+  //           relations: ['client', 'subscription', 'session'],
+  //         });
+
+  //         // Create extension sub starting the day after current end (or today if no end) until sessionDate
+  //         const extensionStart = subEnd ? new Date(subEnd.getTime() + 1) : new Date();
+  //         extensionStart.setHours(0, 0, 0, 0);
+  //         const extensionEnd = new Date(sessionDate);
+  //         extensionEnd.setHours(23, 59, 59, 999);
+
+  //         const extensionSub = manager.create(ClientSubscription, {
+  //           client: loadedClient,
+  //           subscription: activeSub.subscription,
+  //           start_date: extensionStart,
+  //           end_date: extensionEnd,
+  //           status: SubscriptionStatus.ACTIVE,
+  //         });
+
+  //         // We will save extensionSubs in batch below. Keep ref to attach.
+  //         clientSubscriptionsToSave.push(extensionSub);
+  //         subToAttach = extensionSub;
+
+  //         // Update client.activeSubscription to the extension for in-memory consistency
+  //         loadedClient.activeSubscription = extensionSub;
+  //         clientsToSave.push(loadedClient);
+  //       }
+
+  //       // 4.d Attach client to session.group if not already
+  //       if (!referenceSession.group.find(c => c.id === loadedClient.id)) {
+  //         referenceSession.group.push(loadedClient);
+  //       }
+
+  //       // 4.e Attach subscription to session.groupSubscription (avoid duplicates)
+  //       if (subToAttach) {
+  //         const exists = referenceSession.groupSubscription.find(gs => gs && gs.id === subToAttach.id);
+  //         if (!exists) {
+  //           // If subToAttach is newly created and has no id yet, we still push it — cascade/save later will insert join row
+  //           referenceSession.groupSubscription.push(subToAttach as any);
+  //         }
+  //       }
+
+  //       // 4.f Prepare notification for this client (create entity, will bulk save)
+  //       const notif = manager.create(Notification, {
+  //         id: this.utilService.generateUuid ? this.utilService.generateUuid() : undefined,
+  //         title: 'Session scheduled',
+  //         body: 'You have been added to this group session.',
+  //         profile: NotificationProfile.CLIENT,
+  //         message: JSON.stringify({ sessionId: referenceSession.id }),
+  //         code: SessionNotif.SCHEDULED,
+  //         isRead: false,
+  //         client: loadedClient,
+  //         therapist: referenceSession.therapist,
+  //       } as any);
+  //       notificationsToInsert.push(notif);
+  //     } // end clients loop
+
+  //     // 5️⃣ Bulk save everything once (order: subscriptions, clients, session, notifications)
+  //     // Save any new/modified clientSubscriptions first so they get ids
+  //     if (clientSubscriptionsToSave.length) {
+  //       await manager.save(ClientSubscription, clientSubscriptionsToSave);
+  //     }
+
+  //     // Save clients that had isInGroup or activeSubscription changed
+  //     if (clientsToSave.length) {
+  //       await manager.save(Client, clientsToSave);
+  //     }
+
+  //     // Now save the reference session (group & groupSubscription changes persisted)
+  //     // Use manager.save with the session entity (groupSubscription entries which are persisted will be linked)
+  //     const savedSession = await manager.save(Session, referenceSession);
+
+  //     // Bulk insert notifications
+  //     if (notificationsToInsert.length) {
+  //       await manager.save(Notification, notificationsToInsert);
+  //     }
+
+  //     // 6️⃣ Build return payload: ids/tokens for sending push after commit
+  //     const clientFirebaseTokens = referenceSession.group
+  //       .map(c => (c as any).firebaseToken)
+  //       .filter(Boolean) as string[];
+
+  //     const therapistToken = (referenceSession.therapist as any)?.firebaseToken;
+  //     const tokens: Tokens = { client: clientFirebaseTokens, therapist: therapistToken ? [therapistToken] : [], admin: [] };
+
+  //     // Return savedSession and tokens to the outer scope (outside transaction) for push
+  //     return { savedSession, tokens };
+  //   }); // end transaction
+
+  //   // 7️⃣ After transaction commits successfully, send notifications (outside transaction)
+  //   try {
+  //     if (result?.tokens) {
+  //       await this.firebaseService.sendPushNotification(
+  //         result.tokens,
+  //         JSON.stringify({ sessionId }),
+  //         SessionNotif.SCHEDULED,
+  //         `You have been added to the session.`
+  //       );
+  //     }
+  //   } catch (e) {
+  //     // push failures should not break API success; log but continue
+  //     this.logger.error('Failed to send push notification after addToSession', e);
+  //   }
+
+  //   // 8️⃣ Return the updated session to caller
+  //   return result?.savedSession;
+  // }
+
+  // async removeFromSession(sessionId: string, dto: RemoveFromSessionDto) {
+  //   return await this.sessionRepo.manager.transaction(async (manager) => {
+  //     const { groupClients } = dto; // array of client IDs
+
+  //     // 1️⃣ Load the reference session
+  //     const referenceSession = await this.sessionRepo.findOne({
+  //       where: { id: sessionId },
+  //       relations: ['group', 'therapist'],
+  //     });
+
+  //     if (!referenceSession) {
+  //       throw new NotFoundException(`Session ${sessionId} not found`);
+  //     }
+
+  //     if (!referenceSession.commonId) {
+  //       throw new BadRequestException('This session is not part of a group series');
+  //     }
+
+  //     // 2️⃣ Find all related sessions
+  //     const relatedSessions = await this.sessionRepo.find({
+  //       where: { commonId: referenceSession.commonId },
+  //       relations: ['group'],
+  //       order: { schedule: 'ASC' },
+  //     });
+
+  //     if (!relatedSessions.length) {
+  //       throw new BadRequestException('No related sessions found for this group');
+  //     }
+
+  //     const updatedSessions: Session[] = [];
+
+  //     // 3️⃣ Iterate sessions and remove clients
+  //     for (const session of relatedSessions) {
+  //       const originalLength = session.group.length;
+
+  //       session.group = session.group.filter(
+  //         (c) => !groupClients.includes(c.id),
+  //       );
+
+  //       if (session.group.length !== originalLength) {
+  //         await manager.save(session);
+  //         updatedSessions.push(session);
+  //       }
+  //     }
+
+  //     // 4️⃣ Update client flags (if no longer in any group)
+  //     for (const clientId of groupClients) {
+  //       const stillInGroup = await manager
+  //         .createQueryBuilder(Session, 'session')
+  //         .leftJoin('session.group', 'client')
+  //         .where('client.id = :id', { id: clientId })
+  //         .getCount();
+
+  //       if (stillInGroup === 0) {
+  //         await manager.update(Client, { id: clientId }, { isInGroup: false });
+  //       }
+  //     }
+
+  //     // 5️⃣ Notify removed clients and therapist
+  //     const removedClients = await manager.findByIds(Client, groupClients);
+  //     const clientTokens = removedClients.map(c => c.firebaseToken).filter(Boolean);
+
+  //     const tokens: Tokens = { client: [], therapist: [], admin: [] };
+  //     if (clientTokens.length) tokens.client.push(...clientTokens);
+
+  //     const therapistToken = referenceSession.therapist?.firebaseToken;
+  //     if (therapistToken) tokens.therapist.push(therapistToken);
+
+  //     // await this.firebaseService.sendPushNotification(
+  //     //   tokens,
+  //     //   JSON.stringify({ commonId: referenceSession.commonId }),
+  //     //   SessionNotif.UPDATED,
+  //     //   `You have been removed from upcoming group sessions in this group.`
+  //     // );
+
+  //     return 'Clients successfully removed from group sessions';
+      
+  //   });
+  // }
 
   async removeFromSession(sessionId: string, dto: RemoveFromSessionDto) {
-    return await this.sessionRepo.manager.transaction(async (manager) => {
-      const { groupClients } = dto; // array of client IDs
+  return await this.sessionRepo.manager.transaction(async (manager) => {
+    const { groupClients } = dto; // array of client IDs
 
-      // 1️⃣ Load the reference session
-      const referenceSession = await this.sessionRepo.findOne({
-        where: { id: sessionId },
-        relations: ['group', 'therapist'],
-      });
-
-      if (!referenceSession) {
-        throw new NotFoundException(`Session ${sessionId} not found`);
-      }
-
-      if (!referenceSession.commonId) {
-        throw new BadRequestException('This session is not part of a group series');
-      }
-
-      // 2️⃣ Find all related sessions
-      const relatedSessions = await this.sessionRepo.find({
-        where: { commonId: referenceSession.commonId },
-        relations: ['group'],
-        order: { schedule: 'ASC' },
-      });
-
-      if (!relatedSessions.length) {
-        throw new BadRequestException('No related sessions found for this group');
-      }
-
-      const updatedSessions: Session[] = [];
-
-      // 3️⃣ Iterate sessions and remove clients
-      for (const session of relatedSessions) {
-        const originalLength = session.group.length;
-
-        session.group = session.group.filter(
-          (c) => !groupClients.includes(c.id),
-        );
-
-        if (session.group.length !== originalLength) {
-          await manager.save(session);
-          updatedSessions.push(session);
-        }
-      }
-
-      // 4️⃣ Update client flags (if no longer in any group)
-      for (const clientId of groupClients) {
-        const stillInGroup = await manager
-          .createQueryBuilder(Session, 'session')
-          .leftJoin('session.group', 'client')
-          .where('client.id = :id', { id: clientId })
-          .getCount();
-
-        if (stillInGroup === 0) {
-          await manager.update(Client, { id: clientId }, { isInGroup: false });
-        }
-      }
-
-      // 5️⃣ Notify removed clients and therapist
-      const removedClients = await manager.findByIds(Client, groupClients);
-      const clientTokens = removedClients.map(c => c.firebaseToken).filter(Boolean);
-
-      const tokens: Tokens = { client: [], therapist: [], admin: [] };
-      if (clientTokens.length) tokens.client.push(...clientTokens);
-
-      const therapistToken = referenceSession.therapist?.firebaseToken;
-      if (therapistToken) tokens.therapist.push(therapistToken);
-
-      // await this.firebaseService.sendPushNotification(
-      //   tokens,
-      //   JSON.stringify({ commonId: referenceSession.commonId }),
-      //   SessionNotif.UPDATED,
-      //   `You have been removed from upcoming group sessions in this group.`
-      // );
-
-      return 'Clients successfully removed from group sessions';
-      
+    // 1️⃣ Load reference session
+    const referenceSession = await manager.findOne(Session, {
+      where: { id: sessionId },
+      relations: ['group', 'therapist'],
     });
-  }
+
+    if (!referenceSession) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    if (!referenceSession.commonId) {
+      throw new BadRequestException('This session is not part of a group series');
+    }
+
+    // 2️⃣ Load only FUTURE related sessions (same as addToSession)
+    const now = new Date();
+
+    const relatedSessions = await manager.find(Session, {
+      where: {
+        commonId: referenceSession.commonId,
+        schedule: MoreThan(now),
+      },
+      relations: ['group', 'groupSubscription', 'groupSubscription.client'],
+      order: { schedule: 'ASC' },
+    });
+
+    if (!relatedSessions.length) {
+      throw new BadRequestException('No upcoming related sessions found');
+    }
+
+    // 3️⃣ For each session → remove client AND remove subscription
+    // for (const session of relatedSessions) {
+    //   const originalLen = session.group.length;
+
+    //   // Remove client
+    //   session.group = session.group.filter(
+    //     (c) => !groupClients.includes(c.id),
+    //   );
+
+    //   console.log(session.groupSubscription[0].client)
+    //   // Remove subscription entries too
+    //   // session.groupSubscription = session.groupSubscription.filter(
+    //   //   (sub) => !groupClients.includes(sub.client.id),
+    //   // );
+    //   session.groupSubscription = session.groupSubscription.filter(sub => {
+    //     const clientId = sub?.client?.id;
+    //     return !groupClients.includes(clientId);
+    //   });
+
+    //   await manager
+    //   .createQueryBuilder()
+    //   .relation(Session, "groupSubscription")
+    //   .of(session)
+    //   .remove(session.groupSubscription);
+
+    //   // if (session.group.length !== originalLen) {
+    //   //   await manager.save(session);
+    //   // }
+    // }
+
+//     for (const session of relatedSessions) {
+//   // 1. Get all subscription IDs that belong to this session
+//   const subIdsToRemove = session.groupSubscription.map(sub => sub.id);
+
+//   if (subIdsToRemove.length > 0) {
+//     // 2. Remove all subscriptions from the join table
+//     await manager
+//       .createQueryBuilder()
+//       .relation(Session, "groupSubscription")
+//       .of(session.id)                 // always use ID
+//       .remove(subIdsToRemove);        // remove ALL subscriptions
+//   }
+
+//   // 3. Clear memory representation so save() doesn't re-add them
+//   session.groupSubscription = [];
+
+//   // 4. Save updated session if needed
+//   await manager.save(session);
+// }
+
+    for (const session of relatedSessions) {
+      // Find subscriptions we want to remove based on client IDs
+      const subsToRemove = session.groupSubscription.filter(sub =>
+        groupClients.includes(sub.client.id)
+      );
+
+      const subIdsToRemove = subsToRemove.map(sub => sub.id);
+
+      // Remove clients from the session.group array
+      session.group = session.group.filter(
+        (c) => !groupClients.includes(c.id)
+      );
+
+      // Remove the join table entries (M2M)
+      if (subIdsToRemove.length > 0) {
+        await manager
+          .createQueryBuilder()
+          .relation(Session, "groupSubscription")
+          .of(session.id)             // MUST USE ID, not full object
+          .remove(subIdsToRemove);    // Array of subscription IDs
+      }
+
+      // Optional: Save session if you need the session.group changes persisted
+      await manager.save(session);
+    }
+
+
+    // 4️⃣ Update each client → if removed from all sessions → set isInGroup = false
+    for (const clientId of groupClients) {
+      const stillInGroup = await manager
+        .createQueryBuilder(Session, 'session')
+        .leftJoin('session.group', 'client')
+        .where('client.id = :id', { id: clientId })
+        .andWhere('session.schedule > :now', { now })
+        .getCount();
+
+      if (stillInGroup === 0) {
+        await manager.update(Client, { id: clientId }, { isInGroup: false });
+      }
+    }
+
+    return 'Clients successfully removed from upcoming group sessions';
+  });
+}
 
   async remove(id: string): Promise<void> {
     try {
