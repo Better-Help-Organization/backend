@@ -21,7 +21,6 @@ export function createJwtAuthGuard(strategy: string) {
   
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const isAuthenticated = await super.canActivate(context);
-        console.log({isAuthenticated})
 
       // const request = context.switchToHttp().getRequest();
       // const user = request.user as TokenPayload;

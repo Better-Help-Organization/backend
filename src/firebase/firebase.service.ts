@@ -41,128 +41,164 @@ export class FirebaseService {
     return "Records updated successfully";
   }
 
-  async sendPushNotification(tokens: Tokens, message: string, notificationType: SessionNotifValue, body,   profile?: string  ): Promise<void> {
+  async sendPushNotification(
+  tokens: Tokens,
+  message: string,
+  notificationType: SessionNotifValue,
+  body?: string,
+  profile?: string
+  ): Promise<void> {
     try {
-      const { code, title, showNotification } = notificationType
-      this.logger.log(`Sending push notification with title: ${title} and message: ${message} to tokens: ${tokens}`);
-      if(!body) body = "You have a new notification."
+      const { code, title, showNotification } = notificationType;
+      if (!body) body = "You have a new notification.";
 
-      try{
-        let notification = undefined
-        let android = null
-        let apns = null
-      
-        if(notificationType === SessionNotif.MATCH_REQUEST){
-          android = {
-            "notification":{
-              "sound": "positive",
-              "channel_id":"match_requests"
-            }
-          }
-          apns = {
-            "payload": {
-              "aps":{
-                "sound": "positive"
-              }
-            }
-          }
+      this.logger.log(`Preparing push notification: ${title} -> ${message}`);
+
+      // 1️⃣ Flatten all tokens for Firebase
+      const allTokens: string[] = [
+        ...(tokens.client || []),
+        ...(tokens.therapist || []),
+        ...(tokens.admin || []),
+      ];
+
+      // 2️⃣ Create notifications in memory
+      const notifications: Notification[] = [];
+
+      if (showNotification) {
+        // Fetch clients in one query
+        const clients = tokens.client?.length
+          ? await this.clientRepo.find({
+              where: { firebaseToken: In(tokens.client) },
+            })
+          : [];
+
+        // Fetch therapists in one query
+        const therapists = tokens.therapist?.length
+          ? await this.therapistRepo.find({
+              where: { firebaseToken: In(tokens.therapist) },
+            })
+          : [];
+
+        // Prepare notifications
+        notifications.push(
+          ...clients.map((client) =>
+            this.notifRepo.create({
+              title,
+              body,
+              message,
+              code,
+              profile,
+              client: { id: client.id },
+              therapist: null,
+            })
+          ),
+          ...therapists.map((therapist) =>
+            this.notifRepo.create({
+              title,
+              body,
+              message,
+              code,
+              profile,
+              client: null,
+              therapist: { id: therapist.id },
+            })
+          )
+        );
+
+        // 3️⃣ Save notifications in batches to avoid locks
+        const batchSize = 50;
+        for (let i = 0; i < notifications.length; i += batchSize) {
+          const batch = notifications.slice(i, i + batchSize);
+          await this.notifRepo.save(batch);
         }
-        
-        if (showNotification) {
-          notification = { title, body }
-
-        // Handle client tokens
-        await this.saveNotification({ title,body, message, code, clientTokens:tokens.client,therapistTokens: null }).catch((err)=>{
-          console.log({err})
-        });
-      // Handle therapist tokens
-        await this.saveNotification({ title,body, message, code, clientTokens: null,therapistTokens:tokens.therapist }).catch((err)=>{
-          console.log({err})
-        });
-        
-        this.logger.log(`Notifications processed successfully`);
-        
       }
 
-        // Flatten all tokens into one array for Firebase
-        const allTokens = [
-          ...tokens.client || '',
-          ...tokens.therapist || '',
-          ...tokens.admin || '',
-        ];
-        
-        await this.firebaseAdmin.messaging().sendEachForMulticast({
-            tokens: allTokens,
-            notification,
-            data: {
-                id: message,
-                code,
-                timestamp: Date.now().toString(),
-                profile: profile || ''
-            },
-            android: android? android: undefined,
-            apns: apns? apns: undefined
-        }).catch((err)=>{})
-    }
-    catch(err){
-      console.log({err})
-    }
+      // 4️⃣ Send Firebase notifications asynchronously (non-blocking)
+      if (allTokens.length > 0) {
+        const firebasePayload: any = {
+          tokens: allTokens,
+          notification: showNotification ? { title, body } : undefined,
+          data: {
+            id: message,
+            code,
+            timestamp: Date.now().toString(),
+            profile: profile || "",
+          },
+        };
 
-      this.logger.log(`Notifications sent successfully to tokens: ${JSON.stringify(tokens)}`);
-    } catch (error) {
-      this.logger.error('Error sending notification:', error);
+        let android, apns;
+        if (notificationType === SessionNotif.MATCH_REQUEST) {
+          android = { notification: { sound: "positive", channel_id: "match_requests" } };
+          apns = { payload: { aps: { sound: "positive" } } };
+        }
+
+        if (android) firebasePayload.android = android;
+        if (apns) firebasePayload.apns = apns;
+
+        this.firebaseAdmin.messaging()
+          .sendEachForMulticast(firebasePayload)
+          .catch((err) => this.logger.error('Firebase error:', err));
+      }
+
+      this.logger.log(`Notifications processed successfully`);
+    } catch (err) {
+      this.logger.error('Error sending notification:', err);
     }
   }
 
   async saveNotification(dto: SaveNotificationDto) {
-        
-        const {body, code, message, title, clientTokens, therapistTokens, profile} = dto
-        // Fetch all clients in one query
-        const clients = clientTokens?.length > 0
-          ? await this.clientRepo.find({ where: { firebaseToken: In(clientTokens) } })
-          : [];
+    const { body, code, message, title, clientTokens, therapistTokens, profile } = dto;
 
-        // Fetch all therapists in one query
-        const therapists = therapistTokens?.length > 0
-          ? await this.therapistRepo.find({ where: { firebaseToken: In(therapistTokens) } })
-          : [];
+    // Fetch users in one query each
+    const clients = clientTokens?.length
+      ? await this.clientRepo.find({ where: { firebaseToken: In(clientTokens) } })
+      : [];
+    const therapists = therapistTokens?.length
+      ? await this.therapistRepo.find({ where: { firebaseToken: In(therapistTokens) } })
+      : [];
 
-        // Create notifications in memory
-        const notifications = [
-          ...clients.map(client => this.notifRepo.create({
-            title,
-            body,
-            message,
-            code,
-            profile,
-            client: {id: client.id},
-            therapist: null,
-          })),
-          ...therapists.map(therapist => this.notifRepo.create({
-            title,
-            body,
-            message: message,
-            code,
-            profile,
-            client: null,
-            therapist: {id: therapist.id},
-          })),
-        ];
+    // Create notifications in memory
+    const notifications = [
+      ...clients.map(c =>
+        this.notifRepo.create({
+          title,
+          body,
+          message,
+          code,
+          profile,
+          client: { id: c.id },
+          therapist: null,
+        })
+      ),
+      ...therapists.map(t =>
+        this.notifRepo.create({
+          title,
+          body,
+          message,
+          code,
+          profile,
+          client: null,
+          therapist: { id: t.id },
+        })
+      ),
+    ];
 
-        // if (notifications.length > 0) {
-        //   await this.notifRepo.save(notifications);
-        // }
-        if (notifications.length > 0) {
-          const saved = await this.notifRepo.save(notifications);
+    if (notifications.length === 0) return;
 
-          if (code === SessionNotif.SCHEDULED.code && saved[0]?.client?.id) {
-            await this.clientRepo.update(saved[0].client.id, {
-              hasNotification: saved[0],
-            });
-          }
-      }
+    // Batch insert asynchronously (outside any active session transaction)
+    const batchSize = 20;
+    for (let i = 0; i < notifications.length; i += batchSize) {
+      const batch = notifications.slice(i, i + batchSize);
+      this.notifRepo.save(batch).catch(err => {
+        this.logger.error('Error saving notification batch:', err);
+      });
+    }
 
-
+    // Update client.hasNotification outside transaction (fire-and-forget)
+    clients.forEach(c => {
+      this.clientRepo.update(c.id, { hasNotification: notifications.find(n => n.client?.id === c.id) })
+        .catch(err => this.logger.error('Error updating client.hasNotification:', err));
+    });
   }
 
   async findOne(id: string, queryParams?: FindOneQueryParams<Notification>) {
