@@ -90,7 +90,7 @@ async getUsersTreatedOverTime(start: string | null, end: string | null, therapis
       .getRawMany();
 }
 
-async getRevenueOverTime(start: string, end: string, therapistId?: string) {
+  async getRevenueOverTime(start: string, end: string, therapistId?: string) {
   // Fetch percentage parameters
   const ADVANCED = await this.paramService.getDefaultByName(DefaultParameters.ADVANCED_PRICE_PERCENTAGE) as number;
   const ASSOCIATE = await this.paramService.getDefaultByName(DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE) as number;
@@ -99,13 +99,14 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
   const GROUP = await this.paramService.getDefaultByName(DefaultParameters.GROUP_PRICE_PERCENTAGE) as number;
   const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number;
 
-  // 1️⃣ Fetch raw session data
+  // 1️⃣ Fetch session + group subscription data
   const qb = this.sessionRepo.createQueryBuilder('session')
     .leftJoin('session.therapist', 'therapist')
     .leftJoin('therapist.level', 'level')
     .leftJoin('session.subscription', 'sub')
     .leftJoin('sub.subscription', 'rootsub')
     .leftJoin('session.modal', 'modal')
+    .leftJoin('session.groupSubscription', 'gsub') // ⭐ added
     .select([
       'session.id',
       'session.schedule',
@@ -113,73 +114,322 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
       'sub.therapistPercentage',
       'modal.name',
       'level.type',
-      'rootsub.type'
+      'rootsub.type',
+      'gsub.price' // ⭐ added
     ])
     .where('session.hasTherapistAttended = true');
 
-  // Filter by schedule date
-  if (start && end) {
-    qb.andWhere('session.schedule BETWEEN :start AND :end', {
-      start: new Date(start),
-      end: new Date(end),
-    });
-  }
-
-  // Filter by therapist
-  if (therapistId) {
-    qb.andWhere('therapist.id = :therapistId', { therapistId });
-  }
-
-  const sessions = await qb.getRawMany();
-  console.log({therapistId})
-  // 2️⃣ Calculate revenue in JS
-  const revenueMap: Record<string, number> = {};
-  console.log({sessions})
-  for (const s of sessions) {
-    const dateKey = new Date(s.session_schedule).toISOString().slice(0, 10); // YYYY-MM-DD
-
-    const basePrice = (s.sub_price || 0) / (1 + VAT);
-    let sessionPercent = 1;;
-    
-    const modalName = s.modal_name || '';
-    const levelType = s.level_type ? s.level_type.toUpperCase():null;
-
-    if (s.therapist_percentage) {
-        sessionPercent = s.therapist_percentage
-    }
-    else {
-        if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
-        else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
-        else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
-        else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
-        else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+    // Date filter
+    if (start && end) {
+      qb.andWhere('session.schedule BETWEEN :start AND :end', {
+        start: new Date(start),
+        end: new Date(end),
+      });
     }
 
-    let subDivisor = 1;
-    const rootsubType = Number(s.rootsub_type);
-    switch (rootsubType) {
-      case 0: subDivisor = 1; break;
-      case 1: subDivisor = 4; break;
-      case 3: subDivisor = 12; break;
-      case 6: subDivisor = 24; break;
-      case 12: subDivisor = 48; break;
-      default: subDivisor = 1;
+    // Therapist filter
+    if (therapistId) {
+      qb.andWhere('therapist.id = :therapistId', { therapistId });
     }
 
-    const revenue = (basePrice * sessionPercent) / subDivisor;
+    const raw = await qb.getRawMany();
 
-    if (!revenueMap[dateKey]) revenueMap[dateKey] = 0;
-    revenueMap[dateKey] += revenue;
+    // Group rows by session.id (because group subscriptions duplicate rows)
+    const sessionMap = new Map();
+
+    for (const r of raw) {
+      const sid = r.session_id;
+
+      if (!sessionMap.has(sid)) {
+        sessionMap.set(sid, {
+          schedule: r.session_schedule,
+          subPrice: r.sub_price,
+          therapistPercentage: r.sub_therapistPercentage,
+          modalName: r.modal_name,
+          levelType: r.level_type,
+          rootSubType: r.rootsub_type,
+          groupPrices: []
+        });
+      }
+
+      // Collect group subscription price if exists
+      if (r.gsub_price) {
+        sessionMap.get(sid).groupPrices.push(r.gsub_price);
+      }
+    }
+
+    // 2️⃣ Calculate revenue in JS
+    const revenueMap: Record<string, number> = {};
+
+    for (const entry of sessionMap.values()) {
+      const {
+        schedule,
+        subPrice,
+        therapistPercentage,
+        modalName,
+        levelType,
+        rootSubType,
+        groupPrices
+      } = entry;
+
+      const dateKey = new Date(schedule).toISOString().slice(0, 10);
+
+      // --- ⭐ FIX: total subscription price calculation ---
+      let totalPrice = 0;
+
+      if (groupPrices.length > 0) {
+        // group session → sum of all subscription prices
+        totalPrice = groupPrices.reduce((a, b) => a + b, 0);
+      } else {
+        // normal session → single subscription price
+        totalPrice = subPrice || 0;
+      }
+
+      // VAT removal
+      const basePrice = totalPrice / (1 + VAT);
+
+      // percentage selection
+      let sessionPercent = 1;
+
+      const lvl = levelType ? levelType.toUpperCase() : null;
+
+      if (therapistPercentage) {
+        sessionPercent = therapistPercentage;
+      } else {
+        if (modalName?.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+        else if (modalName?.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+        else if (lvl === 'ADVANCED') sessionPercent = ADVANCED;
+        else if (lvl === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+        else if (lvl === 'MODERATE') sessionPercent = MODERATE;
+      }
+
+      // subscription type divisor
+      let divisor = 1;
+      const type = Number(rootSubType);
+
+      switch (type) {
+        case 0: divisor = 1; break;
+        case 1: divisor = 4; break;
+        case 3: divisor = 12; break;
+        case 6: divisor = 24; break;
+        case 12: divisor = 48; break;
+        default: divisor = 1;
+      }
+
+      const revenue = (basePrice * sessionPercent) / divisor;
+
+      if (!revenueMap[dateKey]) revenueMap[dateKey] = 0;
+      revenueMap[dateKey] += revenue;
+    }
+
+    // 3️⃣ Convert map → list
+    return Object.entries(revenueMap)
+      .map(([date, revenue]) => ({
+        date,
+        revenueOverTime: Number(revenue.toFixed(2))
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
-  // 3️⃣ Convert map to array sorted by date
-  const revenueOverTime = Object.entries(revenueMap)
-    .map(([date, revenue]) => ({ date, revenueOverTime: Number(revenue.toFixed(2)) }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // async getRevenueOverTime(start: string, end: string, therapistId?: string) {
+  //   // Fetch percentage parameters
+  //   const ADVANCED = await this.paramService.getDefaultByName(DefaultParameters.ADVANCED_PRICE_PERCENTAGE) as number;
+  //   const ASSOCIATE = await this.paramService.getDefaultByName(DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE) as number;
+  //   const MODERATE = await this.paramService.getDefaultByName(DefaultParameters.MODERATE_PRICE_PERCENTAGE) as number;
+  //   const COUPLE = await this.paramService.getDefaultByName(DefaultParameters.COUPLE_PRICE_PERCENTAGE) as number;
+  //   const GROUP = await this.paramService.getDefaultByName(DefaultParameters.GROUP_PRICE_PERCENTAGE) as number;
+  //   const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number;
 
-  return revenueOverTime;
-}
+  //   // 1️⃣ Fetch raw session data
+  //   const qb = this.sessionRepo.createQueryBuilder('session')
+  //     .leftJoin('session.therapist', 'therapist')
+  //     .leftJoin('therapist.level', 'level')
+  //     .leftJoin('session.subscription', 'sub')
+  //     .leftJoin('sub.subscription', 'rootsub')
+  //     .leftJoin('session.modal', 'modal')
+  //     .select([
+  //       'session.id',
+  //       'session.schedule',
+  //       'sub.price',
+  //       'sub.therapistPercentage',
+  //       'modal.name',
+  //       'level.type',
+  //       'rootsub.type'
+  //     ])
+  //     .where('session.hasTherapistAttended = true');
 
+  //   // Filter by schedule date
+  //   if (start && end) {
+  //     qb.andWhere('session.schedule BETWEEN :start AND :end', {
+  //       start: new Date(start),
+  //       end: new Date(end),
+  //     });
+  //   }
+
+  //   // Filter by therapist
+  //   if (therapistId) {
+  //     qb.andWhere('therapist.id = :therapistId', { therapistId });
+  //   }
+
+  //   const sessions = await qb.getRawMany();
+  //   console.log({therapistId})
+  //   // 2️⃣ Calculate revenue in JS
+  //   const revenueMap: Record<string, number> = {};
+  //   console.log({sessions})
+  //   for (const s of sessions) {
+  //     const dateKey = new Date(s.session_schedule).toISOString().slice(0, 10); // YYYY-MM-DD
+
+  //     const basePrice = (s.sub_price || 0) / (1 + VAT);
+  //     let sessionPercent = 1;;
+      
+  //     const modalName = s.modal_name || '';
+  //     const levelType = s.level_type ? s.level_type.toUpperCase():null;
+
+  //     if (s.therapist_percentage) {
+  //         sessionPercent = s.therapist_percentage
+  //     }
+  //     else {
+  //         if (modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+  //         else if (modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+  //         else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
+  //         else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+  //         else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+  //     }
+
+  //     let subDivisor = 1;
+  //     const rootsubType = Number(s.rootsub_type);
+  //     switch (rootsubType) {
+  //       case 0: subDivisor = 1; break;
+  //       case 1: subDivisor = 4; break;
+  //       case 3: subDivisor = 12; break;
+  //       case 6: subDivisor = 24; break;
+  //       case 12: subDivisor = 48; break;
+  //       default: subDivisor = 0;
+  //     }
+
+  //     const revenue = (basePrice * sessionPercent) / subDivisor;
+
+  //     if (!revenueMap[dateKey]) revenueMap[dateKey] = 0;
+  //     revenueMap[dateKey] += revenue;
+  //   }
+
+  //   console.log({revenueMap})
+  //   // 3️⃣ Convert map to array sorted by date
+  //   const revenueOverTime = Object.entries(revenueMap)
+  //     .map(([date, revenue]) => ({ date, revenueOverTime: Number(revenue.toFixed(2)) }))
+  //     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  //   return revenueOverTime;
+  // }
+
+  // async getTotalRevenue(therapistId?: string) {
+  //   // Fetch percentage parameters
+  //   const ADVANCED = await this.paramService.getDefaultByName('ADVANCED_PRICE_PERCENTAGE') as number;
+  //   const ASSOCIATE = await this.paramService.getDefaultByName('ASSOCIATE_PRICE_PERCENTAGE') as number;
+  //   const MODERATE = await this.paramService.getDefaultByName('MODERATE_PRICE_PERCENTAGE') as number;
+  //   const COUPLE = await this.paramService.getDefaultByName('COUPLE_PRICE_PERCENTAGE') as number;
+  //   const GROUP = await this.paramService.getDefaultByName('GROUP_PRICE_PERCENTAGE') as number;
+  //   const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number;
+
+  //   // 1️⃣ Fetch raw sessions + group subscriptions
+  //   const qb = this.sessionRepo.createQueryBuilder('session')
+  //     .leftJoin('session.therapist', 'therapist')
+  //     .leftJoin('therapist.level', 'level')
+  //     .leftJoin('session.subscription', 'sub')
+  //     .leftJoin('sub.subscription', 'rootsub')
+  //     .leftJoin('session.groupSubscription', 'gsub')
+  //     .innerJoin('session.modal', 'modal')
+  //     .select([
+  //       'session.id AS session_id',
+  //       'sub.price AS sub_price',
+  //       'sub.therapistPercentage AS sub_therapistPercentage',
+  //       'modal.name AS modal_name',
+  //       'level.type AS level_type',
+  //       'rootsub.type AS rootsub_type',
+  //       'gsub.price AS gsub_price',
+  //       'gsub.therapistPercentage AS gsub_therapistPercentage'
+  //     ])
+  //     .where('session.hasTherapistAttended = true')
+  //     .andWhere('session.schedule < NOW()');
+
+  //   if (therapistId) {
+  //     qb.andWhere('therapist.id = :therapistId', { therapistId });
+  //   }
+
+  //   const rows = await qb.getRawMany();
+
+  //   // 2️⃣ Group rows by session
+  //   const grouped = new Map();
+
+  //   for (const row of rows) {
+  //     const id = row.session_id;
+
+  //     if (!grouped.has(id)) {
+  //       grouped.set(id, {
+  //         basePrice: row.sub_price || 0,
+  //         therapistPercentage: row.sub_therapistPercentage,
+  //         modalName: row.modal_name,
+  //         levelType: row.level_type?.toUpperCase(),
+  //         rootSubType: row.rootsub_type,
+  //         groupPrices: [],
+  //         groupPercentages: []
+  //       });
+  //     }
+
+  //     // If session has group subscription rows
+  //     if (row.gsub_price) {
+  //       grouped.get(id).groupPrices.push(Number(row.gsub_price));
+  //       grouped.get(id).groupPercentages.push(row.gsub_therapistPercentage);
+  //     }
+  //   }
+
+  //   // 3️⃣ Calculate total revenue
+  //   let totalRevenue = 0;
+
+  //   for (const s of grouped.values()) {
+  //     // A. Determine total subscription price
+  //     let totalSubPrice = 0;
+
+  //     if (s.groupPrices.length > 0) {
+  //       totalSubPrice = s.groupPrices.reduce((a, b) => a + b, 0);
+  //     } else {
+  //       totalSubPrice = s.basePrice;
+  //     }
+
+  //     const basePrice = totalSubPrice / (1 + VAT);
+
+  //     // B. Determine percentage (therapist's cut)
+  //     let sessionPercent = 1;
+
+  //     if (s.therapistPercentage) {
+  //       sessionPercent = s.therapistPercentage;
+  //     } else {
+  //       // fallback rules
+  //       if (s.modalName.includes(ModalName.COUPLE_THERAPY)) sessionPercent = COUPLE;
+  //       else if (s.modalName.includes(ModalName.GROUP_THERAPY)) sessionPercent = GROUP;
+  //       else if (s.levelType === 'ADVANCED') sessionPercent = ADVANCED;
+  //       else if (s.levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+  //       else if (s.levelType === 'MODERATE') sessionPercent = MODERATE;
+  //     }
+
+  //     // C. Determine subscription divisor
+  //     let subDivisor = 1;
+  //     const t = Number(s.rootSubType);
+
+  //     switch (t) {
+  //       case 0: subDivisor = 1; break;
+  //       case 1: subDivisor = 4; break;
+  //       case 3: subDivisor = 12; break;
+  //       case 6: subDivisor = 24; break;
+  //       case 12: subDivisor = 48; break;
+  //     }
+
+  //     // D. Final revenue
+  //     totalRevenue += (basePrice * sessionPercent) / subDivisor;
+  //   }
+
+  //   return Number(totalRevenue.toFixed(2)) || 0;
+  // }
 
   async getTotalRevenue(therapistId?: string) {
     // Fetch percentage parameters
@@ -196,13 +446,16 @@ async getRevenueOverTime(start: string, end: string, therapistId?: string) {
       .leftJoin('therapist.level', 'level')
       .leftJoin('session.subscription', 'sub')
       .leftJoin('sub.subscription', 'rootsub')
+      .leftJoin('session.groupSubscription', 'gsub')
       .innerJoin('session.modal', 'modal')
       .select([
         'sub.price',
         'sub.therapistPercentage',
         'modal.name',
         'level.type',
-        'rootsub.type'
+        'rootsub.type',
+        'gsub.price',
+        'gsub.therapistPercentage'
       ])
       .where('session.hasTherapistAttended = true')
       .andWhere('session.schedule < NOW()');
