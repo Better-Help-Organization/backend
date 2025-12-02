@@ -695,7 +695,8 @@ export class SessionService {
           approvalStatus: ApprovalStatus.CONFIRMED,
           modal: dto.modal ? ({ id: dto.modal } as any) : null,
           client: null,
-          commonId
+          commonId,
+          subscription: null,             // Ensure single subscription field is null
         });
         console.log({session})
 
@@ -847,20 +848,23 @@ export class SessionService {
         if (subEnd >= sessionDate) {
           if (!session.group.find((c) => c.id === client.id)) {
             session.group.push(client);
-            // session.groupSubscription.push(activeSub);
+
+            //Attach subscription to this session
+            if (!session.groupSubscription) session.groupSubscription = [];
+            const subToAttach = client.activeSubscription;
+            if (
+              subToAttach &&
+              !session.groupSubscription.find(s => s.id === subToAttach.id)
+            ) {
+              session.groupSubscription.push(subToAttach);
+            }
+
+            // Also sync DB relation (existing logic)
             await manager
-            .createQueryBuilder()
-            .relation(Session, "groupSubscription")
-            .of(session.id)  // session entity or session.id
-            .add(activeSub);
-        // TODO: Should be added here
-        // Attach subscription to session 
-          // if (!session.groupSubscription) session.groupSubscription = [];
-            // const subToAttach = client.activeSubscription;
-            // console.count(subToAttach)
-            // if (subToAttach && !session.groupSubscription.find(s => s.id === subToAttach.id)) {
-            // session.groupSubscription.push(subToAttach);
-            // }
+              .createQueryBuilder()
+              .relation(Session, "groupSubscription")
+              .of(session.id)  // session entity or session.id
+              .add(activeSub);
           }
         } else {
           // Extend subscription if session is beyond current end date
@@ -887,16 +891,17 @@ export class SessionService {
 
           if (!session.group.find((c) => c.id === client.id)) {
             session.group.push(client);
-            session.groupSubscription.push(client.activeSubscription);
+
+            // Attach subscription for extended case
+            if (!session.groupSubscription) session.groupSubscription = [];
+            const subToAttach = client.activeSubscription;
+            if (
+              subToAttach &&
+              !session.groupSubscription.find(s => s.id === subToAttach.id)
+            ) {
+              session.groupSubscription.push(subToAttach);
+            }
           }
-          // TODO: Should be added here
-          // Attach subscription to session
-          // if (!session.groupSubscription) session.groupSubscription = [];
-          // const subToAttach = client.activeSubscription;
-          // console.log({subToAttach})
-          // if (subToAttach && !session.groupSubscription.find(s => s.id === subToAttach.id)) {
-            // session.groupSubscription.push(subToAttach);
-          // }
         }
       }
 
@@ -921,6 +926,14 @@ export class SessionService {
           });
 
           const saved = await manager.save(clonedSession);
+
+          // Attach subscription to new cloned sessions
+          await manager
+            .createQueryBuilder()
+            .relation(Session, "groupSubscription")
+            .of(saved.id)
+            .add(client.activeSubscription);
+
           allUpdatedSessions.push(saved);
           nextDate.setDate(nextDate.getDate() + 7);
         }
@@ -1265,55 +1278,6 @@ export class SessionService {
     }
 
     // 3️⃣ For each session → remove client AND remove subscription
-    // for (const session of relatedSessions) {
-    //   const originalLen = session.group.length;
-
-    //   // Remove client
-    //   session.group = session.group.filter(
-    //     (c) => !groupClients.includes(c.id),
-    //   );
-
-    //   console.log(session.groupSubscription[0].client)
-    //   // Remove subscription entries too
-    //   // session.groupSubscription = session.groupSubscription.filter(
-    //   //   (sub) => !groupClients.includes(sub.client.id),
-    //   // );
-    //   session.groupSubscription = session.groupSubscription.filter(sub => {
-    //     const clientId = sub?.client?.id;
-    //     return !groupClients.includes(clientId);
-    //   });
-
-    //   await manager
-    //   .createQueryBuilder()
-    //   .relation(Session, "groupSubscription")
-    //   .of(session)
-    //   .remove(session.groupSubscription);
-
-    //   // if (session.group.length !== originalLen) {
-    //   //   await manager.save(session);
-    //   // }
-    // }
-
-//     for (const session of relatedSessions) {
-//   // 1. Get all subscription IDs that belong to this session
-//   const subIdsToRemove = session.groupSubscription.map(sub => sub.id);
-
-//   if (subIdsToRemove.length > 0) {
-//     // 2. Remove all subscriptions from the join table
-//     await manager
-//       .createQueryBuilder()
-//       .relation(Session, "groupSubscription")
-//       .of(session.id)                 // always use ID
-//       .remove(subIdsToRemove);        // remove ALL subscriptions
-//   }
-
-//   // 3. Clear memory representation so save() doesn't re-add them
-//   session.groupSubscription = [];
-
-//   // 4. Save updated session if needed
-//   await manager.save(session);
-// }
-
     for (const session of relatedSessions) {
       // Find subscriptions we want to remove based on client IDs
       const subsToRemove = session.groupSubscription.filter(sub =>
@@ -1325,6 +1289,12 @@ export class SessionService {
       // Remove clients from the session.group array
       session.group = session.group.filter(
         (c) => !groupClients.includes(c.id)
+      );
+
+      // remove subscription from memory array
+      // (same sync logic as addToSession but reversed)
+      session.groupSubscription = session.groupSubscription.filter(
+        (sub) => !groupClients.includes(sub.client.id)
       );
 
       // Remove the join table entries (M2M)
