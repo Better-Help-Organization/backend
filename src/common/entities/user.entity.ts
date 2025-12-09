@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import 'reflect-metadata';
 import { Column } from 'typeorm';
-import { BaseStatus, Gender } from '../constants';
+import { AdminRoles, BaseStatus, Gender } from '../constants';
 import { CommonEntity } from './common.entity';
 
 export abstract class User extends CommonEntity {
@@ -69,6 +69,14 @@ export abstract class User extends CommonEntity {
         enum: BaseStatus,
     })
     status: BaseStatus;
+
+    @ApiProperty({ enum: AdminRoles, default: AdminRoles.SUPPORT })
+    @Column({
+        type: "enum",
+        enum: AdminRoles,
+        nullable: true,
+    })
+    role: AdminRoles;
 
     @ApiProperty({
     enum: Gender,

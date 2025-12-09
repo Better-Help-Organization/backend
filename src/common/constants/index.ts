@@ -13,6 +13,12 @@ export enum UserTypes {
     THERAPIST = "therapist"
 }
 
+export enum AdminRoles {
+    SUPER = "super",
+    DISPATCH = "dispatch",
+    SUPPORT = "support"
+}
+
 export enum BaseStatus {
     INACTIVE = "inactive",
     PENDING = "pending",
@@ -86,7 +92,8 @@ export interface TokenPayload {
     id: string
     name: string
     status: BaseStatus,
-    type: UserTypes
+    type: UserTypes,
+    role?: AdminRoles
 }
 
 export enum ValidFolders {

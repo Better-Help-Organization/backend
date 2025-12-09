@@ -6,7 +6,7 @@ import { compare, hash } from 'bcryptjs';
 import * as speakeasy from 'speakeasy';
 import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
-import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { TokenPayload, UserTypes } from 'src/common/constants';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -63,7 +63,7 @@ export class AuthService {
     }
   }
 
-  private _generateTokens({ id, type, status, name }: TokenPayload): [string, string, Date, Date] {
+  private _generateTokens({ id, type, status, name, role }: TokenPayload): [string, string, Date, Date] {
     
     const expiresAccessToken = new Date();
     
@@ -87,7 +87,7 @@ export class AuthService {
       ),
     );
   
-    const tokenPayload: TokenPayload = { id, type, status, name };
+    const tokenPayload: TokenPayload = { id, type, status, name, role };
   
     const accessTokenSecret = this._getAccessTokenSecret(type);
     const refreshTokenSecret = this._getRefreshTokenSecret(type);
@@ -286,7 +286,8 @@ export class AuthService {
           id: admin.id,
           type: UserTypes.ADMIN,
           status: admin.status,
-          name: admin.firstName
+          name: admin.firstName,
+          role: admin.role
       });
     
     admin.refreshToken = refreshToken;
@@ -305,7 +306,7 @@ export class AuthService {
 
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  User)[] = ['password'];
+      const inclusiveOf: (keyof  User)[] = ['password','role'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
       const user = await repo.findOne({ where: { email }, select: selectColumns });
@@ -331,7 +332,8 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
-          name: user.firstName
+          name: user.firstName,
+          role: user.role? user.role : undefined,
       });
 
       user.refreshToken = refreshToken;
@@ -351,7 +353,7 @@ export class AuthService {
 
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  User)[] = ['password'];
+      const inclusiveOf: (keyof  User)[] = ['password','role'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
       const user = await repo.findOneOrFail({ where: { phoneNumber }, select: selectColumns });
@@ -367,7 +369,8 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
-          name: user.firstName
+          name: user.firstName,
+          role: user.role? user.role : undefined,
       });
 
       user.refreshToken = refreshToken;
@@ -388,6 +391,7 @@ export class AuthService {
         type,
         status: user.status,
         name: user.firstName,
+        role: user.role? user.role : undefined,
       });
 
     user.refreshToken = refreshToken;
@@ -502,6 +506,7 @@ export class AuthService {
         type,
         status: user.status,
         name: user.firstName,
+        role: user.role? user.role : undefined,
       });
 
       user.refreshToken = refreshToken;
@@ -556,7 +561,8 @@ export class AuthService {
 
   async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
     const repo = await this.getRepo(type);
-    let user = await repo.findOne({ where: { email } });
+    // if type === UserTypes.ADMIN
+    let user = await repo.findOne({ where: { email } })
     if (!user) {
       const [OTP, OTPExpires] = this._generateOTP();
 
@@ -568,7 +574,7 @@ export class AuthService {
         OTP,
         OTPExpires,
         isEmailAuthenticated: true,
-        status: BaseStatus.ACTIVE,
+        // status: BaseStatus.ACTIVE,
         firebaseToken,
         isLinked: true,
       } as any);
