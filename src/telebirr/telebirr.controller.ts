@@ -54,15 +54,14 @@ export class TelebirrController {
       let savedPayment: Payment | null = null;
       try {
         const payment = this.paymentRepo.create({
-          amount: dto.amount,
+          amount: clientSub.price,
           date: new Date(),
           method: PaymentMethod.TELEBIRR,
           subscription: clientSub,
         });
   
         savedPayment = await this.paymentRepo.save(payment);
-    
-      return  await this.teleService.createOrder(dto);
+      return  await this.teleService.createOrder({title:dto.title, amount: clientSub.price});
       
     } catch (error) {
       clientSub.status = SubscriptionStatus.PENDING
