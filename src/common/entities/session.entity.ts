@@ -18,6 +18,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
+import { TherapistPaymentPeriod } from './therapist-payment-period.entity';
 
 @Entity('session')
 @Unique(['client', 'therapist', 'modal', 'schedule'])
@@ -45,6 +46,15 @@ export class Session extends CommonEntity {
   })
   group: Client[];
 
+  @ApiProperty({ type: () => [Client] })
+  @ManyToMany(() => Client, { nullable: true })
+  @JoinTable({
+    name: 'session_group_attendance',
+    joinColumn: { name: 'session_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'client_id', referencedColumnName: 'id' },
+  })
+  groupAttendance: Client[];
+
   @ApiProperty({nullable:true})
   @Column({ type: 'text', nullable:true })
   groupName: string;
@@ -53,7 +63,7 @@ export class Session extends CommonEntity {
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
     nullable: true,
-    eager: true
+    // eager: true
   })
   therapist: Therapist;
 
@@ -139,6 +149,13 @@ export class Session extends CommonEntity {
     inverseJoinColumn: { name: 'subscription_id', referencedColumnName: 'id' },
   })
   groupSubscription: ClientSubscription[];
+
+  @ManyToOne(() => TherapistPaymentPeriod, period => period.session, {
+    nullable: true,     // session might not belong to a period yet
+    onDelete: 'SET NULL',
+    eager: true
+  })
+  paymentPeriod: TherapistPaymentPeriod;
 
   async addMessage(
     msgRepo: Repository<Message>,

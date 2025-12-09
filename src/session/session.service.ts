@@ -92,6 +92,34 @@ export class SessionService {
     }
   }
 
+  async markAttendance(sessionId: string, clientId: string) {
+    // Load full session with group and attendance relations
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: ['group', 'groupAttendance']
+    });
+
+    if (!session) throw new Error('Session not found');
+
+    // Check if client is in assigned group[]
+    const existsInGroup = session.group.some(c => c.id === clientId);
+    if (!existsInGroup) {
+      throw new Error('Client is not part of this session group');
+    }
+
+    // Check if already marked
+    const alreadyMarked = session.groupAttendance.some(c => c.id === clientId);
+    if (alreadyMarked) {
+      return session; // ignore duplicates
+    }
+
+    // Add them to attendance list
+    session.groupAttendance.push({ id: clientId } as any);
+
+    return await this.sessionRepo.save(session);
+
+  }
+
   async create(id:string, createSessionDto: any) {
     return await this.sessionRepo.manager.transaction(async (manager) => {
       this.logger.log('Creating new session(s)');
@@ -769,6 +797,8 @@ export class SessionService {
   async addToSession(sessionId: string, dto: AddToSessionDto) {
   return await this.sessionRepo.manager.transaction(async (manager) => {
     const { groupClients } = dto;
+    const now = new Date();
+    // const now = new Date("2025-12-02");
 
     // 1️⃣ Load full reference session with all relations
     const referenceSession = await this.sessionRepo.findOne({
@@ -798,7 +828,10 @@ export class SessionService {
 
     // 2️⃣ Find all sessions in the same group series
     const relatedSessions = await this.sessionRepo.find({
-      where: { commonId: referenceSession.commonId },
+      where: { 
+        commonId: referenceSession.commonId,
+      schedule: MoreThan(now),
+    },
       relations: ['group', 'therapist', 'client', 'groupSubscription'],
       order: { schedule: 'ASC' },
     });
@@ -819,8 +852,6 @@ export class SessionService {
     if (!newClients.length) {
       throw new BadRequestException('All clients are already part of these group sessions');
     }
-
-    const now = new Date();
 
     const allUpdatedSessions: Session[] = [...relatedSessions];
 
@@ -1263,6 +1294,7 @@ export class SessionService {
 
     // 2️⃣ Load only FUTURE related sessions (same as addToSession)
     const now = new Date();
+    // const now = new Date("2025-12-02");
 
     const relatedSessions = await manager.find(Session, {
       where: {

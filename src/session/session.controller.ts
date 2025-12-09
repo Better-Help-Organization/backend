@@ -145,6 +145,18 @@ export class SessionController {
     return this.sessionService.update(id, assignSessionDto);
   }
 
+  @Post('group-attendance/:id')
+    @DynamicGuards(
+    new ClientJwtAuthGuard(),
+  )
+  async markClientAttendance(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+  ) {
+    return await this.sessionService.markAttendance(id, user.id);
+  }
+
+
 
   @Delete(':id')
   @DynamicGuards(
