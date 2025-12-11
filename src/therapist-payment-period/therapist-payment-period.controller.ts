@@ -11,6 +11,9 @@ export class TherapistPaymentPeriodController {
   constructor(private readonly therapistPaymentPeriodService: TherapistPaymentPeriodService) {}
 
   @Post()
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   create(@Body() createTherapistPaymentPeriodDto: CreateTherapistPaymentPeriodDto) {
     return this.therapistPaymentPeriodService.create(createTherapistPaymentPeriodDto);
   }
@@ -45,6 +48,9 @@ export class TherapistPaymentPeriodController {
   }
 
   @Delete(':id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+  )
   remove(@Param('id') id: string) {
     return this.therapistPaymentPeriodService.remove(id);
   }

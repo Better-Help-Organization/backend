@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 
 export class CreateTelebirrDto {}
 
@@ -18,11 +18,11 @@ export class TelebirrPayDto {
   @IsUUID()
   subscriptionId: string;
 
-  // @ApiProperty({ description: 'Payment amount', example: 499.99 })
-  // @IsNotEmpty()
-  // @IsNumber({ maxDecimalPlaces: 2 })
-  // @Min(0, { message: 'amount must be a positive number' })
-  // amount: number;
+  @ApiProperty({ description: 'Payment amount', example: 499.99 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0, { message: 'amount must be a positive number' })
+  amount: number;
 
   // @ApiProperty({ description: 'Date and time of payment', example: '2025-09-18T14:32:00Z', required: false })
   // @IsOptional()

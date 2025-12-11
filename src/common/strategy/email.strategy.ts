@@ -71,13 +71,11 @@ export class EmailPwdStrategy extends PassportStrategy(Strategy, 'email-pwd') {
     const path = req.path.toLowerCase();
     let userType: UserTypes;
 
-    if (path.includes('client')) {
-      userType = UserTypes.CLIENT;
-    } else if (path.includes('therapist')) {
-      userType = UserTypes.THERAPIST;
-    } else if (path.includes('admin')) {
+
+    if (path.includes('admin')) {
       userType = UserTypes.ADMIN;
-    } else {
+    } 
+    else {
       throw new BadRequestException('Invalid login path');
     }
 

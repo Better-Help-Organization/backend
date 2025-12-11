@@ -19,7 +19,6 @@ export class TherapistSubscriber implements EntitySubscriberInterface<Therapist>
   async afterUpdate(event: UpdateEvent<Therapist>) {
     const oldProfile = event.databaseEntity?.profile;
     const newProfile = event.entity?.profile;
-    console.log({newProfile,oldProfile})
     if (newProfile !== undefined && newProfile !== oldProfile) {
       const userId = event.entity.id;
       const userType = UserTypes.THERAPIST; // if you store type in base class

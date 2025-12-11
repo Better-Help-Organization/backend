@@ -37,7 +37,7 @@ export function createJwtAuthGuard(strategy: string) {
 
       // const request = context.switchToHttp().getRequest();
       // const user = request.user as TokenPayload;
-      // console.log({user})
+      console.log({user},"klsdnfklsdn")
       // // ✅ Always allow ADMIN users to pass any guard
       
       if (user?.type === UserTypes.ADMIN) {

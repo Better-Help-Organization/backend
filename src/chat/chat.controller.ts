@@ -1,11 +1,13 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
+import { ClientService } from 'src/client/client.service';
 import { TokenPayload, UserTypes } from 'src/common/constants';
 import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LivekitService } from 'src/livekit/livekit.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
@@ -18,7 +20,8 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly logger: LoggerService,
-    
+    private readonly livekitService: LivekitService,
+    private readonly clientService: ClientService
   ) {}
 
   @DynamicGuards(
@@ -159,11 +162,25 @@ export class ChatController {
     @Body() createCallDto: CreateCallDto
   ) {
    try{
-    return await this.chatService.call(id,user, createCallDto);
-  } catch (error) {
-    this.logger.error(`Error finding chat: ${error.message}`);
-    return error;
+      return await this.chatService.call(id,user, createCallDto);
+    } catch (error) {
+      this.logger.error(`Error finding chat: ${error.message}`);
+      return error;
+    }
   }
+
+  @Post("call/:id/join")
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
+  async joinCall(@Param('id') id: string, @CurrentUser() user: TokenPayload) {
+      try{
+        return await this.chatService.joinCall(id,user);
+      } catch (error) {
+      this.logger.error(`Error joining call: ${error.message}`);
+      return error;
+    }
   }
 
   @Post('call/end/:id')

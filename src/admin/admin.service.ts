@@ -9,6 +9,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Injectable()
 export class AdminService {
@@ -60,7 +61,7 @@ export class AdminService {
     }
   }
 
-  async update(id: string, updateDto: UpdateAdminDto) {
+  async update(id: string, updateDto: UpdateAdminDto | UpdateMeDto) {
     const admin = await this.findOne(id);
     Object.assign(admin, updateDto);
     try {

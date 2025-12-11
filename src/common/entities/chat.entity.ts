@@ -56,6 +56,14 @@ export class Chat extends CommonEntity {
   @JoinColumn({ name: 'last_message_id' })
   lastMessage: Message;
 
+  @Column({ nullable: true })
+  activeCallRoom: string;
+
+
+  @ApiProperty({ default: false })
+  @Column({default: false })
+  closed: boolean;
+
   async addMessage(
     msgRepo: Repository<Message>,
     content: string,

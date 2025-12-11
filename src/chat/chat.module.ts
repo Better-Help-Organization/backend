@@ -16,7 +16,7 @@ import { ChatService } from './chat.service';
     forwardRef(() => ClientModule),
     forwardRef(() => TherapistModule),
     FirebaseModule,
-    LivekitModule
+    LivekitModule,
   ],
   controllers: [ChatController],
   providers: [ChatService],
