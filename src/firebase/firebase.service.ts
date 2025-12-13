@@ -66,6 +66,9 @@ export class FirebaseService {
 
       if (showNotification) {
         // Fetch clients in one query
+        await this.saveNotification({ title, body, message, code, clientTokens: tokens.client });
+        await this.saveNotification({ title, body, message, code, therapistTokens: tokens.therapist });
+
         const clients = tokens.client?.length
           ? await this.clientRepo.find({
               where: { firebaseToken: In(tokens.client) },
@@ -182,23 +185,55 @@ export class FirebaseService {
         })
       ),
     ];
-
+    
     if (notifications.length === 0) return;
 
-    // Batch insert asynchronously (outside any active session transaction)
-    const batchSize = 20;
-    for (let i = 0; i < notifications.length; i += batchSize) {
-      const batch = notifications.slice(i, i + batchSize);
-      this.notifRepo.save(batch).catch(err => {
-        this.logger.error('Error saving notification batch:', err);
-      });
+
+    let saved = await this.notifRepo.save(notifications);
+    if ((code === SessionNotif.SCHEDULED.code) && notifications[0]?.client?.id) {
+
+
+      const clientNotification = saved.find(n => n.client?.id);
+      if (clientNotification) {
+        await this.clientRepo.update(clientNotification.client.id, {
+          hasNotification: clientNotification,
+        });
+      }
+
+      return;
     }
 
+    // Batch insert asynchronously (outside any active session transaction)
+    // const batchSize = 20;
+    // for (let i = 0; i < notifications.length; i += batchSize) {
+    //   const batch = notifications.slice(i, i + batchSize);
+    //   this.notifRepo.save(batch).catch(err => {
+    //     this.logger.error('Error saving notification batch:', err);
+    //   });
+    // }
+    // console.log("===========================================================================")
     // Update client.hasNotification outside transaction (fire-and-forget)
-    clients.forEach(c => {
-      this.clientRepo.update(c.id, { hasNotification: notifications.find(n => n.client?.id === c.id) })
-        .catch(err => this.logger.error('Error updating client.hasNotification:', err));
-    });
+    // clients.forEach(c => {
+    //   const notif = notifications.find(n => n.client?.id === c.id);
+    //   if (!notif) return;
+
+    //   this.clientRepo
+    //     .createQueryBuilder()
+    //     .relation(Client, "hasNotification")
+    //     .of(c.id)
+    //     .set(notif.id)
+    //     .catch(err => this.logger.error('Error updating client.hasNotification:', err));
+    // });
+
+    // clients.forEach(c => {
+    //     this.clientRepo.save({
+    //       id: c.id,
+    //       hasNotification: notifications.find(n => n.client?.id === c.id)
+    //     }).catch(err => this.logger.error('Error updating client.hasNotification:', err));
+    // });
+    // console.log({clients});
+      // console.log("===========================================================================")
+
   }
 
   async findOne(id: string, queryParams?: FindOneQueryParams<Notification>) {
