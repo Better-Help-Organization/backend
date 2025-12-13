@@ -121,7 +121,6 @@ export class ChatService {
   try {
     // 1️⃣ Fetch chats without joining group members
     const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
-    console.log('Chats fetched:', chats.data[0]);
 
     const chatIds = chats.data.map(c => c.id);
     if (!chatIds.length) return chats;

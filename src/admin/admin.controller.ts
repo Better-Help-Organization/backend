@@ -31,7 +31,6 @@ export class AdminController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log({user})
     return await this.adminService.findOne(user.id,queryParams);
   }
 
