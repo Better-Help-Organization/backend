@@ -13,6 +13,8 @@ import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
 import { Session } from './session.entity';
 import { User } from './user.entity';
+import { SessionClientNotes } from './session-client-notes.entity';
+
 
 @Entity()
 export class Client extends User {
@@ -91,6 +93,9 @@ export class Client extends User {
   @ApiProperty({ type: () => Session, isArray: true })
   @OneToMany(() => Session, ss => ss.client)
   session: Session[];
+
+  @OneToMany(() => SessionClientNotes, (n) => n.client)
+  sessionNotes: SessionClientNotes[];
   
 
     // @Expose()

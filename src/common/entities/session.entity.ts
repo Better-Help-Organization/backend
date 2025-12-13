@@ -18,7 +18,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
+import { SessionClientNotes } from './session-client-notes.entity';
 import { TherapistPaymentPeriod } from './therapist-payment-period.entity';
+
 
 @Entity('session')
 @Unique(['client', 'therapist', 'modal', 'schedule'])
@@ -156,6 +158,13 @@ export class Session extends CommonEntity {
     eager: true
   })
   paymentPeriod: TherapistPaymentPeriod;
+
+  @ApiProperty({ type: () => [SessionClientNotes] })
+  @OneToMany(() => SessionClientNotes, (n) => n.session, {
+    cascade: true,
+    // eager:true
+  })
+  clientNotes: SessionClientNotes[];
 
   async addMessage(
     msgRepo: Repository<Message>,

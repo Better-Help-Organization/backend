@@ -21,7 +21,9 @@ import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession } from './dto/create-session.dto';
 import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, AttendanceDto, UpdateSessionDto, UpdateGroupSessionNote } from './dto/update-session.dto';
+import { SessionClientNotes } from 'src/common/entities/session-client-notes.entity';
+
 
 function getNextMonday(from: Date): Date {
   const day = from.getDay(); // 0 = Sunday, 1 = Monday ...
@@ -1273,6 +1275,53 @@ export class SessionService {
       
   //   });
   // }
+
+  async updateBatchTherapistNotes(id:string, dto: UpdateGroupSessionNote) {
+    return await this.dataSource.transaction(async (manager) => {
+      const session = await manager.findOne(Session, {
+        where: { id: id },
+        relations: ['group'],
+      });
+
+      if (!session) {
+        throw new NotFoundException('Group session not found');
+      }
+
+      for (const entry of dto.notes) {
+        const isClientInGroup = session.group.some(
+          (c) => c.id === entry.clientId,
+        );
+
+        if (!isClientInGroup) {
+          throw new BadRequestException(
+            `Client ${entry.clientId} is not part of this group session`,
+          );
+        }
+
+        let existingNote = await manager.findOne(SessionClientNotes, {
+          where: {
+            session: { id: id },
+            client: { id: entry.clientId },
+          },
+        });
+
+        if (existingNote) {
+          existingNote.note = entry.note;
+          await manager.save(existingNote);
+        } else {
+          const newNote = manager.create(SessionClientNotes, {
+            session: { id: id },
+            client: { id: entry.clientId },
+            note: entry.note,
+          });
+
+          await manager.save(newNote);
+        }
+      }
+
+      return { message: 'Notes updated successfully' };
+    });
+  }
 
   async removeFromSession(sessionId: string, dto: RemoveFromSessionDto) {
   return await this.sessionRepo.manager.transaction(async (manager) => {

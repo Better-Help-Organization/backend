@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
 import { TokenPayload, UserTypes } from 'src/common/constants';
 import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
@@ -10,7 +10,7 @@ import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
 import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, AttendanceDto, UpdateSessionDto } from './dto/update-session.dto';
+import { AssignSessionDto, AttendanceDto, UpdateSessionDto, UpdateGroupSessionNote } from './dto/update-session.dto';
 import { SessionService } from './session.service';
 
 @Controller('session')
@@ -121,6 +121,18 @@ export class SessionController {
     @Param('id') id: string, 
     @Body() updateSessionDto: UpdateSessionDto) {
     return this.sessionService.update(id, updateSessionDto);
+  }
+
+  @Patch('group-notes/:id')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  updateGroupSessionNotes(
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupSessionNote
+  ) {
+    return this.sessionService.updateBatchTherapistNotes(id, dto);
   }
 
   @Patch('attendance/:id')
