@@ -156,6 +156,63 @@ export class MatchService {
 
     return { message: 'Match request created successfully' };
   }
+
+    private SENSITIVE_KEYS = [
+    'password',
+    'refreshToken',
+    'firebaseToken',
+    'OTP',
+    'OTPExpires',
+    'email',
+    'phoneNumber',
+    'dob',
+    'lastSeenAt',
+    'createdAt',
+    'updatedAt',
+    'gender',
+    'isEmailAuthenticated',
+    'isPhoneNumberAuthenticated',
+    'status',
+    'gender',
+    'isLinked',
+    'emergencyContact',
+    'isVisible',
+    'address',
+    'bio',
+    'isInGroup'
+  ];
+
+  protected maskValue(value: any) {
+      // return "***"; // If you prefer masking
+      return undefined; // remove key entirely
+  }
+
+  private sanitize(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+
+      // Arrays → sanitize each element
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.sanitize(item));
+      }
+
+      // Objects
+      const sanitized: any = {};
+
+      for (const [key, value] of Object.entries(obj)) {
+        // Remove sensitive keys
+        if (this.SENSITIVE_KEYS.includes(key)) {
+          sanitized[key] = this.maskValue(value);
+          continue;
+        }
+
+        // Recursively sanitize nested objects
+        sanitized[key] = this.sanitize(value);
+      }
+
+      return sanitized;
+  }
+
+
   
   async acceptMatch(token: TokenPayload, acceptMatchDto: AcceptMatchDto, mockId?: String): Promise<{ message: string }> {
     const queryRunner = this.matchRepository.manager.connection.createQueryRunner();
@@ -254,7 +311,7 @@ export class MatchService {
         if (therapist.firebaseToken) {
           await this.firebaseService.sendPushNotification(
             { therapist: [therapist.firebaseToken], client: [], admin: [] },
-            JSON.stringify({ match }),
+            JSON.stringify({ match:this.sanitize(match) }),
             SessionNotif.NEW_MATCH,
             'You have been matched with a new client by an admin.'
           );
