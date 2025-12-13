@@ -65,7 +65,7 @@ export class Session extends CommonEntity {
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
     nullable: true,
-    // eager: true
+    eager: true
   })
   therapist: Therapist;
 
