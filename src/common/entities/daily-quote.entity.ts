@@ -5,7 +5,9 @@ import { Quote } from "./quote.entity";
 @Entity()
 export class DailyQuote extends CommonEntity {
 
-  @ManyToOne(() => Quote)
+  @ManyToOne(() => Quote,{
+    onDelete: 'CASCADE',
+  })
   quote: Quote;
 
   @Column({ type: 'date', unique: true })
