@@ -5,6 +5,7 @@ import { ApprovalStatus, DayOfWeek, DefaultParameters, SessionNotif, Subscriptio
 import { Availability } from 'src/common/entities/availability.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
+import { SessionClientNotes } from 'src/common/entities/session-client-notes.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Status } from 'src/common/entities/status.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -21,8 +22,7 @@ import { AddToSessionDto } from './dto/add-session.dto';
 import { CreateGroupSession } from './dto/create-session.dto';
 import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
-import { AssignSessionDto, AttendanceDto, UpdateSessionDto, UpdateGroupSessionNote } from './dto/update-session.dto';
-import { SessionClientNotes } from 'src/common/entities/session-client-notes.entity';
+import { AssignSessionDto, AttendanceDto, UpdateGroupSessionNote, UpdateSessionDto } from './dto/update-session.dto';
 
 
 function getNextMonday(from: Date): Date {
@@ -324,6 +324,11 @@ export class SessionService {
       }
 
       // Confirm selected
+      if (!cs.therapist) {
+        cs.therapist = selected.therapist;
+        await manager.save(cs);
+      }
+
       selected.approvalStatus = ApprovalStatus.CONFIRMED;
       selected.subscription = cs;
       const confirmed = await manager.save(selected);
@@ -745,7 +750,7 @@ export class SessionService {
         // ✅ Update isInGroup for clients
         for (const client of clientsForThisSession) {
           if (!client.activeSubscription) throw new BadRequestException('Client missing active subscription') ;
-
+          console.log({clientSubscription: client.activeSubscription})
           const clientSub = await manager.findOne(ClientSubscription, {
             where: { id: client.activeSubscription.id },
             relations: ['session'],
@@ -761,6 +766,7 @@ export class SessionService {
 
             clientSub.start_date = firstDate;
             clientSub.end_date = lastDate;
+            clientSub.therapist = therapist;
 
             await manager.save(clientSub);
           }
@@ -989,7 +995,7 @@ export class SessionService {
     await this.firebaseService.sendPushNotification(
       tokens,
       JSON.stringify({ commonId: referenceSession.commonId }),
-      SessionNotif.SCHEDULED,
+      SessionNotif.GROUP_SESSION_ADDED,
       `You have been added to all upcoming group sessions in this series.`
     );
     return allUpdatedSessions;

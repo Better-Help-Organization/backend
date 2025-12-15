@@ -220,6 +220,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   THERAPIST_ATTENDANCE_MARKED: { code: "29", title: "Attendance has been marked", showNotification: true },
   INCOMING_GROUP_CALL: { code: "30", title: 'Incoming  Group Call', showNotification: true },
   RE_SCHEDULED: { code: "31", title: 'Session re-scheduled', showNotification: true },
+  GROUP_SESSION_ADDED: { code: "32", title: 'Added to  group session', showNotification: true },
 
 } as const;
 
