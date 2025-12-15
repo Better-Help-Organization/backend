@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { DefaultParameters, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
+import { DefaultParameters, ModalName, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
@@ -68,6 +68,10 @@ export class MatchService {
 
     if (!preference) {
       throw new NotFoundException('Preference not found');
+    }
+
+    if(preference.modal.name == ModalName.GROUP_THERAPY) {
+      throw new BadRequestException('Group therapy matches are not handled here');
     }
 
     if (preference.client.id !== token.id) {
