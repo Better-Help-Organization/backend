@@ -450,7 +450,7 @@ export class ChatService {
     let  isGroupCall = createCallDto.calleeIds && createCallDto.calleeIds.length > 0 ? true : false;
     let chat;
 
-      if (!isGroupCall) {
+  if (!isGroupCall) {
     chat = await this.findOne(id, { fields: "client.*,therapist.*" });
 
     const isCallerClient = chat.client.id === caller.id;
@@ -503,8 +503,7 @@ export class ChatService {
   }
 
   else {
-    chat = await this.findAll({ fields: "group.*, activeCallRoom", ids: `${id}` });
-
+    chat = await this.findOne(id, { fields: "group.*, activeCallRoom" });
     const room = `group_${id}`;
     const callerData = await this.therapistService.findOne(caller.id);
 
@@ -513,9 +512,9 @@ export class ChatService {
       room,
     );
     
-    chat.activeCallRoom = `group_${chat.id}`;
+    chat.activeCallRoom = room;
     await this.chatRepo.save(chat);
-    const groupMembers = chat.data[0].group;
+    const groupMembers = chat.group;
     const callees = groupMembers.filter(c => createCallDto.calleeIds.includes(c.id));
 
     const notifications = [];
