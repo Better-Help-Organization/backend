@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsIn, IsOptional } from 'class-validator';
 import { AdminRoles, BaseStatus } from 'src/common/constants';
+import { ValidPassword } from 'src/common/decorators/valid-password';
 import { UpdateUserDto } from 'src/common/dto/update-user.dto';
 
 export class UpdateAdminDto extends UpdateUserDto {
@@ -18,4 +19,18 @@ export class UpdateAdminDto extends UpdateUserDto {
     @IsEnum(BaseStatus)
     @IsOptional()
     status: BaseStatus;
+
+    @ApiProperty({
+        description: 'New password',
+        required: false,
+        example: 'NewSecurePassword123'
+    })
+    @IsOptional()
+    @ValidPassword()
+    // @Transform(async ({ value }) => {
+    // if (!value) return value;
+    // return await hash(value, 10);
+    // })
+    password?: string;
+
 }
