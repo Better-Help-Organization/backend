@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: ${DOCKERFILE}
     image: bh-${NODE_ENV}
+    restart: unless-stopped
     volumes:
       - .:/app
     depends_on:
@@ -34,7 +35,7 @@ services:
     
   db:
     image: mysql:8.0.35
-    restart: always
+    restart: unless-stopped
     networks:
       - ${NODE_ENV}_default
     environment:
