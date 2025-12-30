@@ -1,13 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 
 @Injectable()
 export class LivekitService {
-  private readonly logger = new Logger(LivekitService.name);
 
-  private apiKey = 'API3rPaZuGqb288';
-  private apiSecret = '9mjCmtWAYazPpgrqhvoMojk48sJOnfbNPwZfiRFMyl8';
-  private livekitHost = 'wss://demo-eukecq5l.livekit.cloud';
+  constructor(private readonly configService: ConfigService){}
+
+  private readonly logger = new Logger(LivekitService.name);
+  private apiKey = this.configService.getOrThrow<string>('LIVEKIT_API_Key');
+  private apiSecret = this.configService.getOrThrow<string>('LIVEKIT_API_SECRET');
+  private livekitHost = this.configService.getOrThrow<string>('LIVEKIT_URL');
 
   private roomService = new RoomServiceClient(
     this.livekitHost,
