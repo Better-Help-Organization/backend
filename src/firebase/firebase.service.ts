@@ -41,113 +41,205 @@ export class FirebaseService {
     return "Records updated successfully";
   }
 
-  async sendPushNotification(
-  tokens: Tokens,
-  message: string,
-  notificationType: SessionNotifValue,
-  body?: string,
-  profile?: string
+    async sendPushNotification(
+    tokens: Tokens,
+    message: string,
+    notificationType: SessionNotifValue,
+    body?: string,
+    profile?: string
   ): Promise<void> {
     try {
       const { code, title, showNotification } = notificationType;
+
+      console.log({code, title, showNotification})
       if (!body) body = "You have a new notification.";
 
       this.logger.log(`Preparing push notification: ${title} -> ${message}`);
 
-      // 1️⃣ Flatten all tokens for Firebase
+      // 1️⃣ Flatten all tokens
       const allTokens: string[] = [
         ...(tokens.client || []),
         ...(tokens.therapist || []),
         ...(tokens.admin || []),
       ];
+      console.log({allTokens})
 
-      // 2️⃣ Create notifications in memory
-      const notifications: Notification[] = [];
-
+      // 2️⃣ Save notification ONCE (only when allowed)
       if (showNotification) {
-        // Fetch clients in one query
-        await this.saveNotification({ title, body, message, code, clientTokens: tokens.client });
-        await this.saveNotification({ title, body, message, code, therapistTokens: tokens.therapist });
-
-        const clients = tokens.client?.length
-          ? await this.clientRepo.find({
-              where: { firebaseToken: In(tokens.client) },
-            })
-          : [];
-
-        // Fetch therapists in one query
-        const therapists = tokens.therapist?.length
-          ? await this.therapistRepo.find({
-              where: { firebaseToken: In(tokens.therapist) },
-            })
-          : [];
-
-        // Prepare notifications
-        notifications.push(
-          ...clients.map((client) =>
-            this.notifRepo.create({
-              title,
-              body,
-              message,
-              code,
-              profile,
-              client: { id: client.id },
-              therapist: null,
-            })
-          ),
-          ...therapists.map((therapist) =>
-            this.notifRepo.create({
-              title,
-              body,
-              message,
-              code,
-              profile,
-              client: null,
-              therapist: { id: therapist.id },
-            })
-          )
-        );
-
-        // 3️⃣ Save notifications in batches to avoid locks
-        const batchSize = 50;
-        for (let i = 0; i < notifications.length; i += batchSize) {
-          const batch = notifications.slice(i, i + batchSize);
-          await this.notifRepo.save(batch);
-        }
+        await this.saveNotification({
+          title,
+          body,
+          message,
+          code,
+          profile,
+          clientTokens: tokens.client,
+          therapistTokens: tokens.therapist,
+        });
       }
 
-      // 4️⃣ Send Firebase notifications asynchronously (non-blocking)
-      if (allTokens.length > 0) {
-        const firebasePayload: any = {
-          tokens: allTokens,
-          notification: showNotification ? { title, body } : undefined,
-          data: {
-            id: message,
-            code,
-            timestamp: Date.now().toString(),
-            profile: profile || "",
+      if (!allTokens.length) return;
+
+      // 3️⃣ Firebase payload (iOS + Android)
+      const firebasePayload: admin.messaging.MulticastMessage = {
+        tokens: allTokens,
+
+        notification: showNotification
+          ? { title, body }
+          : undefined,
+
+        data: {
+          id: message,
+          code,
+          timestamp: Date.now().toString(),
+          profile: profile ?? "",
+        },
+
+        apns: {
+          headers: {
+            "apns-priority": showNotification ? "10" : "5",
           },
-        };
+          payload: {
+            aps: {
+              alert: showNotification ? { title, body } : undefined,
+              "content-available": 1,
+              sound: showNotification ? "default" : undefined,
+            },
+          },
+        },
 
-        let android, apns;
-        if (notificationType === SessionNotif.MATCH_REQUEST) {
-          android = { notification: { sound: "positive", channel_id: "match_requests" } };
-          apns = { payload: { aps: { sound: "positive" } } };
-        }
+        android: {
+          priority: "high",
+          notification: showNotification
+            ? {
+                sound: "default",
+                channelId:
+                  notificationType === SessionNotif.MATCH_REQUEST
+                    ? "match_requests"
+                    : "default",
+              }
+            : undefined,
+        },
+      };
 
-        if (android) firebasePayload.android = android;
-        if (apns) firebasePayload.apns = apns;
+      console.log({firebasePayload})
+      this.firebaseAdmin
+        .messaging()
+        .sendEachForMulticast(firebasePayload)
+        .catch(err => this.logger.error("Firebase error:", err));
 
-        this.firebaseAdmin.messaging()
-          .sendEachForMulticast(firebasePayload)
-          .catch((err) => this.logger.error('Firebase error:', err));
-      }
-
-      this.logger.log(`Notifications processed successfully`);
+      this.logger.log("Push notification processed successfully");
     } catch (err) {
-      this.logger.error('Error sending notification:', err);
+      this.logger.error("Error sending push notification:", err);
     }
   }
+
+//  async sendPushNotification(
+//   tokens: Tokens,
+//   message: string,
+//   notificationType: SessionNotifValue,
+//   body?: string,
+//   profile?: string
+//   ): Promise<void> {
+//     try {
+//       const { code, title, showNotification } = notificationType;
+//       if (!body) body = "You have a new notification.";
+
+//       this.logger.log(`Preparing push notification: ${title} -> ${message}`);
+
+//       // 1️⃣ Flatten all tokens for Firebase
+//       const allTokens: string[] = [
+//         ...(tokens.client || []),
+//         ...(tokens.therapist || []),
+//         ...(tokens.admin || []),
+//       ];
+
+//       // 2️⃣ Create notifications in memory
+//       const notifications: Notification[] = [];
+
+//       if (showNotification) {
+//         // Fetch clients in one query
+//         await this.saveNotification({ title, body, message, code, clientTokens: tokens.client });
+//         await this.saveNotification({ title, body, message, code, therapistTokens: tokens.therapist });
+
+//         const clients = tokens.client?.length
+//           ? await this.clientRepo.find({
+//               where: { firebaseToken: In(tokens.client) },
+//             })
+//           : [];
+
+//         // Fetch therapists in one query
+//         const therapists = tokens.therapist?.length
+//           ? await this.therapistRepo.find({
+//               where: { firebaseToken: In(tokens.therapist) },
+//             })
+//           : [];
+
+//         // Prepare notifications
+//         notifications.push(
+//           ...clients.map((client) =>
+//             this.notifRepo.create({
+//               title,
+//               body,
+//               message,
+//               code,
+//               profile,
+//               client: { id: client.id },
+//               therapist: null,
+//             })
+//           ),
+//           ...therapists.map((therapist) =>
+//             this.notifRepo.create({
+//               title,
+//               body,
+//               message,
+//               code,
+//               profile,
+//               client: null,
+//               therapist: { id: therapist.id },
+//             })
+//           )
+//         );
+
+//         // 3️⃣ Save notifications in batches to avoid locks
+//         const batchSize = 50;
+//         for (let i = 0; i < notifications.length; i += batchSize) {
+//           const batch = notifications.slice(i, i + batchSize);
+//           await this.notifRepo.save(batch);
+//         }
+//       }
+
+//       // 4️⃣ Send Firebase notifications asynchronously (non-blocking)
+//       if (allTokens.length > 0) {
+//         const firebasePayload: any = {
+//           tokens: allTokens,
+//           notification: showNotification ? { title, body } : undefined,
+//           data: {
+//             id: message,
+//             code,
+//             timestamp: Date.now().toString(),
+//             profile: profile || "",
+//           },
+//         };
+
+//         let android, apns;
+//         if (notificationType === SessionNotif.MATCH_REQUEST) {
+//           android = { notification: { sound: "positive", channel_id: "match_requests" } };
+//           apns = { payload: { aps: { sound: "positive" } } };
+//         }
+
+//         if (android) firebasePayload.android = android;
+//         if (apns) firebasePayload.apns = apns;
+
+//         this.firebaseAdmin.messaging()
+//           .sendEachForMulticast(firebasePayload)
+//           .catch((err) => this.logger.error('Firebase error:', err));
+//       }
+
+//       this.logger.log(`Notifications processed successfully`);
+//     } catch (err) {
+//       this.logger.error('Error sending notification:', err);
+//     }
+//   }
 
   async saveNotification(dto: SaveNotificationDto) {
     const { body, code, message, title, clientTokens, therapistTokens, profile } = dto;
