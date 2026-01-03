@@ -296,7 +296,6 @@ export class ChatService {
 
     msg = this.sanitize(msg);
 
-    console.log({sanitized:msg})
       await this.firebaseService.sendPushNotification(
         tokens, 
         JSON.stringify(msg), 
