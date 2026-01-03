@@ -87,48 +87,53 @@ export class NotificationScheduler {
     }
 
     // 2. Session reminders (24h, 2h, 15m before start)
-    @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' }) // every minute
+    @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
     async sendSessionReminders() {
         this.logger.log('Checking upcoming sessions for reminders...');
-
         const now = new Date();
-        const future = new Date(now.getTime() + 25 * 60 * 60 * 1000); // scan 25h ahead
 
-        const sessions = await this.sessionRepo.find({
-            where: { schedule: Between(now, future) },
-            relations: ['client', 'therapist'],
-        });
+        // Map target minutes to specific future timestamps
+        const targets = [1440, 120, 15]; // 24h, 2h, 15m
+        
+        for (const minutes of targets) {
+            // Look for sessions scheduled EXACTLY X minutes from now (plus a small 59s window)
+            const targetTimeStart = new Date(now.getTime() + minutes * 60000);
+            const targetTimeEnd = new Date(targetTimeStart.getTime() + 59000);
 
-        const targetMinutes = [24 * 60, 2 * 60, 15]; // [1440, 120, 15]
+            const sessions = await this.sessionRepo.find({
+                where: { 
+                    schedule: Between(targetTimeStart, targetTimeEnd) 
+                },
+                relations: ['client', 'therapist'],
+                // Only select the fields you need to save memory
+                select: {
+                    id: true,
+                    schedule: true,
+                    client: { id: true, firstName: true, firebaseToken: true },
+                    therapist: { id: true, firstName: true, firebaseToken: true }
+                }
+            });
 
-
-        for (const session of sessions) {
-            const diffMinutes = Math.floor((session.schedule.getTime() - now.getTime()) / 60000);
-
-            const etTime = toEthiopianTime(session.schedule);
-
-            if (targetMinutes.includes(diffMinutes)) {
-                // Client reminder
+            for (const session of sessions) {
+                const etTime = toEthiopianTime(session.schedule);
+                
+                // Client Notification
                 if (session.client?.firebaseToken) {
                     await this.firebaseService.sendPushNotification(
                         { client: [session.client.firebaseToken], therapist: [], admin: [] },
                         'SESSION',
                         SessionNotif.SESSION_REMINDER_CLIENT,
-                        `Reminder: You have a session with ${
-                            session.therapist?.firstName ?? 'your therapist'
-                        } at ${etTime}`,
+                        `Reminder: You have a session with ${session.therapist?.firstName ?? 'your therapist'} at ${etTime}`,
                     );
                 }
 
-                // Therapist reminder
+                // Therapist Notification
                 if (session.therapist?.firebaseToken) {
                     await this.firebaseService.sendPushNotification(
                         { client: [], therapist: [session.therapist.firebaseToken], admin: [] },
                         'SESSION',
                         SessionNotif.SESSION_REMINDER_THERAPIST,
-                        `Reminder: You have a session with ${
-                            session.client?.firstName ?? 'a client'
-                        } at ${etTime}`,
+                        `Reminder: You have a session with ${session.client?.firstName ?? 'a client'} at ${etTime}`,
                     );
                 }
             }
