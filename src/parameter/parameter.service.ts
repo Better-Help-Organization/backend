@@ -48,6 +48,20 @@ export class ParameterService {
     }
   }
 
+  async getAllParsedParams(): Promise<Record<string, any>> {
+  // 1. Fetch all parameters in exactly ONE database call
+    const response = await this.findAll({}); 
+    const parsedMap: Record<string, any> = {};
+
+    // 2. Loop through and parse each one using your existing logic
+    for (const param of response.data) {
+      // We reuse your logic based on the name
+      parsedMap[param.name] = await this.parseFloatParams(param);
+    }
+    this.logger.log(`Successfully fetched all params and parsed them`);
+    return parsedMap;
+  }
+
   async getDefaultByName(name: string): Promise<string | number | number[]> {
     this.logger.log(`Fetching default parameter by name: ${name}`);
     try {

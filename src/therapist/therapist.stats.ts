@@ -92,13 +92,16 @@ export class TherapistStatisticsService {
   }
 
   async getTotalRevenue(therapistId?: string) {
-    // Fetch percentage parameters
-    const ADVANCED = await this.paramService.getDefaultByName('ADVANCED_PRICE_PERCENTAGE') as number;
-    const ASSOCIATE = await this.paramService.getDefaultByName('ASSOCIATE_PRICE_PERCENTAGE') as number;
-    const MODERATE = await this.paramService.getDefaultByName('MODERATE_PRICE_PERCENTAGE') as number;
-    const COUPLE = await this.paramService.getDefaultByName('COUPLE_PRICE_PERCENTAGE') as number;
-    const GROUP = await this.paramService.getDefaultByName('GROUP_PRICE_PERCENTAGE') as number;
-    const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number;
+
+    const params = await this.paramService.getAllParsedParams();
+
+    // Access them directly from the object
+    const ADVANCED = params[DefaultParameters.ADVANCED_PRICE_PERCENTAGE] as number;
+    const ASSOCIATE = params[DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE] as number;
+    const MODERATE = params[DefaultParameters.MODERATE_PRICE_PERCENTAGE] as number;
+    const COUPLE = params[DefaultParameters.COUPLE_PRICE_PERCENTAGE] as number;
+    const GROUP = params[DefaultParameters.GROUP_PRICE_PERCENTAGE] as number;
+    const VAT = params[DefaultParameters.VAT] as number;
 
     // 1️⃣ Fetch raw sessions
     const qb = this.sessionRepo.createQueryBuilder('session')
@@ -150,7 +153,6 @@ export class TherapistStatisticsService {
           groupSubscriptions: []
         });
       }
-      console.log({r})
       if (r.gsub_id) {
         sessionMap.get(sid).groupSubscriptions.push({
           price: r.gsub_price,
@@ -289,7 +291,6 @@ export class TherapistStatisticsService {
     const totalUsers = Number(result[0]?.totalUsers ?? 0);
 
 
-    console.log({period: { start, end }})
     return {
       period: { start, end },
       totalSessions: Number(totalSessions) || 0,
@@ -355,12 +356,16 @@ export class TherapistStatisticsService {
   }
 
   async getRevenueOverTime(start: string, end: string, therapistId?: string) {
-    const ADVANCED = await this.paramService.getDefaultByName(DefaultParameters.ADVANCED_PRICE_PERCENTAGE) as number;
-    const ASSOCIATE = await this.paramService.getDefaultByName(DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE) as number;
-    const MODERATE = await this.paramService.getDefaultByName(DefaultParameters.MODERATE_PRICE_PERCENTAGE) as number;
-    const COUPLE = await this.paramService.getDefaultByName(DefaultParameters.COUPLE_PRICE_PERCENTAGE) as number;
-    const GROUP = await this.paramService.getDefaultByName(DefaultParameters.GROUP_PRICE_PERCENTAGE) as number;
-    const VAT = await this.paramService.getDefaultByName(DefaultParameters.VAT) as number;
+
+    const params = await this.paramService.getAllParsedParams();
+
+    // Access them directly from the object
+    const ADVANCED = params[DefaultParameters.ADVANCED_PRICE_PERCENTAGE] as number;
+    const ASSOCIATE = params[DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE] as number;
+    const MODERATE = params[DefaultParameters.MODERATE_PRICE_PERCENTAGE] as number;
+    const COUPLE = params[DefaultParameters.COUPLE_PRICE_PERCENTAGE] as number;
+    const GROUP = params[DefaultParameters.GROUP_PRICE_PERCENTAGE] as number;
+    const VAT = params[DefaultParameters.VAT] as number;
 
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')

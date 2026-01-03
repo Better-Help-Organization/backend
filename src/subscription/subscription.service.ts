@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ModalName, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
+import { DefaultParameters, ModalName, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
@@ -99,11 +99,13 @@ export class SubscriptionService {
       // const finalPrice = selectedSub.price ? selectedSub.price * multiplier : null;
       // const finalOldPrice = selectedSub.old_price ? selectedSub.old_price * multiplier : null;
 
-      const ADVANCED = await this.paramService.getDefaultByName('ADVANCED_PRICE_PERCENTAGE') as number;
-      const ASSOCIATE = await this.paramService.getDefaultByName('ASSOCIATE_PRICE_PERCENTAGE') as number;
-      const MODERATE = await this.paramService.getDefaultByName('MODERATE_PRICE_PERCENTAGE') as number;
-      const COUPLE = await this.paramService.getDefaultByName('COUPLE_PRICE_PERCENTAGE') as number;
-      const GROUP = await this.paramService.getDefaultByName('GROUP_PRICE_PERCENTAGE') as number;
+      const params = await this.paramService.getAllParsedParams();
+
+      const ADVANCED = params[DefaultParameters.ADVANCED_PRICE_PERCENTAGE] as number;
+      const ASSOCIATE = params[DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE] as number;
+      const MODERATE = params[DefaultParameters.MODERATE_PRICE_PERCENTAGE] as number;
+      const COUPLE = params[DefaultParameters.COUPLE_PRICE_PERCENTAGE] as number;
+      const GROUP = params[DefaultParameters.GROUP_PRICE_PERCENTAGE] as number;
 
       let sessionPercent = 1;
       const modalName = selectedSub.modal.name.toUpperCase();
