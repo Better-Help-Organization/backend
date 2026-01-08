@@ -299,7 +299,7 @@ export class ChatService {
       await this.firebaseService.sendPushNotification(
         tokens, 
         JSON.stringify(msg), 
-        SessionNotif.NEW_MESSAGE, 
+        {...SessionNotif.NEW_MESSAGE, title:sender.name}, 
         content,
         profile
       );
@@ -455,7 +455,6 @@ export class ChatService {
     const isCallerClient = chat.client.id === caller.id;
     const callerData = isCallerClient ? chat.client : chat.therapist;
     const calleeData = isCallerClient ? chat.therapist : chat.client;
-        console.log({callerData, calleeData})
     const room = `chat_${id}`;
 
     // Generate tokens uniquely for each participant
