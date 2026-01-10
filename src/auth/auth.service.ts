@@ -300,7 +300,7 @@ export class AuthService {
     }
   }
 
-  async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes) {
+  async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
 
     try{
 
@@ -338,6 +338,7 @@ export class AuthService {
 
       user.refreshToken = refreshToken;
       user.firebaseToken = firebaseToken;
+      user.voIpToken = voipToken ? voipToken : null;
       await repo.save(user);
 
       return { user, accessToken, refreshToken };
@@ -347,13 +348,13 @@ export class AuthService {
     }
   }
 
-    async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes) {
+    async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
 
     try{
 
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  User)[] = ['password','role'];
+      const inclusiveOf: (keyof  User)[] = ['password','role','voIpToken'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
       const user = await repo.findOneOrFail({ where: { phoneNumber }, select: selectColumns });
@@ -375,6 +376,7 @@ export class AuthService {
 
       user.refreshToken = refreshToken;
       user.firebaseToken = firebaseToken;
+      user.voIpToken = voipToken ? voipToken : null;
       await repo.save(user);
 
       return { user, accessToken, refreshToken };

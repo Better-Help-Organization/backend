@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as apn from 'apn';
 import * as admin from 'firebase-admin';
 import { SessionNotif, SessionNotifValue, TokenPayload, UserTypes } from 'src/common/constants';
 import { Tokens } from "src/common/constants/index";
@@ -17,6 +18,7 @@ export class FirebaseService {
   constructor(
     private readonly logger: LoggerService,
     @Inject('FIREBASE_ADMIN') private readonly firebaseAdmin: typeof admin,
+    @Optional() @Inject('APN_PROVIDER') private readonly apnProvider: apn.Provider,
     @InjectRepository(Notification) private readonly notifRepo: Repository<Notification>,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
@@ -41,12 +43,13 @@ export class FirebaseService {
     return "Records updated successfully";
   }
 
-    async sendPushNotification(
+  async sendPushNotification(
     tokens: Tokens,
     message: string,
     notificationType: SessionNotifValue,
     body?: string,
-    profile?: string
+    profile?: string,
+    voipTokens?: string[]
   ): Promise<void> {
     try {
       const { code, title, showNotification } = notificationType;
@@ -77,51 +80,176 @@ export class FirebaseService {
         });
       }
 
-      if (!allTokens.length) return;
+      // if (!allTokens.length) return;
+      if (!allTokens.length && (!voipTokens || !voipTokens.length)) return;
+
+            // ==========================================
+      // PATH A: INCOMING CALLS (New Logic)
+      // ==========================================
+      const isCall = (code === SessionNotif.INCOMING_CALL.code);
+ 
+      if (isCall) {
+        // 1. Send VoIP Push to iOS (if tokens exist)
+        if (voipTokens && voipTokens.length > 0 && this.apnProvider) {
+          const note = new apn.Notification();
+          note.topic = "com.abthon.navithera.therapist.voip";
+          note.expiry = 0;
+          note.priority = 10;
+          // note.push
+          note.payload = {
+             id: message, // Your call data JSON
+             code: code,
+             data: { id: message, code, profile, isVideoCall: true }
+          };
+          // note.headers = {
+          //   "apns-push-type": "voip",
+          //   "apns-priority": "10"
+          // };
+ 
+          this.apnProvider.send(note, voipTokens).then((result) => {
+             this.logger.log(`VoIP Sent: ${result.sent.length}`);
+             if (result.failed.length) console.log('VoIP Failures:', JSON.stringify(result.failed));
+          });
+      }
+      
+
+        // 2. Send Data-Only FCM to Android (and iOS fallback)
+        // We use a data-only payload so we don't trigger a standard banner on iOS 
+        // that conflicts with the CallKit UI.
+        if (allTokens.length > 0) {
+           const callPayload: admin.messaging.MulticastMessage = {
+             tokens: allTokens,
+             data: {
+               id: message,
+               code: code.toString(),
+               timestamp: Date.now().toString(),
+               profile: profile ?? "",
+               type: "call"
+             },
+             android: {
+               priority: "high",
+               ttl: 0,
+               notification: {
+                 channelId: "match_requests", // triggers full screen on Android if configured
+                 sound: "default"
+               }
+             },
+             // Empty APNS config here to prevent double-banner on iOS
+             apns: {
+                payload: {
+                   aps: { "content-available": 1 }
+                }
+             }
+           };
+           this.firebaseAdmin.messaging().sendEachForMulticast(callPayload)
+             .catch(err => this.logger.error("FCM Call error:", err));
+        }
+        
+        return; // ✅ Stop here for calls
+      }
+ 
+      // ==========================================
+      // PATH B: STANDARD NOTIFICATIONS (Your Old Logic)
+      // ==========================================
+      // This block runs for everything that is NOT a call.
+      // It is exactly your previous logic.
 
       // 3️⃣ Firebase payload (iOS + Android)
+      // const firebasePayload: admin.messaging.MulticastMessage = {
+      //   tokens: allTokens,
+      // ...(showNotification && {
+      //   notification: { title, body },
+      // }),
+      //   data: {
+      //     id: message,
+      //     code,
+      //     timestamp: Date.now().toString(),
+      //     profile: profile ?? "",
+      //   },
+      //   apns: {
+      //     headers: {
+      //       "apns-push-type": showNotification ? "alert" : "background",
+      //       "apns-priority": showNotification ? "10" : "5"
+      //     },
+      //     payload: {
+      //       aps: {
+      //         alert: showNotification ? { title, body } : undefined,
+      //         ...(!showNotification && {"content-available": 1}),
+      //         sound: showNotification ? "default" : undefined,
+      //       },
+      //     },
+      //   },
+      //   android: {
+      //     priority: "high",
+      //     notification: showNotification
+      //       ? {
+      //           sound: "default",
+      //           channelId:
+      //             notificationType === SessionNotif.MATCH_REQUEST
+      //               ? "match_requests"
+      //               : "default"
+      //         }
+      //       : undefined,
+      //   },
+      // };
+      const isAlert = showNotification === true;
       const firebasePayload: admin.messaging.MulticastMessage = {
-        tokens: allTokens,
+      tokens: allTokens,
 
-        notification: showNotification
-          ? { title, body }
-          : undefined,
+      ...(isAlert && {
+        notification: { title, body },
+      }),
 
+      ...(isAlert && {
         data: {
           id: message,
           code,
           timestamp: Date.now().toString(),
           profile: profile ?? "",
         },
+      }),
 
-        apns: {
-          headers: {
-            "apns-priority": showNotification ? "10" : "5",
-          },
-          payload: {
-            aps: {
-              alert: showNotification ? { title, body } : undefined,
-              "content-available": 1,
-              sound: showNotification ? "default" : undefined,
-            },
-          },
+      apns: {
+        headers: {
+          "apns-push-type": isAlert ? "alert" : "background",
+          "apns-priority": isAlert ? "10" : "5",
         },
-
-        android: {
-          priority: "high",
-          notification: showNotification
+        payload: {
+          aps: isAlert
             ? {
+                alert: { title, body },
+                sound: "default",
+              }
+            : {
+                "content-available": 1,
+              },
+        },
+      },
+
+      android: {
+        priority: "high",
+        ...(isAlert
+          ? {
+              notification: {
                 sound: "default",
                 channelId:
                   notificationType === SessionNotif.MATCH_REQUEST
                     ? "match_requests"
                     : "default",
-              }
-            : undefined,
-        },
-      };
+              },
+            }
+          : {
+              data: {
+                id: message,
+                code,
+                timestamp: Date.now().toString(),
+                profile: profile ?? "",
+              },
+            }),
+      },
+    };
 
-      console.log({firebasePayload})
+
       this.firebaseAdmin
         .messaging()
         .sendEachForMulticast(firebasePayload)
@@ -132,6 +260,152 @@ export class FirebaseService {
       this.logger.error("Error sending push notification:", err);
     }
   }
+
+  // async sendPushNotification(
+  //   tokens: Tokens,
+  //   message: string,
+  //   notificationType: SessionNotifValue,
+  //   body?: string,
+  //   profile?: string
+  // ): Promise<void> {
+  //   try {
+  //     const { code, title, showNotification } = notificationType;
+
+  //     console.log({code, title, showNotification})
+  //     if (!body) body = "You have a new notification.";
+
+  //     this.logger.log(`Preparing push notification: ${title} -> ${message}`);
+
+  //     // 1️⃣ Flatten all tokens
+  //     const allTokens: string[] = [
+  //       ...(tokens.client || []),
+  //       ...(tokens.therapist || []),
+  //       ...(tokens.admin || []),
+  //     ];
+  //     console.log({allTokens})
+  //     // 2️⃣ Save notification ONCE (only when allowed)
+  //     if (showNotification) {
+  //       await this.saveNotification({
+  //         title,
+  //         body,
+  //         message,
+  //         code,
+  //         profile,
+  //         clientTokens: tokens.client,
+  //         therapistTokens: tokens.therapist,
+  //       });
+  //     }
+
+  //     if (!allTokens.length) return;
+
+  //     // 3️⃣ Firebase payload (iOS + Android)
+  //     const firebasePayload: admin.messaging.MulticastMessage = {
+  //       // tokens: ['dUeVsftmP03xn56LIUXOtd:APA91bElHEj-Gw2vHy2iOx_oxTv2EtJniwtnDK1QU6kMk3R_in0HY0XSMJOToVlrBLgpn9pD_0HBpea0kEV3_316j7YxnP7UyLI-vG5eVQ8cWKMIhvJmtA8'],
+  //       tokens: allTokens,
+
+  //       notification: showNotification
+  //         ? { title, body }
+  //         : undefined,
+
+  //     ...(!showNotification && {
+  //         data: {
+  //           id: message,
+  //           code,
+  //           timestamp: Date.now().toString(),
+  //           profile: profile ?? "",
+  //         },
+  //       }),
+
+  //       apns: {
+  //         headers: {
+  //           "apns-priority": showNotification ? "10" : "5",
+  //           "apns-push-type": showNotification ? "alert" : "background",
+  //         },
+  //         payload: {
+  //           aps: showNotification
+  //             ? {
+  //                 alert: { title, body },
+  //                 sound: "default",
+  //               }
+  //             : {
+  //                 "content-available": 1,
+  //               },
+  //         },
+  //       },
+  //       android: {
+  //             priority: "high",
+  //             ...(showNotification
+  //               ? {
+  //                   notification: {
+  //                     sound: "default",
+  //                     channelId:
+  //                       notificationType === SessionNotif.MATCH_REQUEST
+  //                         ? "match_requests"
+  //                         : "default",
+  //                   },
+  //                 }
+  //               : {
+  //                   data: {
+  //                     id: message,
+  //                     code,
+  //                     timestamp: Date.now().toString(),
+  //                     profile: profile ?? "",
+  //                   },
+  //                 }),
+  //       },
+
+  //     };
+
+  //     console.log({firebasePayload})
+  //     this.firebaseAdmin
+  //       .messaging()
+  //       .sendEachForMulticast(firebasePayload)
+  //       .catch(err => this.logger.error("Firebase error:", err));
+
+  //   //   this.logger.log("Push notification processed successfully");
+  //   //   const firebasePayload: admin.messaging.MulticastMessage  = {
+  //   //     tokens: [`dUeVsftmP03xn56LIUXOtd:APA91bElHEj-Gw2vHy2iOx_oxTv2EtJniwtnDK1QU6kMk3R_in0HY0XSMJOToVlrBLgpn9pD_0HBpea0kEV3_316j7YxnP7UyLI-vG5eVQ8cWKMIhvJmtA8`],
+  //   //     // "to": "YOUR_DEVICE_FCM_TOKEN_OR_TOPIC",
+  //   //     "notification": {
+  //   //       "title": "Hello from Backend",
+  //   //       "body": "This is a notification from your server."
+  //   //     },
+  //   //     "data": {
+  //   //       "key1": "value1",
+  //   //       "key2": "value2"
+  //   //     },
+  //   //     "apns": {
+  //   //       "headers": {
+  //   //         "apns-priority": "10",
+  //   //         "apns-topic": "com.abthon.navithera" // e.g., "com.abthon.navithera"
+  //   //       },
+  //   //       "payload": {
+  //   //         "aps": {
+  //   //           "alert": {
+  //   //             "title": "Hello from APNs",
+  //   //             "body": "This is an APNs-specific alert message."
+  //   //           },
+  //   //           "sound": "default",
+  //   //           "badge": 1,
+  //   //           "mutable-content": 1 // For rich notifications
+  //   //         },
+  //   //         "customDataField": "some custom value" // Any custom data you want to send via APNs payload
+  //   //       }
+  //   //     }
+
+        
+  //   //     }
+  //   //     console.log({firebasePayload})
+  //   //   this.firebaseAdmin
+  //   // .messaging()
+  //   // .sendEachForMulticast(firebasePayload)
+  //   // .catch(err => this.logger.error("Firebase error:", err));
+         
+  //     // }
+  // } catch (err) {
+  //     this.logger.error("Error sending push notification:", err);
+  //   }
+  // }
 
 //  async sendPushNotification(
 //   tokens: Tokens,

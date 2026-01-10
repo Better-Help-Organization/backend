@@ -490,6 +490,7 @@ export class ChatService {
       SessionNotif.INCOMING_CALL,
       `Incoming call from ${callerData.firstName}`,
       callerData.profile || callerData.avatar.toString(),
+      [calleeData.voIpToken]
     );
 
     // Return caller's own token in API response

@@ -187,11 +187,11 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   SCHEDULED: { code: "1", title: 'Session scheduled', showNotification: true },
   NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
   EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
-  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
-  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: false },
+  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: true },
+  INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
-  CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
+  CHAT: { code: "8", title: 'Added to Chat', showNotification: true },
   // Match-related notifications
   MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
   MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
@@ -199,7 +199,7 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   STATUS_CHANGED: { code: '11', title: 'Status Update', showNotification: true  },
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
-  MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: false },
+  MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: true },
   CONFIRMED: { code: "15", title: "Upcoming confirmed sessions with client", showNotification: true },
   // 🔔 Scheduled notifications
   PENDING_SESSION_DELETED: { code: "16", title: "🗓️ Pending session removed", showNotification: true, },

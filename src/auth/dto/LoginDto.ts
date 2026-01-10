@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 import { IsValidPhoneNumber } from "src/common/decorators/IsValidPhoneNumber";
 import { ValidPassword } from "src/common/decorators/valid-password";
 
@@ -37,6 +37,14 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   firebaseToken: string
+    
+  @ApiProperty({
+    description: 'voip token',
+  })
+  @IsString()
+  @IsOptional()
+  voIpToken: string
+
 
 }
 
@@ -67,5 +75,12 @@ export class EmailLoginDto {
   @IsString()
   @IsNotEmpty()
   firebaseToken: string
+
+  @ApiProperty({
+    description: 'voip token',
+  })
+  @IsString()
+  @IsOptional()
+  voIpToken: string
 
 }
