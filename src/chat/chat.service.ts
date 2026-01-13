@@ -216,7 +216,8 @@ export class ChatService {
     'isVisible',
     'address',
     'bio',
-    'isInGroup'
+    'isInGroup',
+    'voIpToken'
   ];
 
   protected maskValue(value: any) {
@@ -475,7 +476,7 @@ export class ChatService {
       isVideoCall: createCallDto.isVideoCall,
       isGroupCall: false,
     };
-
+    console.log({payload})
     // Send token only to the callee
     await this.firebaseService.sendPushNotification(
       {
