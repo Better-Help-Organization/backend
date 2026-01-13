@@ -45,7 +45,7 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
                 keyId: process.env.APN_KEY_ID,
                 teamId: process.env.APN_TEAM_ID,
               },
-              production: true,
+              production: process.env.NODE_ENV === 'prod',
             });
           } catch (error) {
             console.error('Failed to initialize APN Provider:', error);
