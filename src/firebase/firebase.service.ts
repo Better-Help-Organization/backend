@@ -19,6 +19,7 @@ export class FirebaseService {
     private readonly logger: LoggerService,
     @Inject('FIREBASE_ADMIN') private readonly firebaseAdmin: typeof admin,
     @Optional() @Inject('APN_PROVIDER') private readonly apnProvider: apn.Provider,
+    @Optional() @Inject('APN_PROVIDER_SECOND') private readonly apnClient: apn.Provider,
     @InjectRepository(Notification) private readonly notifRepo: Repository<Notification>,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
@@ -49,7 +50,12 @@ export class FirebaseService {
     notificationType: SessionNotifValue,
     body?: string,
     profile?: string,
-    voipTokens?: string[]
+    // voipTokens?: string[]
+    voip?: {
+      isClient: boolean;
+      tokens: string[];
+    }
+
   ): Promise<void> {
     try {
       const { code, title, showNotification } = notificationType;
@@ -81,41 +87,68 @@ export class FirebaseService {
       }
 
       // if (!allTokens.length) return;
-      if (!allTokens.length && (!voipTokens || !voipTokens.length)) return;
+      if (!allTokens.length && (!voip.tokens || !voip.tokens.length)) return;
 
-            // ==========================================
+      // ==========================================
       // PATH A: INCOMING CALLS (New Logic)
       // ==========================================
-      const isCall = (code === SessionNotif.INCOMING_CALL.code);
+      const isCall = (code === SessionNotif.INCOMING_CALL.code) || (code === SessionNotif.INCOMING_GROUP_CALL.code);
  
       if (isCall) {
-        // 1. Send VoIP Push to iOS (if tokens exist)
-        if (voipTokens && voipTokens.length > 0 && this.apnProvider) {
-          const note = new apn.Notification();
-          note.topic = "com.abthon.navithera.therapist.voip";
-          note.expiry = 0;
-          note.priority = 10;
-          // note.push
-          note.payload = {
-             id: message, // Your call data JSON
-             code: code,
-             data: { id: message, code, profile, isVideoCall: true }
-          };
-          // note.headers = {
-          //   "apns-push-type": "voip",
-          //   "apns-priority": "10"
-          // };
- 
-          this.apnProvider.send(note, voipTokens).then((result) => {
-             this.logger.log(`VoIP Sent: ${result.sent.length}`);
-             if (result.failed.length) console.log('VoIP Failures:', JSON.stringify(result.failed));
-          });
-      }
+          if (voip?.tokens && voip.tokens.length > 0) {
+            const provider =
+              voip.isClient 
+                ? this.apnClient
+                : this.apnProvider;
+
+            if (!provider) return;
+
+            const note = new apn.Notification();
+
+            note.topic =
+              voip.isClient
+                ? 'com.abthon.navithera.voip'
+                : 'com.abthon.navithera.therapist.voip'
+
+            note.expiry = 0;
+            note.priority = 10;
+            note.payload = {
+              id: message,
+              code,
+              data: { id: message, code, profile, isVideoCall: true },
+            };
+
+            provider.send(note, voip.tokens).then(result => {
+              this.logger.log(`VoIP Sent: ${result.sent.length}`);
+              if (result.failed.length) {
+                console.log('VoIP Failures:', JSON.stringify(result.failed));
+              }
+            });
+          }
+
+      // if (isCall) {
+      //   // 1. Send VoIP Push to iOS (if tokens exist)
+      //   if (voipTokens && voipTokens.length > 0 && this.apnProvider) {
+      //     const note = new apn.Notification();
+      //     note.topic = tokens.therapist.length > 0 ? "com.abthon.navithera.therapist.voip": "com.abthon.navithera.voip";
+      //     note.expiry = 0;
+      //     note.priority = 10;
+      //     // note.push
+      //     note.payload = {
+      //        id: message, // Your call data JSON
+      //        code: code,
+      //        data: { id: message, code, profile, isVideoCall: true }
+      //     };
+      //     this.apnProvider.send(note, voipTokens).then((result) => {
+      //        this.logger.log(`VoIP Sent: ${result.sent.length}`);
+      //        if (result.failed.length) console.log('VoIP Failures:', JSON.stringify(result.failed));
+      //     });
+      // }
       
 
-        // 2. Send Data-Only FCM to Android (and iOS fallback)
-        // We use a data-only payload so we don't trigger a standard banner on iOS 
-        // that conflicts with the CallKit UI.
+      //   // 2. Send Data-Only FCM to Android (and iOS fallback)
+      //   // We use a data-only payload so we don't trigger a standard banner on iOS 
+      //   // that conflicts with the CallKit UI.
         if (allTokens.length > 0) {
            const callPayload: admin.messaging.MulticastMessage = {
              tokens: allTokens,
@@ -249,7 +282,7 @@ export class FirebaseService {
       },
     };
 
-
+    console.log({firebasePayload})
       this.firebaseAdmin
         .messaging()
         .sendEachForMulticast(firebasePayload)

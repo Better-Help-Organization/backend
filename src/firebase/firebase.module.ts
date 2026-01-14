@@ -45,7 +45,7 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
                 keyId: process.env.APN_KEY_ID,
                 teamId: process.env.APN_TEAM_ID,
               },
-              production: process.env.NODE_ENV === 'prod',
+              production: true,
             });
           } catch (error) {
             console.error('Failed to initialize APN Provider:', error);
@@ -55,9 +55,25 @@ const serviceAccount = path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCO
         return null; 
       },
     },
+    {
+      provide: 'APN_PROVIDER_SECOND',
+      useFactory: () => {
+        if (process.env.APN2_KEY_PATH) {
+          return new apn.Provider({
+            token: {
+              key: path.resolve(__dirname, process.env.APN2_KEY_PATH),
+              keyId: process.env.APN2_KEY_ID,
+              teamId: process.env.APN_TEAM_ID,
+            },
+            production: true,
+          });
+        }
+        return null;
+      },
+    },
     FirebaseService,
     JwtService
   ],
-  exports: ['APN_PROVIDER','FIREBASE_ADMIN', FirebaseService],
+  exports: ['APN_PROVIDER_SECOND','APN_PROVIDER','FIREBASE_ADMIN', FirebaseService],
 })
 export class FirebaseModule {}
