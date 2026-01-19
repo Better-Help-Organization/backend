@@ -374,6 +374,7 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.modal', 'modal')
       .leftJoin('session.groupSubscription', 'gsub')
+      .leftJoin('session.groupAttendance', 'gatt')
       .leftJoin('gsub.subscription', 'gsubRootSub')
       .select([
         'session.id',
@@ -385,7 +386,9 @@ export class TherapistStatisticsService {
         'rootsub.type',
         'gsub.price',
         'gsub.id',
-        'gsubRootSub.type'
+        "gatt.id",
+        'gsubRootSub.type',
+        // 'session.groupAttendance'
       ])
       .andWhere(new Brackets(qb1 => {
         qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
@@ -419,15 +422,24 @@ export class TherapistStatisticsService {
           modalName: r.modal_name,
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
-          groupSubscriptions: []
+          groupSubscriptions: [],
+          attendanceList: []
         });
       }
 
+      const sessionEntry = sessionMap.get(sid);
+
+      // 1. Push subscription if it exists in this row
       if (r.gsub_id) {
-        sessionMap.get(sid).groupSubscriptions.push({
+        sessionEntry.groupSubscriptions.push({
           price: r.gsub_price,
           type: r.gsubRootSub_type
         });
+      }
+
+      // 2. Push attendance ONLY if gatt_id is not null
+      if (r.gatt_id) {
+        sessionEntry.attendanceList.push(r.gatt_id);
       }
     }
 
@@ -442,8 +454,7 @@ export class TherapistStatisticsService {
 
 
     for (const entry of sessionMap.values()) {
-      const { schedule, subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions } = entry;
-
+      const { schedule, subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions,attendanceList } = entry;
       const sessionPercent = this.getSessionPercentage(
         therapistPercentage,
         modalName,
@@ -454,9 +465,20 @@ export class TherapistStatisticsService {
       const dateKey = new Date(schedule).toISOString().slice(0, 10);
       let sessionRevenue = 0;
 
-      if (groupSubscriptions.length > 0) {
-        sessionRevenue = this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
+      const isGroupSession = modalName?.toLowerCase().includes('group');
+
+      if (isGroupSession) {
+        // For groups: ONLY pay if there is attendance.
+        // Also: Only pay for the number of people who actually showed up.
+        if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
+          console.log("counting group revenue");
+          sessionRevenue = this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
+        } else {
+          console.log("Group session with no attendance - 0 revenue");
+          sessionRevenue = 0; 
+        }
       } else {
+        // For Individual/Couple: Standard calculation
         const basePrice = (subPrice || 0) / (1 + VAT);
         sessionRevenue = this.calculateSessionRevenue(basePrice, sessionPercent, Number(rootSubType));
       }
