@@ -17,7 +17,7 @@ import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
-
+import { ToggleChatDto } from './dto/toggle-chat.dto';
 
 @Injectable()
 export class ChatService {
@@ -438,6 +438,19 @@ export class ChatService {
     }
   }
 
+  async update(id: string, togglechatdTO: ToggleChatDto) {
+      const chat = await this.findOne(id);
+      Object.assign(chat, togglechatdTO);
+      try {
+        const updated = await this.chatRepo.save(chat);
+        this.logger.log(`Updated chat with ID: ${id}`);
+        return updated;
+      } catch (error) {
+        this.logger.error(`Error updating chatchat: ${error.message}`);
+        throw error;
+      }  
+    }
+  
 
   async call(id: string, caller: TokenPayload, createCallDto: CreateCallDto) {
     try {

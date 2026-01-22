@@ -14,6 +14,7 @@ import { ChatService } from './chat.service';
 import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
+import { ToggleChatDto } from './dto/toggle-chat.dto';
 
 @Controller('chat')
 export class ChatController {
@@ -221,6 +222,11 @@ export class ChatController {
   // async update(@Param('id') id: string, @Body() updateChatDto: UpdateChatDto) {
   //   return this.chatService.update(id, updateChatDto);
   // }
+
+  @Patch('toggleChat/:id')
+  async update(@Param('id') id: string, @Body() updateChatDto: ToggleChatDto) {
+    return this.chatService.update(id, updateChatDto);
+  }
 
   @DynamicGuards(
     new AdminJwtAuthGuard()
