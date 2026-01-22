@@ -50,7 +50,7 @@ export class ParameterService {
 
   async getAllParsedParams(): Promise<Record<string, any>> {
   // 1. Fetch all parameters in exactly ONE database call
-    const response = await this.findAll({}); 
+    const response = await this.findAll({take:'0'}); 
     const parsedMap: Record<string, any> = {};
 
     // 2. Loop through and parse each one using your existing logic
