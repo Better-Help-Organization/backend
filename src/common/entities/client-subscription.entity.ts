@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 import { SubscriptionStatus } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
@@ -34,6 +34,9 @@ export class ClientSubscription extends CommonEntity {
   @ApiProperty({ type: () => Session, isArray: true })
   @OneToMany(() => Session, session => session.subscription, { cascade: true, eager: true })
   session: Session[];
+
+  @ManyToMany(() => Session, (session) => session.groupSubscription, { cascade: true, eager: true })
+  groupSessions: Session[]; // This will now populate from the join table
   // chat 
   // pref
   // modal

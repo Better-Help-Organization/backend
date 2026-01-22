@@ -142,7 +142,7 @@ export class Session extends CommonEntity {
   subscription: ClientSubscription;
 
   @ApiProperty({ type: () => [ClientSubscription] })
-  @ManyToMany(() => ClientSubscription, {
+  @ManyToMany(() => ClientSubscription, (sub) => sub.groupSessions, {
     nullable: true,
   })
   @JoinTable({
