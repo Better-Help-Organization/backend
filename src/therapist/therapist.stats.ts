@@ -111,6 +111,7 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.groupSubscription', 'gsub')
       .leftJoin('gsub.subscription', 'gsubRootSub')
+      .leftJoin('session.groupAttendance', 'gatt')
       .innerJoin('session.modal', 'modal')
       .select([
         'sub.price',
@@ -123,6 +124,7 @@ export class TherapistStatisticsService {
         'gsub.id',
         'gsubRootSub.type',
         'session.id',
+        'gatt.id'
       ])
       .andWhere(new Brackets(qb1 => {
         qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
@@ -150,19 +152,28 @@ export class TherapistStatisticsService {
           modalName: r.modal_name,
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
-          groupSubscriptions: []
+          groupSubscriptions: [],
+          attendanceList: []
         });
       }
+
+      const sessionEntry = sessionMap.get(sid);
+  
       if (r.gsub_id) {
         sessionMap.get(sid).groupSubscriptions.push({
           price: r.gsub_price,
           type: r.gsubRootSub_type
         });
       }
+
+      if (r.gatt_id) {
+      sessionEntry.attendanceList.push(r.gatt_id); // Track attendance IDs
+    }
+
     }
 
     for (const entry of sessionMap.values()) {
-      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions } = entry;
+      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions, attendanceList } = entry;
 
       const sessionPercent = this.getSessionPercentage(
         therapistPercentage,
@@ -171,15 +182,21 @@ export class TherapistStatisticsService {
         { ADVANCED, ASSOCIATE, MODERATE, COUPLE, GROUP }
       );
       console.log({groupSubscriptions})
-      if (groupSubscriptions.length > 0) {
+      const isGroupSession = modalName?.toLowerCase().includes('group');
+
+    if (isGroupSession) {
+      // Logic from getRevenueOverTime: Only pay if attendance exists
+      if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
         totalRevenue += this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
-      } else {
-        const basePrice = (subPrice || 0) / (1 + VAT);
-        totalRevenue += this.calculateSessionRevenue(basePrice, sessionPercent, Number(rootSubType));
       }
+    } else {
+      // Standard Individual/Couple logic
+      const basePrice = (subPrice || 0) / (1 + VAT);
+      totalRevenue += this.calculateSessionRevenue(basePrice, sessionPercent, Number(rootSubType));
     }
-    console.log({totalRevenue})
-      return Number(totalRevenue.toFixed(2)) || 0;
+  }
+
+  return Number(totalRevenue.toFixed(2)) || 0;
   }
 
 
@@ -407,7 +424,7 @@ export class TherapistStatisticsService {
     }
 
     const raw = await qb.getRawMany();
-
+    console.log({rawLength: raw.length, raw})
     const sessionMap = new Map();
 
     for (const r of raw) {
