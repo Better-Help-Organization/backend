@@ -15,6 +15,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { PresenceService } from 'src/presence/presence.service';
 import { In, Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
+import { Session } from 'src/common/entities/session.entity';
 
 @Injectable()
 export class TherapistService {
@@ -22,6 +23,8 @@ export class TherapistService {
     private readonly logger: LoggerService,
     @InjectRepository(Therapist)
     private readonly therapistRepo: Repository<Therapist>,
+     @InjectRepository(Session)
+    private readonly sessionRepo: Repository<Session>,
     @InjectRepository(License)
     private readonly licenseRepo: Repository<License>,
     @InjectRepository(Language)
@@ -355,5 +358,30 @@ export class TherapistService {
     }
         await this.licenseRepo.save(license);
         return finalFilePath;
+  }
+
+  async getUsersTreated(therapistId) {
+    const qb = this.sessionRepo.createQueryBuilder('session')
+      .leftJoin('session.client', 'client')
+      .leftJoin('session.group', 'groupClients')
+      .leftJoin('session.modal', 'modal'); // Corrected alias here
+
+    // 1. Filter by Modal Name
+    qb.where('modal.name = :modalName', { modalName: 'Group Therapy' });
+    qb.andWhere('session.therapistId = :therapistId', { therapistId });
+
+    // // 2. Date filtering (uncommented and refined)
+    // if (start && end) {
+    //   qb.andWhere('session.schedule BETWEEN :start AND :end', { start, end });
+    // }
+
+    // 3. Therapist filter
+    return qb
+    .select("DISTINCT(COALESCE(client.id, groupClients.id))", "id")
+    .addSelect("COALESCE(client.firstName, groupClients.firstName)", "firstName")
+    .addSelect("COALESCE(client.lastName, groupClients.lastName)", "lastName")
+    .addSelect("COALESCE(client.email, groupClients.email)", "email")
+    .orderBy("lastName", "ASC")
+    .getRawMany();
   }
 }

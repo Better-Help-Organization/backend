@@ -18,7 +18,12 @@ export class TherapistStatisticsService {
   async getTotalHours(therapistId?: string) {
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')
-      .where('session.hasTherapistAttended = true')    
+      .withDeleted()
+      .leftJoin('session.groupSubscription', 'gsub')
+      .andWhere(new Brackets(qb1 => {
+        qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
+          .orWhere('gsub.id IS NOT NULL');
+      }))
       .andWhere('session.schedule < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 3 HOUR)');  // ONLY COUNT PAST SESSIONS
 
 
@@ -52,12 +57,19 @@ export class TherapistStatisticsService {
   }
 
   // Execute the raw SQL with timezone conversion and add one day
-  const results = await qb
-    .select(`DATE_ADD(DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00')), INTERVAL 1 DAY) AS date`)
-    .addSelect('COUNT(session.id) AS count')
-    .groupBy('DATE_ADD(DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00")), INTERVAL 1 DAY)')
+  // const results = await qb
+  //   .select(`DATE(CONVERT_TZ(session.schedule, '+00:00', '+03:00'))) AS date`)
+  //   .addSelect('COUNT(session.id) AS count')
+  //   .groupBy('DATE(CONVERT_TZ(session.schedule, "+00:00", "+03:00")))')
+  //   .orderBy('date', 'ASC')
+  //   .getRawMany();
+    const results = await qb
+    .select(`DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY) AS date`)
+    .addSelect('COUNT(session.id)', 'count')
+    .groupBy(`DATE_ADD(DATE(session.schedule), INTERVAL 1 DAY)`)
     .orderBy('date', 'ASC')
     .getRawMany();
+
 
   return results.map(r => ({
     date: new Date(r.date).toISOString(),  // Return in UTC
@@ -69,6 +81,7 @@ export class TherapistStatisticsService {
   async getUsersTreatedOverTime(start: string | null, end: string | null, therapistId: string | null) {
       const qb = this.sessionRepo.createQueryBuilder('session')
         .leftJoin('session.client', 'client')
+        .withDeleted()
         .leftJoin('session.group', 'groupClients');
 
       // Prepare date filters
@@ -106,6 +119,7 @@ export class TherapistStatisticsService {
     // 1️⃣ Fetch raw sessions
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')
+      .withDeleted()
       .leftJoin('therapist.level', 'level')
       .leftJoin('session.subscription', 'sub')
       .leftJoin('sub.subscription', 'rootsub')
@@ -204,6 +218,7 @@ export class TherapistStatisticsService {
   async getTherapistWorkload(start: string, end: string, therapistId: string) {
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')
+      .withDeleted()
       .leftJoin('therapist.level', 'level');
 
     if (start || end) {
@@ -242,7 +257,14 @@ export class TherapistStatisticsService {
       qb.andWhere('session.therapistId = :therapistId', { therapistId });
     }
 
-    qb.andWhere('session.hasTherapistAttended = true');
+    qb.leftJoin('session.groupSubscription', 'gsub')
+      .andWhere(new Brackets(qb1 => {
+        qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
+          .orWhere('gsub.id IS NOT NULL');
+      }))
+
+    qb.andWhere('session.schedule < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 3 HOUR)');
+
 
     return qb
       .select("YEAR(session.schedule)", "year")
@@ -386,6 +408,7 @@ export class TherapistStatisticsService {
 
     const qb = this.sessionRepo.createQueryBuilder('session')
       .leftJoin('session.therapist', 'therapist')
+      .withDeleted()
       .leftJoin('therapist.level', 'level')
       .leftJoin('session.subscription', 'sub')
       .leftJoin('sub.subscription', 'rootsub')
@@ -410,7 +433,8 @@ export class TherapistStatisticsService {
       .andWhere(new Brackets(qb1 => {
         qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
           .orWhere('gsub.id IS NOT NULL');
-      }));
+      }))
+      .andWhere('session.schedule < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 3 HOUR)');
 
     if (start && end) {
       qb.andWhere('session.schedule BETWEEN :start AND :end', {

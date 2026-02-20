@@ -44,6 +44,21 @@ export class TherapistController {
     return await this.therapistService.findOne(user.id, queryParams);
   }
 
+  @Get('usersTreated')
+  @DynamicGuards(
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
+  @ApiFindOneQueryParams()
+  async getUsersTreated(
+    @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
+    @Query() queryParams,
+    @CurrentUser() user: TokenPayload,
+    @Query('mockId') mockId?: string,
+  ) {
+    return await this.therapistService.getUsersTreated(mockId);
+  }
+
   @Get('stats')
   @ApiFilterByDate()
   @ApiQuery({ 

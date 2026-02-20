@@ -348,7 +348,7 @@ export class AuthService {
     }
   }
 
-    async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
+  async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
 
     try{
 

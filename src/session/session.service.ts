@@ -528,7 +528,7 @@ export class SessionService {
             { client: [clientToken], therapist: [], admin: [] },
             JSON.stringify({ therapistId: newTherapist.id }),
             SessionNotif.TH_REASSIGNED_CLIENT,
-            `Your therapist has been changed to ${newTherapist.fullName}.`
+            `Your therapist has been changed to ${newTherapist.firstName}.`
           );
         }
 
