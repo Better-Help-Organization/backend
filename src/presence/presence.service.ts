@@ -25,6 +25,26 @@ export class PresenceService {
     this.server = server;
   }
 
+  private presenceLocks = new Map<string, Promise<void>>();
+  
+  // In memory lock
+  private async runPresenceUpdate(userId: string, fn: () => Promise<void>) {
+    const prev = this.presenceLocks.get(userId) ?? Promise.resolve();
+
+    const next = prev
+      .catch(() => {}) // swallow previous errors
+      .then(fn)
+      .finally(() => {
+        if (this.presenceLocks.get(userId) === next) {
+          this.presenceLocks.delete(userId);
+        }
+      });
+
+    this.presenceLocks.set(userId, next);
+    await next;
+  }
+
+
   private async _markOnline(userId: string, userType: UserTypes) {
     if (userType === UserTypes.CLIENT) {
       await this.clientService.setOnline(userId);
@@ -47,7 +67,11 @@ export class PresenceService {
   async markOnline(userId: string, userType: UserTypes) {
     // add database or cache updates here
     this.logger.log(`Marking ${userType} ${userId} online`);
-    this._markOnline(userId,userType)
+
+    await this.runPresenceUpdate(userId, async () => {
+      await this._markOnline(userId, userType);
+    });
+
     this.server?.emit('userStatus', {
       userId,
       type: userType,
@@ -56,8 +80,13 @@ export class PresenceService {
   }
 
   async markOffline(userId: string, userType: UserTypes) {
+   
     this.logger.log(`Marking ${userType} ${userId} offline`);
-    this._markOffline(userId,userType)
+    
+    await this.runPresenceUpdate(userId, async () => {
+      await this._markOffline(userId, userType);
+    });
+
     this.server?.emit('userStatus', {
       userId,
       type: userType,
