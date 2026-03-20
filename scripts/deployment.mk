@@ -28,6 +28,14 @@ docker-compose-command:
 bash-service:
 	@$(MAKE) docker-compose-command CMD="exec $(SERVICE) /bin/sh"
 
+db-dump:
+	@echo "📦 Dumping MySQL database..."
+	$(MAKE) docker-compose-command CMD="exec -T db sh -c 'mysqldump -u root -p123456789 nc' > dump.sql"
+# 	@docker compose exec -T db \
+# 	sh -c 'mysqldump -u root -p123456789 nc' \
+# 	> dump.sql
+# 	@echo "✅ Dump saved to dump.sql"
+
 # Declare phony targets
 .PHONY: up down rebuild logs test docker-compose-command validate-env bash-service proxy-build
 
