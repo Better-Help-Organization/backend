@@ -735,14 +735,6 @@ export class SessionService {
         // console.log({clientsForThisSessionRefs})
         let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
 
-        // // create chat before the session loop
-        // const chat = await this.chatService.create(therapist.id, {
-        //   client: null,
-        //   therapist: therapist.id,
-        //   groupClients: clients.map(c => c.id),
-        //   groupName: dto.groupName ?? 'Default Group Chat Name',
-        // });
-
         const chat = manager.create(Chat, {
             client: null,
             therapist,
