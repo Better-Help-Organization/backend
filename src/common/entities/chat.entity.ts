@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
+import { Session } from './session.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -63,6 +64,10 @@ export class Chat extends CommonEntity {
   @ApiProperty({ default: false })
   @Column({default: false })
   closed: boolean;
+
+  @ApiProperty({ type: () => [Session] })
+  @OneToMany(() => Session, (session) => session.chat)
+  session: Session[];
 
   async addMessage(
     msgRepo: Repository<Message>,

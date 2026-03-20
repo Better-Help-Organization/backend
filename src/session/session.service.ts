@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ChatService } from 'src/chat/chat.service';
 import { ClientService } from 'src/client/client.service';
 import { ApprovalStatus, DayOfWeek, DefaultParameters, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
+import { Chat } from 'src/common/entities/chat.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { SessionClientNotes } from 'src/common/entities/session-client-notes.entity';
@@ -64,6 +66,7 @@ export class SessionService {
     private readonly therapistService: TherapistService,
     private readonly dataSource: DataSource,
     private readonly paramService: ParameterService,
+    private readonly chatService: ChatService
   ) {}
 
   async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
@@ -468,7 +471,19 @@ export class SessionService {
           SessionNotif.CONFIRMED,
           `You have ${allSessions.length} upcoming confirmed session(s) with ${clientName}.`,
         );
-      }
+      };
+        const chat = await this.chatService.create(selected.therapist.id, {
+          client: selected.client.id,
+          therapist: selected.therapist.id,
+          groupClients: null,
+          groupName: null,
+        });
+
+        // Link chat to all confirmed sessions
+        await manager.update(Session, 
+          { id: In(allSessions.map(s => s.id)) }, 
+          { chat: { id: chat.id } }
+        );
       return allSessions;
     });
   }
@@ -797,6 +812,20 @@ export class SessionService {
         `Your group session(s) have been Created.`
       );
 
+      // Create group chat
+      const chat = await this.chatService.create(therapist.id, {
+        client: null,
+        therapist: therapist.id,
+        groupClients: clients.map(c => c.id),
+        groupName: dto.groupName ?? 'Default Group Chat Name',
+      });
+
+      // Link chat to all sessions
+      await manager.update(Session,
+        { id: In(allSessions.map(s => s.id)) },
+        { chat: { id: chat.id } }
+      );
+
       return allSessions;
 
     });
@@ -983,6 +1012,21 @@ export class SessionService {
     for (const session of relatedSessions) {
       await manager.save(Session, session);
     }
+    /////////////////
+    try {
+      const chatWithSessions = await manager.findOne(Chat, {
+        where: { session: { commonId: referenceSession.commonId } },
+        relations: ['group'],
+      });
+
+      if (chatWithSessions) {
+        chatWithSessions.group = [...(chatWithSessions.group ?? []), ...newClients];
+        await manager.save(Chat, chatWithSessions);
+      }
+    } catch {
+      this.logger.warn(`No chat found for session series ${referenceSession.commonId}, skipping chat update`);
+    }
+    ////////////////
 
     // 9️⃣ Send notifications
     const tokens: Tokens = { client: [], therapist: [], admin: [] };

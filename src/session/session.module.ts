@@ -1,5 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ChatModule } from 'src/chat/chat.module';
 import { ClientModule } from 'src/client/client.module';
 import { Availability } from 'src/common/entities/availability.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
@@ -22,6 +23,7 @@ import { StatusModule } from './status/status.module';
     StatusModule,
     FirebaseModule,
     ParameterModule,
+    forwardRef(() => ChatModule),
     forwardRef(() => ClientModule),
     forwardRef(() => TherapistModule)
   ],

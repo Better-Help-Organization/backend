@@ -15,6 +15,7 @@ import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
+import { Chat } from './chat.entity';
 import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
@@ -165,6 +166,10 @@ export class Session extends CommonEntity {
     // eager:true
   })
   clientNotes: SessionClientNotes[];
+
+  @ApiProperty({ type: () => Chat })
+  @ManyToOne(() => Chat, (chat) => chat.session, { nullable: true, onDelete: 'SET NULL' })
+  chat: Chat;
 
   async addMessage(
     msgRepo: Repository<Message>,
