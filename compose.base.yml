@@ -110,7 +110,9 @@ services:
     networks:
       - ${NODE_ENV}_default
     volumes:
-      - ./livekit/redis.conf:/etc/redis.conf
+      - ${NODE_ENV}_redis_data:/data
+      - ./redis/redis.conf:/etc/redis.conf
+
 
   egress:
     image: livekit/egress:latest
@@ -137,6 +139,7 @@ services:
       - ./livekit/ingress.yaml:/etc/ingress.yaml
 
   # turnserver:
+
   #   image: coturn/coturn  # Or the actual image you're using
   #   command: turnserver -c /etc/turnserver.conf
   #   # network_mode: "host"
