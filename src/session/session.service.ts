@@ -734,10 +734,28 @@ export class SessionService {
 
         // console.log({clientsForThisSessionRefs})
         let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
+
+        // // create chat before the session loop
+        // const chat = await this.chatService.create(therapist.id, {
+        //   client: null,
+        //   therapist: therapist.id,
+        //   groupClients: clients.map(c => c.id),
+        //   groupName: dto.groupName ?? 'Default Group Chat Name',
+        // });
+
+        const chat = manager.create(Chat, {
+            client: null,
+            therapist,
+            group: clients,
+            groupName: dto.groupName ?? 'Default Group Chat Name',
+          });
+
+        const savedChat = await manager.save(chat);
+
         const session = manager.create(Session, {
           therapist,
           group: clientsForThisSession,
-          groupName: dto.groupName ?? 'Group Session',
+          groupName: dto.groupName ?? 'Default Group Session Name',
           schedule,
           duration: durationParam as number,
           type: dto.type,
@@ -747,6 +765,7 @@ export class SessionService {
           client: null,
           commonId,
           subscription: null,             // Ensure single subscription field is null
+          chat: savedChat  // add this
         });
         console.log({session})
 
@@ -812,19 +831,6 @@ export class SessionService {
         `Your group session(s) have been Created.`
       );
 
-      // Create group chat
-      const chat = await this.chatService.create(therapist.id, {
-        client: null,
-        therapist: therapist.id,
-        groupClients: clients.map(c => c.id),
-        groupName: dto.groupName ?? 'Default Group Chat Name',
-      });
-
-      // Link chat to all sessions
-      await manager.update(Session,
-        { id: In(allSessions.map(s => s.id)) },
-        { chat: { id: chat.id } }
-      );
 
       return allSessions;
 
