@@ -650,10 +650,10 @@ export class ChatService {
     return { success: true, status: 'rejected' };
   }
 
-  async addToChat(sessionId: string, dto: AddToChatDto) {
+  async addToChat(chatId: string, dto: AddToChatDto) {
       const { groupClients } = dto;
   
-      const chat = await this.findOne(sessionId, { fields: 'client.*, group.*, therapist.*' });
+      const chat = await this.findOne(chatId, { fields: 'client.*, group.*, therapist.*' });
   
       if(chat.client != null) {
         throw new BadRequestException('Cannot add clients to a 1-on-1 chat');

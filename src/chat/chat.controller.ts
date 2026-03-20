@@ -48,11 +48,11 @@ export class ChatController {
     new TherapistJwtAuthGuard()
   )
   addToSession(
-    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
     @CurrentUser() user: TokenPayload,
     @Body() addToSession: AddToChatDto
   ) {
-    return this.chatService.addToChat(sessionId, addToSession);
+    return this.chatService.addToChat(chatId, addToSession);
   }
 
   @DynamicGuards(
