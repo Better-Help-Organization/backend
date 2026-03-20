@@ -13,6 +13,29 @@ import { PresenceService } from 'src/presence/presence.service';
 import { Repository } from 'typeorm';
 import { UpdateClientDto } from './dto/update-client.dto';
 
+import { Logger } from '@nestjs/common';
+
+function WithRetry(retries = 3, delayMs = 500) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    const logger = new Logger(target.constructor.name);
+
+    descriptor.value = async function (...args: any[]) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await originalMethod.apply(this, args);
+        } catch (err) {
+          if (i === retries - 1) throw err;
+          logger.warn(`[${propertyKey}] Retrying after error (attempt ${i + 1}/${retries}): ${err.message}`);
+          await new Promise(res => setTimeout(res, delayMs));
+        }
+      }
+    };
+
+    return descriptor;
+  };
+}
+
 @Injectable()
 export class ClientService {
   constructor(
@@ -97,6 +120,7 @@ export class ClientService {
     return this.clientRepo;
   }
 
+  @WithRetry(3, 500)
   async setOnline(id: string) {
     await this.clientRepo.update(id, {
       isOnline: true,
@@ -104,6 +128,7 @@ export class ClientService {
     });
   }
 
+  @WithRetry(3, 500)
   async setOffline(id: string) {
     await this.clientRepo.update(id, {
       isOnline: false,
