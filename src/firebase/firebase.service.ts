@@ -75,16 +75,19 @@ export class FirebaseService {
 
       // 2️⃣ Save notification ONCE (only when allowed)
       if (showNotification) {
-        await this.saveNotification({
-          title,
-          body,
-          message,
-          code,
-          profile,
-          clientTokens: tokens.client,
-          therapistTokens: tokens.therapist,
+        setImmediate(() => {
+          this.saveNotification({
+            title,
+            body,
+            message,
+            code,
+            profile,
+            clientTokens: tokens.client,
+            therapistTokens: tokens.therapist,
+          }).catch(err => this.logger.error('saveNotification failed:', err.message));
         });
       }
+
 
       // if (!allTokens.length) return;
       if (!allTokens.length && (!voip.tokens || !voip.tokens.length)) return;
