@@ -75,7 +75,7 @@ export class FirebaseService {
 
       // 2️⃣ Save notification ONCE (only when allowed)
       if (showNotification) {
-        setImmediate(() => {
+        // setImmediate(() => {
           this.saveNotification({
             title,
             body,
@@ -85,7 +85,8 @@ export class FirebaseService {
             clientTokens: tokens.client,
             therapistTokens: tokens.therapist,
           }).catch(err => this.logger.error('saveNotification failed:', err.message));
-        });
+        // }
+      // );
       }
 
 

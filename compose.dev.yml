@@ -19,10 +19,10 @@ services:
   #     file: ./compose.base.yml
   #     service: livekit
 
-  # redis:
-  #   extends:
-  #     file: ./compose.base.yml
-  #     service: redis
+  redis:
+    extends:
+      file: ./compose.base.yml
+      service: redis
 
   # egress:
   #   extends:

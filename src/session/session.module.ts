@@ -8,6 +8,7 @@ import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { ParameterModule } from 'src/parameter/parameter.module';
+import { ReminderModule } from 'src/reminder/reminder.module';
 import { TherapistModule } from 'src/therapist/therapist.module';
 import { MessageModule } from './message/message.module';
 import { NotesModule } from './note/note.module';
@@ -23,6 +24,7 @@ import { StatusModule } from './status/status.module';
     StatusModule,
     FirebaseModule,
     ParameterModule,
+    ReminderModule,
     forwardRef(() => ChatModule),
     forwardRef(() => ClientModule),
     forwardRef(() => TherapistModule)

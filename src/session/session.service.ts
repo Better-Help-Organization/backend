@@ -17,6 +17,7 @@ import { toEthiopianTime } from "src/common/utils/toEthiopianTime";
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
+import { ReminderService } from 'src/reminder/reminder.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, DataSource, In, MoreThan, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
@@ -66,7 +67,8 @@ export class SessionService {
     private readonly therapistService: TherapistService,
     private readonly dataSource: DataSource,
     private readonly paramService: ParameterService,
-    private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly reminderService: ReminderService,
   ) {}
 
   async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
@@ -383,6 +385,14 @@ export class SessionService {
   
         const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
 
+        const chat = manager.create(Chat, {
+              client: selected.client,
+              therapist: selected.therapist,
+              groupName: null,
+              group: null,
+            });
+        let savedChat = await manager.save(Chat, chat);
+
         for (let i = 1; i < weeks; i++) {
           // Always create a fresh date object so no mutation issues
           this.logger.log(`debug ${weeks}, ${typeof(weeks)}`)
@@ -392,7 +402,15 @@ export class SessionService {
           try {
             console.log("Creating schedule for iteration - session.service.ts:355", i, schedule.toISOString());
             console.log("Trying to create recurring session at: - session.service.ts:356", schedule.toISOString());
-        
+            
+            // const chat = manager.create(Chat, {
+            //   client: selected.client,
+            //   therapist: selected.therapist,
+            //   groupName: null,
+            //   group: null,
+            // });
+            // const savedChat = await manager.save(Chat, chat);
+
             const newSession = manager.create(Session, {
               therapist: selected.therapist,
               client: selected.client,
@@ -402,11 +420,12 @@ export class SessionService {
               type: selected.type,
               commonId,
               modal: selected.modal,
-              approvalStatus: ApprovalStatus.CONFIRMED
+              approvalStatus: ApprovalStatus.CONFIRMED,
+              chat: savedChat,
             });
 
             delete newSession.id; // ensure no leftover ID from cache
-        
+            selected.chat = savedChat;
             const saved = await manager.save(newSession);
             console.log("Saved recurring session: - session.service.ts:373", saved.id);
         
@@ -472,18 +491,20 @@ export class SessionService {
           `You have ${allSessions.length} upcoming confirmed session(s) with ${clientName}.`,
         );
       };
-        const chat = await this.chatService.create(selected.therapist.id, {
-          client: selected.client.id,
-          therapist: selected.therapist.id,
-          groupClients: null,
-          groupName: null,
-        });
+        // const chat = await this.chatService.create(selected.therapist.id, {
+        //   client: selected.client.id,
+        //   therapist: selected.therapist.id,
+        //   groupClients: null,
+        //   groupName: null,
+        // });
 
-        // Link chat to all confirmed sessions
-        await manager.update(Session, 
-          { id: In(allSessions.map(s => s.id)) }, 
-          { chat: { id: chat.id } }
-        );
+        // // Link chat to all confirmed sessions
+        // await manager.update(Session, 
+        //   { id: In(allSessions.map(s => s.id)) }, 
+        //   { chat: { id: chat.id } }
+        // );
+        await Promise.all(allSessions.map(s => this.reminderService.scheduleReminders(s)));
+
       return allSessions;
     });
   }
@@ -607,6 +628,11 @@ export class SessionService {
           SessionNotif.RE_SCHEDULED,
           `Your session has been updated for ${etTime}`
         );
+
+        // Cancel old reminders and reschedule with new time
+        await this.reminderService.cancelReminders(session.id);
+        await this.reminderService.scheduleReminders(savedSession);
+
       }
 
       // ✅ Notify status change
@@ -716,6 +742,16 @@ export class SessionService {
       const scheduleDates: Date[] = []; // store created schedule dates
 
       console.log({maxWeeks})
+      const chat = manager.create(Chat, {
+          client: null,
+          therapist,
+          group: clients,
+          groupName: dto.groupName ?? 'Default Group Chat Name',
+        });
+
+      let savedChat = await manager.save(chat);
+      let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
+
       for (let i = 0; i < maxWeeks; i++) {
         const schedule = new Date(targetDate); // base schedule for first session
         schedule.setDate(targetDate.getDate() + i * 7); // next week offset
@@ -733,16 +769,16 @@ export class SessionService {
         // });
 
         // console.log({clientsForThisSessionRefs})
-        let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
+        // let durationParam = await this.paramService.getDefaultByName(DefaultParameters.SESSION_HOUR)
 
-        const chat = manager.create(Chat, {
-            client: null,
-            therapist,
-            group: clients,
-            groupName: dto.groupName ?? 'Default Group Chat Name',
-          });
+        // const chat = manager.create(Chat, {
+        //     client: null,
+        //     therapist,
+        //     group: clients,
+        //     groupName: dto.groupName ?? 'Default Group Chat Name',
+        //   });
 
-        const savedChat = await manager.save(chat);
+        // const savedChat = await manager.save(chat);
 
         const session = manager.create(Session, {
           therapist,
@@ -823,6 +859,7 @@ export class SessionService {
         `Your group session(s) have been Created.`
       );
 
+      await Promise.all(allSessions.map(s => this.reminderService.scheduleReminders(s)));
 
       return allSessions;
 

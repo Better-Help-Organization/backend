@@ -9,6 +9,7 @@ services:
       - .:/app
     depends_on:
       - db
+      - redis
     environment:
       NODE_ENV: ${NODE_ENV}
       NODE_OPTIONS: "--max-old-space-size=4096"

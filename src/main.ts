@@ -31,7 +31,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
 
-  if(true){
+  if(false){
     console.log = () => {};
     console.debug = () => {};
     console.info = () => {};

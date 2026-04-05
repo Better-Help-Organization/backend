@@ -636,9 +636,9 @@ export class ChatService {
     };
 
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
+    console.log("reject notif sent to: ",{tokens, isCallerClient})
     
     const callerData = isCallerClient ? chat.client : chat.therapist;
-
     await this.firebaseService.sendPushNotification(
       tokens,
       JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
