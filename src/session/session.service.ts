@@ -58,6 +58,7 @@ export class SessionService {
 
   constructor (
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
+    @InjectRepository(Chat) private chatRepo: Repository<Chat>,
     @InjectRepository(Client) private clientRepo: Repository<Client>,
     @InjectRepository(ClientSubscription) private clientSubscriptionRepo: Repository<ClientSubscription>,
     @InjectRepository(Availability) private availabilityRepo: Repository<Availability>,
@@ -385,13 +386,19 @@ export class SessionService {
   
         const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
 
-        const chat = manager.create(Chat, {
+        await manager.upsert(Chat, {
               client: selected.client,
               therapist: selected.therapist,
               groupName: null,
               group: null,
-            });
-        let savedChat = await manager.save(Chat, chat);
+              closed:false,
+        },  ['client', 'therapist']);
+
+        const savedChat = await manager.findOne(Chat, {
+          where: { client: { id: selected.client.id }, therapist: { id: selected.therapist.id } },
+        });
+
+        // let savedChat = await manager.save(Chat, chat);
 
         for (let i = 1; i < weeks; i++) {
           // Always create a fresh date object so no mutation issues
@@ -517,7 +524,7 @@ export class SessionService {
       const session = await this.sessionRepo.findOne(
         {
           where: {id},
-          relations: ['client', 'therapist'],
+          relations: ['client', 'therapist', 'chat'],
         }
       );
 
@@ -542,8 +549,12 @@ export class SessionService {
 
       // ✅ Apply updates normally if allowed
       const sanitizedDto = { ...(updateSessionDto as UpdateSessionDto) };
-
       const previousTherapist = session.therapist;
+
+      const clientName = session.client                                                                                                                                                                                                    
+      ? `${session.client.firstName} ${session.client.lastName}`                                                                                                                                                                         
+      : 'a group session';
+      const clientIdForPayload = session.client?.id ?? session.commonId;
 
       // ✅ Check for therapist reassignment
       if ('therapist' in sanitizedDto && sanitizedDto.therapist && session.therapist?.id !== sanitizedDto.therapist) {
@@ -551,12 +562,24 @@ export class SessionService {
         if (!newTherapist) throw new NotFoundException('New therapist not found');
 
         session.therapist = newTherapist;
+
+        // update therapist for each chat
+        await this.chatRepo.update(session.chat.id, {
+          therapist: newTherapist
+        });
+        // await this.sessionRepo.manager.update(
+        //   Chat,
+        //   { id: session.chat.id },
+        //   { therapist: newTherapist }
+        // );
         
         // --- Send push notifications ---
 
         const clientToken = session.client?.firebaseToken;
         const prevTherapistToken = previousTherapist?.firebaseToken;
         const newTherapistToken = newTherapist?.firebaseToken;
+
+        this.logger.warn(`Sending NEW_THERAPIST notification for session ${session.id}`);
 
         // 🟢 Notify client
         if (clientToken) {
@@ -572,9 +595,9 @@ export class SessionService {
         if (prevTherapistToken) {
           await this.firebaseService.sendPushNotification(
             { client: [], therapist: [prevTherapistToken], admin: [] },
-            JSON.stringify({ clientId: session.client.id }),
+            JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-            `Client ${session.client.firstName + " " + session.client.lastName} has been reassigned from you.`
+            `Client ${clientName} has been reassigned from you.`
           );
         }
 
@@ -582,9 +605,9 @@ export class SessionService {
         if (newTherapistToken) {
           await this.firebaseService.sendPushNotification(
             { client: [], therapist: [newTherapistToken], admin: [] },
-            JSON.stringify({ clientId: session.client.id }),
+            JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-            `You have been assigned to client ${session.client.firstName + " " + session.client.lastName}.`
+            `You have been assigned to client ${clientName}.`
           );
         }
       }
@@ -620,7 +643,7 @@ export class SessionService {
       // ✅ Notify schedule change
       if ('schedule' in sanitizedDto) {
         console.log('Schedule changed, sending notification - session.service.ts:551',session.schedule);
-    const etTime = toEthiopianTime(session.schedule);
+        const etTime = toEthiopianTime(session.schedule);
 
         this.firebaseService.sendPushNotification(
           { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
@@ -651,7 +674,7 @@ export class SessionService {
           { therapist: [session.therapist?.firebaseToken]},
           JSON.stringify({sessionId:session.id}),
           SessionNotif.THERAPIST_ATTENDANCE_MARKED,
-          `Attendace marked for session with ${name}`
+          `Attendace marked for session with ${clientName}`
         );
         await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
       }
@@ -1061,22 +1084,43 @@ export class SessionService {
     } catch {
       this.logger.warn(`No chat found for session series ${referenceSession.commonId}, skipping chat update`);
     }
-    ////////////////
 
     // 9️⃣ Send notifications
-    const tokens: Tokens = { client: [], therapist: [], admin: [] };
-    const clientTokens = newClients.map(c => c.firebaseToken).filter(Boolean);
-    tokens.client.push(...clientTokens);
+
+    const clientTokens = newClients
+      .map(c => c.firebaseToken)
+      .filter((t): t is string => !!t);
 
     const therapistToken = referenceSession.therapist?.firebaseToken;
-    if (therapistToken) tokens.therapist.push(therapistToken);
 
-    await this.firebaseService.sendPushNotification(
-      tokens,
-      JSON.stringify({ commonId: referenceSession.commonId }),
-      SessionNotif.GROUP_SESSION_ADDED,
-      `You have been added to all upcoming group sessions in this series.`
-    );
+    // 🔵 Notify clients (only if tokens exist)
+    if (clientTokens.length > 0) {
+      await this.firebaseService.sendPushNotification(
+        { client: clientTokens, therapist: [], admin: [] },
+        JSON.stringify({ commonId: referenceSession.commonId }),
+        SessionNotif.GROUP_SESSION_ADDED,
+        `You have been added to all upcoming group sessions in this series.`
+      );
+    } else {
+      this.logger.warn(
+        `[Notifications] No client tokens found for session ${referenceSession.commonId}`
+      );
+    }
+
+    // 🟣 Notify therapist (only if token exists)
+    if (therapistToken) {
+      await this.firebaseService.sendPushNotification(
+        { client: [], therapist: [therapistToken], admin: [] },
+        JSON.stringify({ commonId: referenceSession.commonId }),
+        SessionNotif.GROUP_SESSION_UPDATED,
+        `New clients have been added to your group session.`
+      );
+    } else {
+      this.logger.warn(
+        `[Notifications] No therapist token found for session ${referenceSession.commonId}`
+      );
+    }
+
     return allUpdatedSessions;
   });
   }
@@ -1415,7 +1459,7 @@ export class SessionService {
     // 1️⃣ Load reference session
     const referenceSession = await manager.findOne(Session, {
       where: { id: sessionId },
-      relations: ['group', 'therapist'],
+      relations: ['group', 'therapist', 'chat.group'],
     });
 
     if (!referenceSession) {
@@ -1438,6 +1482,18 @@ export class SessionService {
       relations: ['group', 'groupSubscription', 'groupSubscription.client'],
       order: { schedule: 'ASC' },
     });
+
+    // remove from chat
+    if (referenceSession?.chat) {
+      
+      const chat = referenceSession.chat;
+
+      chat.group = chat.group.filter(
+        c => !groupClients.includes(c.id)
+      );
+
+      await manager.save(chat);
+    }
 
     if (!relatedSessions.length) {
       throw new BadRequestException('No upcoming related sessions found');
@@ -1479,6 +1535,14 @@ export class SessionService {
 
     // 4️⃣ Update each client → if removed from all sessions → set isInGroup = false
     for (const clientId of groupClients) {
+      // const client = await manager.findOne(Client, {
+      //   where: { id: clientId },
+      // });
+
+      // const clientToken = client?.firebaseToken;
+      // const therapistToken = referenceSession?.therapist?.firebaseToken;
+      // const etTime = toEthiopianTime(referenceSession.schedule);
+
       const stillInGroup = await manager
         .createQueryBuilder(Session, 'session')
         .leftJoin('session.group', 'client')
@@ -1489,6 +1553,35 @@ export class SessionService {
       if (stillInGroup === 0) {
         await manager.update(Client, { id: clientId }, { isInGroup: false });
       }
+
+      // // Send notification to client
+      // if (clientToken) {
+      //   await this.firebaseService.sendPushNotification(
+      //     { client: [clientToken], therapist: [], admin: [] },
+      //     JSON.stringify({
+      //       sessionId: referenceSession.id,
+      //       commonId: referenceSession.commonId,
+      //       type: 'REMOVED_FROM_GROUP',
+      //     }),
+      //     SessionNotif.CLIENT_REMOVED_FROM_GROUP,
+      //     `You have been removed from upcoming group sessions scheduled at ${etTime}.`
+      //   );
+      // }
+
+      // // Send notification to therapist
+      // if (therapistToken) {
+      //   await this.firebaseService.sendPushNotification(
+      //     { client: [], therapist: [therapistToken], admin: [] },
+      //     JSON.stringify({
+      //       sessionId: referenceSession.id,
+      //       commonId: referenceSession.commonId,
+      //       removedClientIds: groupClients,
+      //       type: 'GROUP_CLIENTS_REMOVED',
+      //     }),
+      //     SessionNotif.CLIENT_REMOVED_FROM_GROUP,
+      //     `${groupClients.length} client(s) removed from group session scheduled at ${etTime}.`
+      //   );
+      // }
     }
 
     return 'Clients successfully removed from upcoming group sessions';

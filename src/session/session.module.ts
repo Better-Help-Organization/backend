@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatModule } from 'src/chat/chat.module';
 import { ClientModule } from 'src/client/client.module';
 import { Availability } from 'src/common/entities/availability.entity';
+import { Chat } from 'src/common/entities/chat.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
@@ -18,7 +19,7 @@ import { StatusModule } from './status/status.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, Client, ClientSubscription, Availability]),
+    TypeOrmModule.forFeature([Session, Chat, Client, ClientSubscription, Availability]),
     NotesModule, 
     MessageModule, 
     StatusModule,
