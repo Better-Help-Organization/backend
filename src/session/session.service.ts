@@ -525,7 +525,7 @@ export class SessionService {
       const session = await this.sessionRepo.findOne(
         {
           where: {id},
-          relations: ['client', 'therapist', 'chat'],
+          relations: ['client', 'therapist', 'chat', 'group'],
         }
       );
 
@@ -552,9 +552,16 @@ export class SessionService {
       const sanitizedDto = { ...(updateSessionDto as UpdateSessionDto) };
       const previousTherapist = session.therapist;
 
-      const clientName = session.client                                                                                                                                                                                                    
-      ? `${session.client.firstName} ${session.client.lastName}`                                                                                                                                                                         
-      : 'a group session';
+      // Collect client tokens from both individual and group sessions
+      const clientTokens: string[] = [];
+      if (session.client?.firebaseToken) clientTokens.push(session.client.firebaseToken);
+      if (session.group?.length) {
+        session.group.forEach(c => { if (c.firebaseToken) clientTokens.push(c.firebaseToken); });
+      }
+
+      const clientName = session.client
+        ? `${session.client.firstName} ${session.client.lastName}`
+        : 'a group session';
       const clientIdForPayload = session.client?.id ?? session.commonId;
 
       // ✅ Check for therapist reassignment
@@ -565,27 +572,21 @@ export class SessionService {
         session.therapist = newTherapist;
 
         // update therapist for each chat
-        await this.chatRepo.update(session.chat.id, {
-          therapist: newTherapist
-        });
-        // await this.sessionRepo.manager.update(
-        //   Chat,
-        //   { id: session.chat.id },
-        //   { therapist: newTherapist }
-        // );
-        
+        if (session.chat) {
+          await this.chatRepo.update(session.chat.id, {
+            therapist: newTherapist
+          });
+        }
+
         // --- Send push notifications ---
 
-        const clientToken = session.client?.firebaseToken;
         const prevTherapistToken = previousTherapist?.firebaseToken;
         const newTherapistToken = newTherapist?.firebaseToken;
 
-        this.logger.warn(`Sending NEW_THERAPIST notification for session ${session.id}`);
-
-        // 🟢 Notify client
-        if (clientToken) {
+        // 🟢 Notify client(s)
+        if (clientTokens.length) {
           await this.firebaseService.sendPushNotification(
-            { client: [clientToken], therapist: [], admin: [] },
+            { client: clientTokens, therapist: [], admin: [] },
             JSON.stringify({ therapistId: newTherapist.id }),
             SessionNotif.TH_REASSIGNED_CLIENT,
             `Your therapist has been changed to ${newTherapist.firstName}.`
@@ -608,7 +609,7 @@ export class SessionService {
             { client: [], therapist: [newTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-            `You have been assigned to client ${clientName}.`
+            `You have been assigned to ${clientName}.`
           );
         }
       }
@@ -650,7 +651,7 @@ export class SessionService {
         const etTime = toEthiopianTime(session.schedule);
 
         this.firebaseService.sendPushNotification(
-          { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
+          { client: clientTokens, therapist: [session.therapist?.firebaseToken], admin: [] },
           JSON.stringify(savedSession),
           SessionNotif.RE_SCHEDULED,
           `Your session has been updated for ${etTime}`
@@ -665,7 +666,7 @@ export class SessionService {
       // ✅ Notify status change
       if ('status' in sanitizedDto) {
         this.firebaseService.sendPushNotification(
-          { client: [session.client?.firebaseToken], therapist: [session.therapist?.firebaseToken], admin: [] },
+          { client: clientTokens, therapist: [session.therapist?.firebaseToken], admin: [] },
           JSON.stringify(savedSession),
           SessionNotif.STATUS_CHANGED,
           `Your session status is now ${session.latestStatus}`
