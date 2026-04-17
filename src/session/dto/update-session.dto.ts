@@ -143,3 +143,31 @@ export class UpdateGroupSessionNote {
   @Type(() => UpdateGroupSessionNoteEntry)
   notes: UpdateGroupSessionNoteEntry[];
 }
+
+// export class BatchUpdateSessionDto {
+//   @ApiProperty({
+//     description: 'Common ID for grouped sessions',
+//     example: 'd43b2298-5437-4fee-a4c2-b4d6b47a5519',
+//   })
+//   @IsUUID()
+//   commonId: string;
+
+//   @ApiProperty({
+//     description: 'Sessions to exclude from update',
+//     required: false,
+//     type: [String],
+//   })
+//   @IsOptional()
+//   @IsArray()
+//   @IsUUID('all', { each: true })
+//   excludedSessionIds?: string[];
+
+//   // Reuse existing DTO
+//   @ApiProperty({
+//     type: UpdateSessionDto,
+//     description: 'Fields to update across sessions',
+//   })
+//   @ValidateNested()
+//   @Type(() => UpdateSessionDto)
+//   updates: UpdateSessionDto;
+// }

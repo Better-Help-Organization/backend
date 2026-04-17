@@ -7,6 +7,7 @@ import { StatusDto } from 'src/common/dto/status.dto';
 import { Language } from 'src/common/entities/language.entity';
 import { License } from 'src/common/entities/license.entity';
 import { Preference } from 'src/common/entities/preference.entity';
+import { Session } from 'src/common/entities/session.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -15,7 +16,6 @@ import { LoggerService } from 'src/logger/logger.service';
 import { PresenceService } from 'src/presence/presence.service';
 import { In, Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
-import { Session } from 'src/common/entities/session.entity';
 
 @Injectable()
 export class TherapistService {
@@ -82,7 +82,7 @@ export class TherapistService {
   }
 
   async findMatchingTherapists(preference: {
-    gender: string;
+    gender?: string;
     level?: string;
     modal?: string;
     // availability: {

@@ -221,7 +221,8 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   INCOMING_GROUP_CALL: { code: "30", title: 'Incoming  Group Call', showNotification: true },
   RE_SCHEDULED: { code: "31", title: 'Session re-scheduled', showNotification: true },
   GROUP_SESSION_ADDED: { code: "32", title: 'Added to  group session', showNotification: true },
-
+  GROUP_SESSION_UPDATED: { code: "33", title: 'Group members updated', showNotification: true },
+  GROUP_SESSION_REMOVED: { code: "34", title: 'Removed from group session', showNotification: true },
 } as const;
 
 export enum DefaultParameters {

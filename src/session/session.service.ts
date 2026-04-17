@@ -22,6 +22,7 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { Between, DataSource, In, MoreThan, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
+import { BatchUpdateSessionDto } from './dto/batch-update-session.dto';
 import { CreateGroupSession } from './dto/create-session.dto';
 import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
@@ -637,6 +638,9 @@ export class SessionService {
 
 
       // ✅ Apply all other updates
+        // const { therapist: _therapistId, status: _status, ...rest } = sanitizedDto as any;
+        // Object.assign(session, rest);
+        // const savedSession = await this.sessionRepo.save(session);
       Object.assign(session, { ...sanitizedDto, status: undefined });
       const savedSession = await this.sessionRepo.save(session);
 
@@ -1088,38 +1092,38 @@ export class SessionService {
     // 9️⃣ Send notifications
 
     const clientTokens = newClients
-      .map(c => c.firebaseToken)
-      .filter((t): t is string => !!t);
+      .map(c => c.firebaseToken);
+      // .filter((t): t is string => !!t);
 
     const therapistToken = referenceSession.therapist?.firebaseToken;
 
     // 🔵 Notify clients (only if tokens exist)
-    if (clientTokens.length > 0) {
+    // if (clientTokens.length > 0) {
       await this.firebaseService.sendPushNotification(
         { client: clientTokens, therapist: [], admin: [] },
         JSON.stringify({ commonId: referenceSession.commonId }),
         SessionNotif.GROUP_SESSION_ADDED,
         `You have been added to all upcoming group sessions in this series.`
       );
-    } else {
-      this.logger.warn(
-        `[Notifications] No client tokens found for session ${referenceSession.commonId}`
-      );
-    }
+    // } else {
+    //   this.logger.warn(
+    //     `[Notifications] No client tokens found for session ${referenceSession.commonId}`
+    //   );
+    // }
 
     // 🟣 Notify therapist (only if token exists)
-    if (therapistToken) {
+    // if (therapistToken) {
       await this.firebaseService.sendPushNotification(
         { client: [], therapist: [therapistToken], admin: [] },
         JSON.stringify({ commonId: referenceSession.commonId }),
         SessionNotif.GROUP_SESSION_UPDATED,
         `New clients have been added to your group session.`
       );
-    } else {
-      this.logger.warn(
-        `[Notifications] No therapist token found for session ${referenceSession.commonId}`
-      );
-    }
+    // } else {
+    //   this.logger.warn(
+    //     `[Notifications] No therapist token found for session ${referenceSession.commonId}`
+    //   );
+    // }
 
     return allUpdatedSessions;
   });
@@ -1405,6 +1409,188 @@ export class SessionService {
   //   });
   // }
 
+  async batchUpdate(dto: BatchUpdateSessionDto) {
+    const { commonId, excludedSessionIds = [], updates } = dto;
+
+    if (!updates || Object.keys(updates).length === 0) {
+      throw new BadRequestException('No updates provided');
+    }
+
+    // const { therapist, schedule, status } = updates;
+    const { therapist } = updates;
+
+    const sessions = await this.sessionRepo.find({
+      where: {
+        commonId,
+        id: Not(In(excludedSessionIds)),
+      },
+      relations: ['client', 'therapist', 'chat'],
+    });
+
+    if (!sessions.length) {
+      throw new NotFoundException('No sessions found');
+    }
+
+    let newTherapist = null;
+
+    if (therapist) {
+      newTherapist = await this.therapistService.findOne(therapist);
+      if (!newTherapist) throw new NotFoundException('Therapist not found');
+    }
+
+    const clientTokens: string[] = [];
+    const therapistTokens: string[] = [];
+    const prevTherapistTokens: string[] = [];
+
+    const sessionsToUpdate: Session[] = [];
+
+    for (const session of sessions) {
+      let changed = false;
+
+      // 🔵 Therapist reassignment
+      if (therapist && session.therapist?.id !== therapist) {
+        const prevTherapist = session.therapist;
+
+        session.therapist = newTherapist;
+
+        if (session.chat?.id) {
+          await this.chatRepo.update(session.chat.id, {
+            therapist: newTherapist,
+          });
+        }
+
+        if (prevTherapist?.firebaseToken) {
+          prevTherapistTokens.push(prevTherapist.firebaseToken);
+        }
+
+        if (newTherapist?.firebaseToken) {
+          therapistTokens.push(newTherapist.firebaseToken);
+        }
+
+        changed = true;
+      }
+
+      // // 📅 Schedule update
+      // if (schedule) {
+      //   session.schedule = schedule;
+      //   changed = true;
+      // }
+
+      // // 📊 Status update
+      // if (status) {
+      //   const newStatus = this.sessionRepo.manager.create(Status, {
+      //     session,
+      //     status: status.status,
+      //     reason: status.reason,
+      //   });
+
+      //   await this.sessionRepo.manager.save(Status, newStatus);
+
+      //   session.latestStatus = status.status;
+      //   session.latestReason = status.reason;
+
+      //   changed = true;
+      // }
+
+      if (changed) {
+        if (session.client?.firebaseToken) {
+          clientTokens.push(session.client.firebaseToken);
+        }
+
+        sessionsToUpdate.push(session);
+      }
+    }
+
+    if (!sessionsToUpdate.length) {
+      return { message: 'No changes applied' };
+    }
+
+    // 💾 Save first
+    await this.sessionRepo.save(sessionsToUpdate);
+
+    // // 🔁 Handle reminders AFTER save (important!)
+    // if (schedule) {
+    //   for (const session of sessionsToUpdate) {
+    //     await this.reminderService.cancelReminders(session.id);
+    //     await this.reminderService.scheduleReminders(session);
+    //   }
+    // }
+
+    // 🧼 Deduplicate tokens
+    const uniqueClientTokens = [...new Set(clientTokens)].filter(Boolean);
+    const uniqueTherapistTokens = [...new Set(therapistTokens)].filter(Boolean);
+    const uniquePrevTherapistTokens = [...new Set(prevTherapistTokens)].filter(Boolean);
+
+    const count = sessionsToUpdate.length;
+
+    // 🔔 ONE notification block
+
+    // 🔵 Therapist reassignment
+    if (therapist) {
+      if (uniqueClientTokens.length) {
+        await this.firebaseService.sendPushNotification(
+          { client: uniqueClientTokens, therapist: [], admin: [] },
+          JSON.stringify({ therapistId: therapist }),
+          SessionNotif.TH_REASSIGNED_CLIENT,
+          `Your therapist has been updated for ${count} session(s).`
+        );
+      }
+
+      if (uniquePrevTherapistTokens.length) {
+        await this.firebaseService.sendPushNotification(
+          { client: [], therapist: uniquePrevTherapistTokens, admin: [] },
+          JSON.stringify({ commonId }),
+          SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
+          `${count} session(s) have been reassigned from you.`
+        );
+      }
+
+      if (uniqueTherapistTokens.length) {
+        await this.firebaseService.sendPushNotification(
+          { client: [], therapist: uniqueTherapistTokens, admin: [] },
+          JSON.stringify({ commonId }),
+          SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
+          `You have been assigned to ${count} session(s).`
+        );
+      }
+    }
+
+    // // 📅 Schedule notification
+    // if (schedule) {
+    //   const etTime = toEthiopianTime(schedule);
+
+    //   await this.firebaseService.sendPushNotification(
+    //     {
+    //       client: uniqueClientTokens,
+    //       therapist: uniqueTherapistTokens,
+    //       admin: [],
+    //     },
+    //     JSON.stringify({ commonId }),
+    //     SessionNotif.RE_SCHEDULED,
+    //     `Your sessions have been updated for ${etTime}`
+    //   );
+    // }
+
+    // // 📊 Status notification
+    // if (status) {
+    //   await this.firebaseService.sendPushNotification(
+    //     {
+    //       client: uniqueClientTokens,
+    //       therapist: uniqueTherapistTokens,
+    //       admin: [],
+    //     },
+    //     JSON.stringify({ commonId }),
+    //     SessionNotif.STATUS_CHANGED,
+    //     `Session status updated to ${status.status}`
+    //   );
+    // }
+
+    return {
+      updatedCount: count,
+      message: 'Batch update successful',
+    };
+  }
+
   async updateBatchTherapistNotes(id:string, dto: UpdateGroupSessionNote) {
     return await this.dataSource.transaction(async (manager) => {
       const session = await manager.findOne(Session, {
@@ -1532,16 +1718,23 @@ export class SessionService {
       await manager.save(session);
     }
 
+    const clients = await manager.find(Client, {
+      where: { id: In(groupClients) },
+    });
 
-    // 4️⃣ Update each client → if removed from all sessions → set isInGroup = false
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    const etTime = toEthiopianTime(referenceSession.schedule);
+
+    // 4️⃣ Update each client
     for (const clientId of groupClients) {
-      // const client = await manager.findOne(Client, {
-      //   where: { id: clientId },
-      // });
+      const client = clientMap.get(clientId);
 
-      // const clientToken = client?.firebaseToken;
-      // const therapistToken = referenceSession?.therapist?.firebaseToken;
-      // const etTime = toEthiopianTime(referenceSession.schedule);
+      if (!client) {
+        this.logger.warn(`Client ${clientId} not found during removal`);
+        continue;
+      }
+
+      const clientToken = client.firebaseToken;
 
       const stillInGroup = await manager
         .createQueryBuilder(Session, 'session')
@@ -1554,35 +1747,36 @@ export class SessionService {
         await manager.update(Client, { id: clientId }, { isInGroup: false });
       }
 
-      // // Send notification to client
       // if (clientToken) {
-      //   await this.firebaseService.sendPushNotification(
-      //     { client: [clientToken], therapist: [], admin: [] },
-      //     JSON.stringify({
-      //       sessionId: referenceSession.id,
-      //       commonId: referenceSession.commonId,
-      //       type: 'REMOVED_FROM_GROUP',
-      //     }),
-      //     SessionNotif.CLIENT_REMOVED_FROM_GROUP,
-      //     `You have been removed from upcoming group sessions scheduled at ${etTime}.`
-      //   );
-      // }
-
-      // // Send notification to therapist
-      // if (therapistToken) {
-      //   await this.firebaseService.sendPushNotification(
-      //     { client: [], therapist: [therapistToken], admin: [] },
-      //     JSON.stringify({
-      //       sessionId: referenceSession.id,
-      //       commonId: referenceSession.commonId,
-      //       removedClientIds: groupClients,
-      //       type: 'GROUP_CLIENTS_REMOVED',
-      //     }),
-      //     SessionNotif.CLIENT_REMOVED_FROM_GROUP,
-      //     `${groupClients.length} client(s) removed from group session scheduled at ${etTime}.`
-      //   );
+        await this.firebaseService.sendPushNotification(
+          { client: [clientToken], therapist: [], admin: [] },
+          JSON.stringify({
+            sessionId: referenceSession.id,
+            commonId: referenceSession.commonId,
+            type: 'REMOVED_FROM_GROUP',
+          }),
+          SessionNotif.GROUP_SESSION_REMOVED,
+          `You have been removed from upcoming group sessions scheduled at ${etTime}.`
+        );
       // }
     }
+
+    // therapist notification
+    const therapistToken = referenceSession?.therapist?.firebaseToken;
+  
+    // if (therapistToken) {
+      await this.firebaseService.sendPushNotification(
+        { client: [], therapist: [therapistToken], admin: [] },
+        JSON.stringify({
+          sessionId: referenceSession.id,
+          commonId: referenceSession.commonId,
+          removedClientIds: groupClients,
+          type: 'GROUP_CLIENTS_REMOVED',
+        }),
+        SessionNotif.GROUP_SESSION_UPDATED,
+        `${groupClients.length} client(s) removed from group session scheduled at ${etTime}.`
+      );
+    // }
 
     return 'Clients successfully removed from upcoming group sessions';
   });

@@ -7,6 +7,7 @@ import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AddToSessionDto } from './dto/add-session.dto';
+import { BatchUpdateSessionDto } from './dto/batch-update-session.dto';
 import { CreateGroupSession, CreateSessionDto } from './dto/create-session.dto';
 import { RemoveFromSessionDto } from './dto/remove-session.dto';
 import { SelectSessionDto } from './dto/select-session.dto';
@@ -133,6 +134,15 @@ export class SessionController {
     @Param('id') id: string, 
     @Body() updateSessionDto: UpdateSessionDto) {
     return this.sessionService.update(id, updateSessionDto);
+  }
+
+  @Patch('batch')
+  @DynamicGuards(
+    new AdminJwtAuthGuard(),
+    new TherapistJwtAuthGuard()
+  )
+  batchUpdate(@Body() dto: BatchUpdateSessionDto) {
+    return this.sessionService.batchUpdate(dto);
   }
 
   @Patch('group-notes/:id')
