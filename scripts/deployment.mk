@@ -37,7 +37,7 @@ db-dump:
 # 	@echo "✅ Dump saved to dump.sql"
 
 # Declare phony targets
-.PHONY: up down rebuild logs test docker-compose-command validate-env bash-service proxy-build
+.PHONY: up down rebuild logs test docker-compose-command validate-env bash-service proxy-build seed
 
 # Targets
 up:
@@ -77,3 +77,6 @@ many:
 		echo "Running $$cmd..."; \
 		$(MAKE) $$cmd; \
 	done
+
+seed:
+	@$(MAKE) docker-compose-command CMD="exec $(SERVICE) npx ts-node -r tsconfig-paths/register scripts/seed-client.ts $(ARGS)"
