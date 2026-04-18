@@ -578,8 +578,39 @@ export class ChatService {
   }
 
   async endCall(chatId: string, caller: TokenPayload) {
-    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*, activeCallRoom" });
-    console.log({chat, caller})
+    const chat = await this.findOne(chatId, {
+      fields: "client.*, therapist.*, group.*, activeCallRoom"
+    });
+
+    // ── Group chat ──
+    if (chat.group?.length) {
+      if (caller.type === UserTypes.CLIENT) {
+        return { success: true, status: 'left' };
+      }
+
+      chat.activeCallRoom = null;
+      await this.chatRepo.save(chat);
+
+      const tokens: Tokens = {
+        client: chat.group
+          .filter(c => c.firebaseToken)
+          .map(c => c.firebaseToken),
+        therapist: [],
+        admin: [],
+      };
+
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ chatId, callerData: this.sanitize(chat.therapist) }),
+        SessionNotif.CALL_ENDED,
+        `Call ended by ${chat.therapist.firstName}`,
+        chat.therapist.profile ?? chat.therapist.avatar?.toString()
+      );
+
+      return { success: true, status: 'ended' };
+    }
+
+    // ── Individual chat (unchanged) ──
     const isCallerClient = chat.client?.id === caller.id;
     const tokens:Tokens = {
       client: [],
@@ -592,7 +623,7 @@ export class ChatService {
 
     chat.activeCallRoom = null;
     await this.chatRepo.save(chat);
-    console.log({chat})
+
     await this.firebaseService.sendPushNotification(
       tokens,
       JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
