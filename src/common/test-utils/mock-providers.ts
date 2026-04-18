@@ -30,6 +30,7 @@ export interface MockSessionRepo {
   manager: MockManager;
   findOne: jest.Mock;
   find: jest.Mock;
+  save: jest.Mock;
 }
 
 export function createMockManager(): MockManager {
@@ -62,6 +63,7 @@ export function createMockSessionRepo(manager?: MockManager): MockSessionRepo {
     manager: manager ?? createMockManager(),
     findOne: jest.fn(),
     find: jest.fn(),
+    save: jest.fn(),
   };
 }
 
@@ -189,6 +191,7 @@ export function createMockRepo() {
   return {
     findOne: jest.fn(),
     find: jest.fn(),
+    update: jest.fn(),
     save: jest.fn(async (entity: any) => entity),
     create: jest.fn(),
   };

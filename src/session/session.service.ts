@@ -73,6 +73,50 @@ export class SessionService {
     private readonly reminderService: ReminderService,
   ) {}
 
+  private async resolveReassignedChat(
+    session: Session,
+    newTherapist: Therapist,
+  ): Promise<Chat | null> {
+    if (!session.client?.id) {
+      if (session.chat?.id) {
+        await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
+      }
+
+      return session.chat ?? null;
+    }
+
+    const existingChat = await this.chatRepo.findOne({
+      where: {
+        client: { id: session.client.id },
+        therapist: { id: newTherapist.id },
+      },
+      relations: ['client', 'therapist'],
+    });
+
+    if (existingChat) {
+      return existingChat;
+    }
+
+    if (session.chat?.id) {
+      await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
+
+      return {
+        ...session.chat,
+        therapist: newTherapist,
+      } as Chat;
+    }
+
+    return await this.chatRepo.save(
+      this.chatRepo.create({
+        client: session.client,
+        therapist: newTherapist,
+        group: null,
+        groupName: null,
+        closed: false,
+      }),
+    );
+  }
+
   async findAll(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
     const dateFilter = {
@@ -570,13 +614,7 @@ export class SessionService {
         if (!newTherapist) throw new NotFoundException('New therapist not found');
 
         session.therapist = newTherapist;
-
-        // update therapist for each chat
-        if (session.chat) {
-          await this.chatRepo.update(session.chat.id, {
-            therapist: newTherapist
-          });
-        }
+        session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         // --- Send push notifications ---
 
@@ -642,8 +680,14 @@ export class SessionService {
         // const { therapist: _therapistId, status: _status, ...rest } = sanitizedDto as any;
         // Object.assign(session, rest);
         // const savedSession = await this.sessionRepo.save(session);
-      Object.assign(session, { ...sanitizedDto, status: undefined });
+        // Destructure out relations you manage manually
+      const { therapist: _therapistId, status: _status, chat: _chat, ...rest } = sanitizedDto as any;
+
+      Object.assign(session, { ...rest, status: undefined });
       const savedSession = await this.sessionRepo.save(session);
+
+      // Object.assign(session, { ...sanitizedDto, status: undefined });
+      // const savedSession = await this.sessionRepo.save(session);
 
       // ✅ Notify schedule change
       if ('schedule' in sanitizedDto) {
@@ -729,6 +773,11 @@ export class SessionService {
       console.log({clientSubs})
       if (!clientSubs.length) throw new BadRequestException('No active subscriptions found');
 
+      const activeSubscriptionsByClient = new Map<string, ClientSubscription>();
+      for (const clientSub of clientSubs) {
+        activeSubscriptionsByClient.set(clientSub.client.id, clientSub);
+      }
+
       // // 5️⃣ Determine weeks per client
       // const clientWeeksMap = new Map<string, number>();
       // let maxWeeks = 0;
@@ -747,14 +796,19 @@ export class SessionService {
       // if atleast one doesn't have an active subscription return error
       for (const client of clients) {
         console.log({client})
-        if (!client.activeSubscription || !client.activeSubscription.subscription) {
+        const activeSubscription =
+          client.activeSubscription ?? activeSubscriptionsByClient.get(client.id);
+
+        if (!activeSubscription || !activeSubscription.subscription) {
           const fullname = client.firstName + " " + client.lastName; 
           throw new BadRequestException(
             `Client ${ fullname ?? client.id} does not have an active subscription`
           );
         }
 
-        const typeValue = client.activeSubscription.subscription.type;
+        client.activeSubscription = activeSubscription;
+
+        const typeValue = activeSubscription.subscription.type;
         const weeks = typeValue === SubscriptionType.TRIAL ? 1 : typeValue * 4;
 
         // const weeks = client.activeSubscription.subscription.type * 4; // type = months, 1 month = 4 weeks
@@ -843,14 +897,17 @@ export class SessionService {
           console.log({clientSubscription: client.activeSubscription})
           const clientSub = await manager.findOne(ClientSubscription, {
             where: { id: client.activeSubscription.id },
-            relations: ['session'],
+            relations: ['groupSessions'],
           });
 
           if (clientSub) {
-            clientSub.session = [...(clientSub.session || []), savedSession];
+            const existingGroupSessions = clientSub.groupSessions || [];
+            if (!existingGroupSessions.some((groupSession) => groupSession.id === savedSession.id)) {
+              clientSub.groupSessions = [...existingGroupSessions, savedSession];
+            }
             
             // Update subscription start/end based on sessions
-            const allClientSessions = [...(clientSub.session || [])];
+            const allClientSessions = [...(clientSub.groupSessions || [])];
             const firstDate = allClientSessions.map(s => s.schedule).sort((a, b) => a.getTime() - b.getTime())[0];
             const lastDate = allClientSessions.map(s => s.schedule).sort((a, b) => b.getTime() - a.getTime())[0];
 
@@ -1476,12 +1533,7 @@ export class SessionService {
         const prevTherapist = session.therapist;
 
         session.therapist = newTherapist;
-
-        if (session.chat?.id) {
-          await this.chatRepo.update(session.chat.id, {
-            therapist: newTherapist,
-          });
-        }
+        session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         if (prevTherapist?.firebaseToken) {
           prevTherapistTokens.push(prevTherapist.firebaseToken);

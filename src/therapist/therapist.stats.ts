@@ -14,6 +14,30 @@ export class TherapistStatisticsService {
     private readonly paramService: ParameterService
   ) {}
 
+  private appendUniqueGroupSubscription(
+    target: { price: number; type: number }[],
+    seen: Set<string>,
+    subscriptionId: string | null | undefined,
+    price: number,
+    type: number,
+  ) {
+    if (!subscriptionId || seen.has(subscriptionId)) return;
+
+    seen.add(subscriptionId);
+    target.push({ price, type });
+  }
+
+  private appendUniqueAttendance(
+    target: string[],
+    seen: Set<string>,
+    attendanceId: string | null | undefined,
+  ) {
+    if (!attendanceId || seen.has(attendanceId)) return;
+
+    seen.add(attendanceId);
+    target.push(attendanceId);
+  }
+
   /** ⏱️ Total hours (sum of attended session durations, no date filter) */
   async getTotalHours(therapistId?: string) {
     const qb = this.sessionRepo.createQueryBuilder('session')
@@ -167,22 +191,27 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          attendanceList: []
+          attendanceList: [],
+          groupSubscriptionIds: new Set<string>(),
+          attendanceIds: new Set<string>(),
         });
       }
 
       const sessionEntry = sessionMap.get(sid);
   
-      if (r.gsub_id) {
-        sessionMap.get(sid).groupSubscriptions.push({
-          price: r.gsub_price,
-          type: r.gsubRootSub_type
-        });
-      }
+      this.appendUniqueGroupSubscription(
+        sessionEntry.groupSubscriptions,
+        sessionEntry.groupSubscriptionIds,
+        r.gsub_id,
+        r.gsub_price,
+        r.gsubRootSub_type,
+      );
 
-      if (r.gatt_id) {
-      sessionEntry.attendanceList.push(r.gatt_id); // Track attendance IDs
-    }
+      this.appendUniqueAttendance(
+        sessionEntry.attendanceList,
+        sessionEntry.attendanceIds,
+        r.gatt_id,
+      );
 
     }
 
@@ -464,24 +493,27 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          attendanceList: []
+          attendanceList: [],
+          groupSubscriptionIds: new Set<string>(),
+          attendanceIds: new Set<string>(),
         });
       }
 
       const sessionEntry = sessionMap.get(sid);
 
-      // 1. Push subscription if it exists in this row
-      if (r.gsub_id) {
-        sessionEntry.groupSubscriptions.push({
-          price: r.gsub_price,
-          type: r.gsubRootSub_type
-        });
-      }
+      this.appendUniqueGroupSubscription(
+        sessionEntry.groupSubscriptions,
+        sessionEntry.groupSubscriptionIds,
+        r.gsub_id,
+        r.gsub_price,
+        r.gsubRootSub_type,
+      );
 
-      // 2. Push attendance ONLY if gatt_id is not null
-      if (r.gatt_id) {
-        sessionEntry.attendanceList.push(r.gatt_id);
-      }
+      this.appendUniqueAttendance(
+        sessionEntry.attendanceList,
+        sessionEntry.attendanceIds,
+        r.gatt_id,
+      );
     }
 
     interface RevenueDayData {
@@ -555,4 +587,3 @@ export class TherapistStatisticsService {
   }
 
 }
-

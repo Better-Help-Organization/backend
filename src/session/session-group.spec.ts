@@ -23,10 +23,12 @@ describe('SessionService - createGroupSession', () => {
 
   // Track saved sessions
   const savedSessions: any[] = [];
+  let persistedSubs: Record<string, ClientSubscription>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     savedSessions.length = 0;
+    persistedSubs = {};
 
     mocks = createSessionServiceMocks();
 
@@ -36,6 +38,9 @@ describe('SessionService - createGroupSession', () => {
       const saved = { ...entity, id: entity.id ?? `entity-${Date.now()}-${Math.random()}` };
       if (entity.group && entity.schedule) {
         savedSessions.push(saved);
+      }
+      if (entity.client && entity.subscription) {
+        persistedSubs[saved.id] = saved;
       }
       return saved;
     });
@@ -61,6 +66,10 @@ describe('SessionService - createGroupSession', () => {
     const csMonthly = makeClientSubscription(clientMonthly, monthlyCatalog, therapist);
     const csQuarterly = makeClientSubscription(clientQuarterly, quarterlyCatalog, therapist);
 
+    persistedSubs[csTrial.id] = { ...csTrial, session: [], groupSessions: [] };
+    persistedSubs[csMonthly.id] = { ...csMonthly, session: [], groupSessions: [] };
+    persistedSubs[csQuarterly.id] = { ...csQuarterly, session: [], groupSessions: [] };
+
     clientTrial.activeSubscription = csTrial;
     clientMonthly.activeSubscription = csMonthly;
     clientQuarterly.activeSubscription = csQuarterly;
@@ -68,10 +77,13 @@ describe('SessionService - createGroupSession', () => {
     mocks.manager.findOne.mockImplementation(async (Entity, opts) => {
       if (Entity === Therapist) return therapist;
       if (Entity === ClientSubscription) {
+        const subId = opts?.where?.id;
+        if (subId && persistedSubs[subId]) return persistedSubs[subId];
+
         const cid = opts?.where?.client?.id;
-        if (cid === clientTrial.id) return { ...csTrial, session: [] };
-        if (cid === clientMonthly.id) return { ...csMonthly, session: [] };
-        if (cid === clientQuarterly.id) return { ...csQuarterly, session: [] };
+        if (cid === clientTrial.id) return persistedSubs[csTrial.id];
+        if (cid === clientMonthly.id) return persistedSubs[csMonthly.id];
+        if (cid === clientQuarterly.id) return persistedSubs[csQuarterly.id];
       }
       return null;
     });
@@ -92,11 +104,23 @@ describe('SessionService - createGroupSession', () => {
     };
   }
 
+  function mockFindForClients(clients: Client[]) {
+    mocks.manager.find.mockImplementation(async (Entity) => {
+      if (Entity === Client) return clients;
+      if (Entity === ClientSubscription) {
+        return clients
+          .map((client) => persistedSubs[client.activeSubscription?.id])
+          .filter(Boolean);
+      }
+      return [];
+    });
+  }
+
   // ─── Tests ───────────────────────────────────────────
 
   it('trial client should appear in exactly 1 session, monthly in 4', async () => {
     const { therapist, clientTrial, clientMonthly } = setupTestData();
-    mocks.manager.find.mockResolvedValue([clientTrial, clientMonthly]);
+    mockFindForClients([clientTrial, clientMonthly]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientMonthly.id]));
 
@@ -111,7 +135,7 @@ describe('SessionService - createGroupSession', () => {
 
   it('session 1 should have 2 members, sessions 2-4 should have 1', async () => {
     const { therapist, clientTrial, clientMonthly } = setupTestData();
-    mocks.manager.find.mockResolvedValue([clientTrial, clientMonthly]);
+    mockFindForClients([clientTrial, clientMonthly]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientMonthly.id]));
 
@@ -123,7 +147,7 @@ describe('SessionService - createGroupSession', () => {
 
   it('trial + quarterly should create 12 sessions, trial in 1', async () => {
     const { therapist, clientTrial, clientQuarterly } = setupTestData();
-    mocks.manager.find.mockResolvedValue([clientTrial, clientQuarterly]);
+    mockFindForClients([clientTrial, clientQuarterly]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientQuarterly.id]));
 
@@ -138,7 +162,7 @@ describe('SessionService - createGroupSession', () => {
 
   it('all sessions should have unique schedule dates (no overlaps)', async () => {
     const { therapist, clientTrial, clientMonthly } = setupTestData();
-    mocks.manager.find.mockResolvedValue([clientTrial, clientMonthly]);
+    mockFindForClients([clientTrial, clientMonthly]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientMonthly.id]));
 
@@ -149,7 +173,7 @@ describe('SessionService - createGroupSession', () => {
 
   it('groupSubscription should only include subs for clients in that session', async () => {
     const { therapist, clientTrial, clientMonthly } = setupTestData();
-    mocks.manager.find.mockResolvedValue([clientTrial, clientMonthly]);
+    mockFindForClients([clientTrial, clientMonthly]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientMonthly.id]));
 
@@ -168,7 +192,17 @@ describe('SessionService - createGroupSession', () => {
     clientA.activeSubscription = makeClientSubscription(clientA, monthlyCatalog, therapist);
     clientB.activeSubscription = makeClientSubscription(clientB, monthlyCatalog, therapist);
 
-    mocks.manager.find.mockResolvedValue([clientA, clientB]);
+    persistedSubs[clientA.activeSubscription.id] = {
+      ...clientA.activeSubscription,
+      session: [],
+      groupSessions: [],
+    };
+    persistedSubs[clientB.activeSubscription.id] = {
+      ...clientB.activeSubscription,
+      session: [],
+      groupSessions: [],
+    };
+    mockFindForClients([clientA, clientB]);
 
     await service.createGroupSession(makeDto(therapist.id, [clientA.id, clientB.id]));
 
@@ -176,5 +210,17 @@ describe('SessionService - createGroupSession', () => {
     for (const session of savedSessions) {
       expect(session.group.length).toBe(2);
     }
+  });
+
+  it('stores segregated group sessions on each client subscription', async () => {
+    const { therapist, clientTrial, clientMonthly, csTrial, csMonthly } = setupTestData();
+    mockFindForClients([clientTrial, clientMonthly]);
+
+    await service.createGroupSession(makeDto(therapist.id, [clientTrial.id, clientMonthly.id]));
+
+    expect(persistedSubs[csTrial.id].groupSessions).toHaveLength(1);
+    expect(persistedSubs[csMonthly.id].groupSessions).toHaveLength(4);
+    expect(persistedSubs[csTrial.id].session).toHaveLength(0);
+    expect(persistedSubs[csMonthly.id].session).toHaveLength(0);
   });
 });
