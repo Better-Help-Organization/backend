@@ -9,9 +9,11 @@ import { Session } from '../entities/session.entity';
 import { LoggerService } from '../../logger/logger.service';
 import { FirebaseService } from '../../firebase/firebase.service';
 import { ClientService } from '../../client/client.service';
+import { ChatService } from '../../chat/chat.service';
 import { TherapistService } from '../../therapist/therapist.service';
 import { ParameterService } from '../../parameter/parameter.service';
 import { LivekitService } from '../../livekit/livekit.service';
+import { ReminderService } from '../../reminder/reminder.service';
 
 export interface MockManager {
   findOne: jest.Mock;
@@ -113,9 +115,24 @@ export function createMockLogger() {
  *     providers: [SessionService, ...mocks.providers],
  *   }).compile();
  */
+export function createMockChatService() {
+  return {
+    create: jest.fn().mockResolvedValue({ id: 'mock-chat-id' }),
+    findOne: jest.fn(),
+  };
+}
+
+export function createMockReminderService() {
+  return {
+    scheduleReminders: jest.fn(),
+    cancelReminders: jest.fn(),
+  };
+}
+
 export function createSessionServiceMocks() {
   const manager = createMockManager();
   const sessionRepo = createMockSessionRepo(manager);
+  const chatRepo = createMockRepo();
   const clientRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
   const clientSubRepo = { findOne: jest.fn(), find: jest.fn() };
   const availabilityRepo = {};
@@ -124,10 +141,13 @@ export function createSessionServiceMocks() {
   const clientService = createMockClientService();
   const therapistService = createMockTherapistService();
   const paramService = createMockParamService();
+  const chatService = createMockChatService();
+  const reminderService = createMockReminderService();
   const logger = createMockLogger();
 
   const providers = [
     { provide: getRepositoryToken(Session), useValue: sessionRepo },
+    { provide: getRepositoryToken(Chat), useValue: chatRepo },
     { provide: getRepositoryToken(Client), useValue: clientRepo },
     { provide: getRepositoryToken(ClientSubscription), useValue: clientSubRepo },
     { provide: getRepositoryToken(Availability), useValue: availabilityRepo },
@@ -136,6 +156,8 @@ export function createSessionServiceMocks() {
     { provide: ClientService, useValue: clientService },
     { provide: TherapistService, useValue: therapistService },
     { provide: ParameterService, useValue: paramService },
+    { provide: ChatService, useValue: chatService },
+    { provide: ReminderService, useValue: reminderService },
     { provide: LoggerService, useValue: logger },
   ];
 
@@ -143,6 +165,7 @@ export function createSessionServiceMocks() {
     providers,
     manager,
     sessionRepo,
+    chatRepo,
     clientRepo,
     clientSubRepo,
     dataSource,
@@ -150,6 +173,8 @@ export function createSessionServiceMocks() {
     clientService,
     therapistService,
     paramService,
+    chatService,
+    reminderService,
     logger,
   };
 }

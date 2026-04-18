@@ -1102,8 +1102,12 @@ export class SessionService {
       });
 
       if (chatWithSessions) {
-        chatWithSessions.group = [...(chatWithSessions.group ?? []), ...newClients];
-        await manager.save(Chat, chatWithSessions);
+        const existingIds = new Set(chatWithSessions.group?.map(c => c.id) ?? []);
+        const deduped = newClients.filter(c => !existingIds.has(c.id));
+        if (deduped.length) {
+          chatWithSessions.group = [...(chatWithSessions.group ?? []), ...deduped];
+          await manager.save(Chat, chatWithSessions);
+        }
       }
     } catch {
       this.logger.warn(`No chat found for session series ${referenceSession.commonId}, skipping chat update`);

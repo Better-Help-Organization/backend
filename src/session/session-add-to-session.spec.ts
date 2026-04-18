@@ -177,6 +177,64 @@ describe('SessionService - addToSession', () => {
     expect(sessionsWithTrial.length).toBe(0);
   });
 
+  // ─── Chat dedup ─────────────────────────────────────
+
+  it('should not add client to chat.group if already present', async () => {
+    const { therapist, sessions } = setupGroupSeries(4);
+    const monthlyClient = setupClient(SubscriptionType.MONTHLY, therapist, 'monthly-1');
+
+    mocks.clientService.findAll.mockResolvedValue({ data: [monthlyClient] });
+    mocks.manager.query.mockResolvedValue([{ count: 0 }]);
+
+    // Chat already has this client in group
+    const existingChat = {
+      id: 'chat-1',
+      group: [monthlyClient],
+    };
+
+    mocks.manager.findOne.mockImplementation(async (Entity: any, _opts?: any) => {
+      if (Entity === (await import('../common/entities/chat.entity')).Chat) {
+        return existingChat;
+      }
+      return null;
+    });
+
+    await service.addToSession('session-0', { groupClients: [monthlyClient.id] });
+
+    // Chat group should still have exactly 1 entry, not 2
+    expect(existingChat.group.length).toBe(1);
+    expect(existingChat.group[0].id).toBe(monthlyClient.id);
+  });
+
+  it('should add new client to chat.group without duplicating existing members', async () => {
+    const { therapist, sessions } = setupGroupSeries(4);
+    const existingClient = makeClient({ id: 'existing-in-chat' });
+    const newClient = setupClient(SubscriptionType.MONTHLY, therapist, 'new-client');
+
+    mocks.clientService.findAll.mockResolvedValue({ data: [newClient] });
+    mocks.manager.query.mockResolvedValue([{ count: 0 }]);
+
+    const existingChat = {
+      id: 'chat-1',
+      group: [existingClient],
+    };
+
+    mocks.manager.findOne.mockImplementation(async (Entity: any, _opts?: any) => {
+      if (Entity === (await import('../common/entities/chat.entity')).Chat) {
+        return existingChat;
+      }
+      return null;
+    });
+
+    await service.addToSession('session-0', { groupClients: [newClient.id] });
+
+    // Chat should have both: existing + new, no duplicates
+    expect(existingChat.group.length).toBe(2);
+    const ids = existingChat.group.map((c: any) => c.id);
+    expect(ids).toContain(existingClient.id);
+    expect(ids).toContain(newClient.id);
+  });
+
   // ─── Validation ─────────────────────────────────────
 
   it('should throw if session not found', async () => {
