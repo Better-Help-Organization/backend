@@ -966,6 +966,25 @@ export class SessionService {
       const activeSub = client.activeSubscription;
       if (!activeSub || !activeSub.subscription) continue;
 
+      // ✅ Precheck: ensure client hasn't exceeded their session quota
+      const subType = activeSub.subscription.type;
+      const sessionQuota = subType === SubscriptionType.TRIAL ? 1 : subType * 4;
+
+      const existingSessionCount = await manager.query(
+        `SELECT COUNT(*) AS count FROM session_group_clients sgc
+         JOIN session s ON s.id = sgc.session_id
+         WHERE sgc.client_id = ? AND s.commonId = ?`,
+        [client.id, referenceSession.commonId],
+      );
+      const usedSessions = Number(existingSessionCount[0]?.count ?? 0);
+
+      if (usedSessions >= sessionQuota) {
+        this.logger.warn(
+          `Client ${client.firstName} ${client.lastName} has used ${usedSessions}/${sessionQuota} sessions. Skipping.`,
+        );
+        continue;
+      }
+
       const subEnd = new Date(activeSub.end_date);
 
       // 6️⃣ Attach client only to future sessions within subscription
