@@ -1,14 +1,17 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Availability } from '../entities/availability.entity';
+import { Chat } from '../entities/chat.entity';
 import { Client } from '../entities/client.entity';
 import { ClientSubscription } from '../entities/client-subscription.entity';
+import { Message } from '../entities/message.entity';
 import { Session } from '../entities/session.entity';
 import { LoggerService } from '../../logger/logger.service';
 import { FirebaseService } from '../../firebase/firebase.service';
 import { ClientService } from '../../client/client.service';
 import { TherapistService } from '../../therapist/therapist.service';
 import { ParameterService } from '../../parameter/parameter.service';
+import { LivekitService } from '../../livekit/livekit.service';
 
 export interface MockManager {
   findOne: jest.Mock;
@@ -16,6 +19,9 @@ export interface MockManager {
   create: jest.Mock;
   save: jest.Mock;
   update: jest.Mock;
+  query: jest.Mock;
+  createQueryBuilder: jest.Mock;
+  transaction: jest.Mock;
 }
 
 export interface MockSessionRepo {
@@ -26,16 +32,27 @@ export interface MockSessionRepo {
 
 export function createMockManager(): MockManager {
   let idCounter = 0;
-  return {
+  const mgr: MockManager = {
     findOne: jest.fn(),
     find: jest.fn(),
-    create: jest.fn((_Entity, data) => ({ ...data, id: data?.id ?? `entity-${++idCounter}` })),
+    create: jest.fn((_Entity: any, data: any) => ({ ...data, id: data?.id ?? `entity-${++idCounter}` })),
     save: jest.fn(async (entityOrClass: any, data?: any) => {
       const entity = data ?? entityOrClass;
       return { ...entity, id: entity.id ?? `entity-${++idCounter}` };
     }),
     update: jest.fn(),
+    query: jest.fn().mockResolvedValue([]),
+    createQueryBuilder: jest.fn().mockReturnValue({
+      relation: jest.fn().mockReturnValue({
+        of: jest.fn().mockReturnValue({
+          add: jest.fn(),
+        }),
+      }),
+    }),
+    transaction: jest.fn(),
   };
+  mgr.transaction.mockImplementation(async (cb: any) => cb(mgr));
+  return mgr;
 }
 
 export function createMockSessionRepo(manager?: MockManager): MockSessionRepo {
@@ -134,5 +151,60 @@ export function createSessionServiceMocks() {
     therapistService,
     paramService,
     logger,
+  };
+}
+
+export function createMockLivekitService() {
+  return {
+    createToken: jest.fn().mockResolvedValue('mock-token'),
+  };
+}
+
+export function createMockRepo() {
+  return {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(async (entity: any) => entity),
+    create: jest.fn(),
+  };
+}
+
+/**
+ * Returns all providers needed for ChatService with mocks.
+ *
+ * Usage:
+ *   const mocks = createChatServiceMocks();
+ *   const module = await Test.createTestingModule({
+ *     providers: [ChatService, ...mocks.providers],
+ *   }).compile();
+ */
+export function createChatServiceMocks() {
+  const chatRepo = createMockRepo();
+  const msgRepo = createMockRepo();
+  const firebaseService = createMockFirebaseService();
+  const logger = createMockLogger();
+  const clientService = createMockClientService();
+  const therapistService = createMockTherapistService();
+  const livekitService = createMockLivekitService();
+
+  const providers = [
+    { provide: getRepositoryToken(Chat), useValue: chatRepo },
+    { provide: getRepositoryToken(Message), useValue: msgRepo },
+    { provide: FirebaseService, useValue: firebaseService },
+    { provide: LoggerService, useValue: logger },
+    { provide: ClientService, useValue: clientService },
+    { provide: TherapistService, useValue: therapistService },
+    { provide: LivekitService, useValue: livekitService },
+  ];
+
+  return {
+    providers,
+    chatRepo,
+    msgRepo,
+    firebaseService,
+    logger,
+    clientService,
+    therapistService,
+    livekitService,
   };
 }
