@@ -655,7 +655,6 @@ export class SessionService {
         // TODO: Keep reassignment chat resolution centralized here so partial reassignments
         // can split shared chats without affecting other sessions on the old therapist.
         // session.chat = await this.resolveReassignedChat(session, newTherapist);
-        session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         // --- Send push notifications ---
 
@@ -1584,7 +1583,6 @@ export class SessionService {
         // TODO: Route batch therapist reassignments through the shared helper so reused chats
         // stay attached to untouched sessions while reassigned sessions can fork safely.
         // session.chat = await this.resolveReassignedChat(session, newTherapist);
-        session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         if (prevTherapist?.firebaseToken) {
           prevTherapistTokens.push(prevTherapist.firebaseToken);

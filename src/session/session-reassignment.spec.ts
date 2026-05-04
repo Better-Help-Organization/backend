@@ -120,4 +120,31 @@ describe('SessionService - therapist reassignment chat handling', () => {
     expect(mocks.chatRepo.update).not.toHaveBeenCalled();
     expect(mocks.chatRepo.save).not.toHaveBeenCalled();
   });
+
+  it('renames reassigned group chats with the new therapist first name', async () => {
+    const oldTherapist = makeTherapist({ id: 'therapist-old', firebaseToken: 'old-token' });
+    const newTherapist = makeTherapist({ id: 'therapist-new', firstName: 'New', firebaseToken: 'new-token' });
+    const groupChat = makeChat({ id: 'chat-group', client: null, therapist: oldTherapist, groupName: 'Anxiety Circle' });
+    const session = {
+      id: 'session-1',
+      client: null,
+      therapist: oldTherapist,
+      chat: groupChat,
+      group: [makeClient({ id: 'client-1' })],
+      hasTherapistAttended: false,
+    } as unknown as Session;
+
+    mocks.sessionRepo.findOne.mockResolvedValue(session);
+    mocks.therapistService.findOne.mockResolvedValue(newTherapist);
+    mocks.sessionRepo.find.mockResolvedValue([{ id: session.id, chat: groupChat } as Session]);
+    mocks.sessionRepo.save.mockImplementation(async (entity: Session) => entity);
+
+    const updated = await service.update(session.id, { therapist: newTherapist.id } as any);
+
+    expect(mocks.chatRepo.update).toHaveBeenCalledWith(groupChat.id, {
+      therapist: newTherapist,
+      groupName: 'Anxiety Circle (with New)',
+    });
+    expect(updated.chat?.groupName).toBe('Anxiety Circle (with New)');
+  });
 });
