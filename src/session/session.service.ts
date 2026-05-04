@@ -90,15 +90,30 @@ export class SessionService {
     sourceChat: Chat,
     therapist: Therapist,
   ): Promise<Chat> {
+    const groupName = this.getReassignedGroupChatName(sourceChat, therapist);
+
     return await this.chatRepo.save(
       this.chatRepo.create({
         client: sourceChat.client ?? null,
         therapist,
         group: sourceChat.group ?? null,
-        groupName: sourceChat.groupName ?? null,
+        groupName,
         closed: sourceChat.closed ?? false,
       }),
     );
+  }
+
+  private getReassignedGroupChatName(
+    chat: Chat,
+    therapist: Therapist,
+  ): string | null {
+    const isGroupChat = !!chat.group?.length || !chat.client;
+    if (!isGroupChat) return chat.groupName ?? null;
+
+    const therapistLabel = therapist.firstName?.trim() || 'therapist';
+    const baseName = (chat.groupName ?? 'Group Chat').replace(/\s*\(with .*?\)\s*$/i, '').trim();
+
+    return `${baseName} (with ${therapistLabel})`;
   }
 
   private async resolveReassignedChat(
@@ -112,10 +127,19 @@ export class SessionService {
           return await this.cloneChatForTherapist(session.chat, newTherapist);
         }
 
-        await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
+        await this.chatRepo.update(session.chat.id, {
+          therapist: newTherapist,
+          groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+        });
       }
 
-      return session.chat ?? null;
+      return session.chat
+        ? ({
+            ...session.chat,
+            therapist: newTherapist,
+            groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+          } as Chat)
+        : null;
     }
 
     const existingChat = await this.chatRepo.findOne({
@@ -136,11 +160,15 @@ export class SessionService {
         return await this.cloneChatForTherapist(session.chat, newTherapist);
       }
 
-      await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
+      await this.chatRepo.update(session.chat.id, {
+        therapist: newTherapist,
+        groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+      });
 
       return {
         ...session.chat,
         therapist: newTherapist,
+        groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
       } as Chat;
     }
 
