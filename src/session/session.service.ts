@@ -73,12 +73,45 @@ export class SessionService {
     private readonly reminderService: ReminderService,
   ) {}
 
+  private async isChatSharedByOtherSessions(
+    sessionId: string,
+    chatId?: string | null,
+  ): Promise<boolean> {
+    if (!chatId) return false;
+
+    const linkedSessions = await this.sessionRepo.find({
+      where: { chat: { id: chatId } as Chat },
+    });
+
+    return linkedSessions.some((linkedSession) => linkedSession.id !== sessionId);
+  }
+
+  private async cloneChatForTherapist(
+    sourceChat: Chat,
+    therapist: Therapist,
+  ): Promise<Chat> {
+    return await this.chatRepo.save(
+      this.chatRepo.create({
+        client: sourceChat.client ?? null,
+        therapist,
+        group: sourceChat.group ?? null,
+        groupName: sourceChat.groupName ?? null,
+        closed: sourceChat.closed ?? false,
+      }),
+    );
+  }
+
   private async resolveReassignedChat(
     session: Session,
     newTherapist: Therapist,
   ): Promise<Chat | null> {
     if (!session.client?.id) {
       if (session.chat?.id) {
+        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+        if (isShared) {
+          return await this.cloneChatForTherapist(session.chat, newTherapist);
+        }
+
         await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
       }
 
@@ -98,6 +131,11 @@ export class SessionService {
     }
 
     if (session.chat?.id) {
+      const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+      if (isShared) {
+        return await this.cloneChatForTherapist(session.chat, newTherapist);
+      }
+
       await this.chatRepo.update(session.chat.id, { therapist: newTherapist });
 
       return {
@@ -614,6 +652,9 @@ export class SessionService {
         if (!newTherapist) throw new NotFoundException('New therapist not found');
 
         session.therapist = newTherapist;
+        // TODO: Keep reassignment chat resolution centralized here so partial reassignments
+        // can split shared chats without affecting other sessions on the old therapist.
+        // session.chat = await this.resolveReassignedChat(session, newTherapist);
         session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         // --- Send push notifications ---
@@ -1540,6 +1581,9 @@ export class SessionService {
         const prevTherapist = session.therapist;
 
         session.therapist = newTherapist;
+        // TODO: Route batch therapist reassignments through the shared helper so reused chats
+        // stay attached to untouched sessions while reassigned sessions can fork safely.
+        // session.chat = await this.resolveReassignedChat(session, newTherapist);
         session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         if (prevTherapist?.firebaseToken) {

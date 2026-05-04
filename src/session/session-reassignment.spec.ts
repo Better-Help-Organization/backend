@@ -48,6 +48,45 @@ describe('SessionService - therapist reassignment chat handling', () => {
     expect(mocks.chatRepo.save).not.toHaveBeenCalled();
   });
 
+  it('clones a shared chat instead of reassigning it in place for a single session', async () => {
+    const client = makeClient({ id: 'client-1', firebaseToken: 'client-token' });
+    const oldTherapist = makeTherapist({ id: 'therapist-old', firebaseToken: 'old-token' });
+    const newTherapist = makeTherapist({ id: 'therapist-new', firstName: 'New', firebaseToken: 'new-token' });
+    const oldChat = makeChat({ id: 'chat-old', client, therapist: oldTherapist, closed: false });
+    const clonedChat = makeChat({ id: 'chat-clone', client, therapist: newTherapist, closed: false });
+    const session = {
+      id: 'session-1',
+      client,
+      therapist: oldTherapist,
+      chat: oldChat,
+      group: [],
+      hasTherapistAttended: false,
+    } as unknown as Session;
+
+    mocks.sessionRepo.findOne.mockResolvedValue(session);
+    mocks.therapistService.findOne.mockResolvedValue(newTherapist);
+    mocks.chatRepo.findOne.mockResolvedValue(null);
+    mocks.sessionRepo.find.mockResolvedValue([
+      { id: session.id, chat: oldChat } as Session,
+      { id: 'session-2', chat: oldChat } as Session,
+    ]);
+    mocks.chatRepo.create.mockImplementation((data: Partial<Chat>) => data);
+    mocks.chatRepo.save.mockResolvedValue(clonedChat);
+    mocks.sessionRepo.save.mockImplementation(async (entity: Session) => entity);
+
+    const updated = await service.update(session.id, { therapist: newTherapist.id } as any);
+
+    expect(updated.chat).toBe(clonedChat);
+    expect(mocks.chatRepo.update).not.toHaveBeenCalled();
+    expect(mocks.chatRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client,
+        therapist: newTherapist,
+        closed: false,
+      }),
+    );
+  });
+
   it('reuses an existing direct chat when batch reassigning sessions', async () => {
     const client = makeClient({ id: 'client-1', firebaseToken: 'client-token' });
     const oldTherapist = makeTherapist({ id: 'therapist-old', firebaseToken: 'old-token' });
