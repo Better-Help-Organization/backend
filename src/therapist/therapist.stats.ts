@@ -27,17 +27,6 @@ export class TherapistStatisticsService {
     target.push({ price, type });
   }
 
-  private appendUniqueAttendance(
-    target: string[],
-    seen: Set<string>,
-    attendanceId: string | null | undefined,
-  ) {
-    if (!attendanceId || seen.has(attendanceId)) return;
-
-    seen.add(attendanceId);
-    target.push(attendanceId);
-  }
-
   /** ⏱️ Total hours (sum of attended session durations, no date filter) */
   async getTotalHours(therapistId?: string) {
     const qb = this.sessionRepo.createQueryBuilder('session')
@@ -149,7 +138,6 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.groupSubscription', 'gsub')
       .leftJoin('gsub.subscription', 'gsubRootSub')
-      // .leftJoin('session.groupAttendance', 'gatt')
       .innerJoin('session.modal', 'modal')
       .select([
         'sub.price',
@@ -162,7 +150,6 @@ export class TherapistStatisticsService {
         'gsub.id',
         'gsubRootSub.type',
         'session.id',
-        // 'gatt.id'
       ])
       .addSelect(subQ => {
         return subQ
@@ -197,10 +184,8 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          // attendanceList: [],
           hasAttendance: false,
           groupSubscriptionIds: new Set<string>(),
-          // attendanceIds: new Set<string>(),
         });
       }
 
@@ -214,17 +199,10 @@ export class TherapistStatisticsService {
         r.gsub_price,
         r.gsubRootSub_type,
       );
-
-      // this.appendUniqueAttendance(
-      //   sessionEntry.attendanceList,
-      //   sessionEntry.attendanceIds,
-      //   r.gatt_id,
-      // );
-
     }
 
     for (const entry of sessionMap.values()) {
-      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions, hasAttendance } = entry;
+      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions } = entry;
 
       const sessionPercent = this.getSessionPercentage(
         therapistPercentage,
@@ -232,18 +210,12 @@ export class TherapistStatisticsService {
         levelType,
         { ADVANCED, ASSOCIATE, MODERATE, COUPLE, GROUP }
       );
-      console.log({groupSubscriptions})
       const isGroupSession = modalName?.toLowerCase().includes('group');
 
     if (isGroupSession) {
-      // Logic from getRevenueOverTime: Only pay if attendance exists
-      // if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
       if (entry.hasAttendance && groupSubscriptions.length > 0) {
         totalRevenue += this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
       } 
-      // else {
-      //   sessionRevenue = 0;
-      // }
     } else {
       // Standard Individual/Couple logic
       const basePrice = (subPrice || 0) / (1 + VAT);
@@ -455,7 +427,6 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.modal', 'modal')
       .leftJoin('session.groupSubscription', 'gsub')
-      // .leftJoin('session.groupAttendance', 'gatt')
       .leftJoin('gsub.subscription', 'gsubRootSub')
       .select([
         'session.id',
@@ -467,9 +438,7 @@ export class TherapistStatisticsService {
         'rootsub.type',
         'gsub.price',
         'gsub.id',
-        // "gatt.id",
         'gsubRootSub.type',
-        // 'session.groupAttendance'
       ])
       .addSelect(subQ => {
         return subQ
@@ -495,7 +464,6 @@ export class TherapistStatisticsService {
     }
 
     const raw = await qb.getRawMany();
-    console.log({rawLength: raw.length, raw})
     const sessionMap = new Map();
 
     for (const r of raw) {
@@ -511,10 +479,8 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          // attendanceList: [],
           hasAttendance: false,
           groupSubscriptionIds: new Set<string>(),
-          // attendanceIds: new Set<string>(),
         });
       }
 
@@ -528,12 +494,6 @@ export class TherapistStatisticsService {
         r.gsub_price,
         r.gsubRootSub_type,
       );
-
-      // this.appendUniqueAttendance(
-      //   sessionEntry.attendanceList,
-      //   sessionEntry.attendanceIds,
-      //   r.gatt_id,
-      // );
     }
 
     interface RevenueDayData {
@@ -547,7 +507,7 @@ export class TherapistStatisticsService {
 
 
     for (const entry of sessionMap.values()) {
-      const { schedule, subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions,attendanceList } = entry;
+      const { schedule, subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions } = entry;
       const sessionPercent = this.getSessionPercentage(
         therapistPercentage,
         modalName,
@@ -561,14 +521,9 @@ export class TherapistStatisticsService {
       const isGroupSession = modalName?.toLowerCase().includes('group');
 
       if (isGroupSession) {
-        // For groups: ONLY pay if there is attendance.
-        // Also: Only pay for the number of people who actually showed up.
-        // if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
         if (entry.hasAttendance && groupSubscriptions.length > 0) {
-          console.log("counting group revenue");
           sessionRevenue = this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
         } else {
-          console.log("Group session with no attendance - 0 revenue");
           sessionRevenue = 0; 
         }
       } else {
@@ -577,8 +532,6 @@ export class TherapistStatisticsService {
         sessionRevenue = this.calculateSessionRevenue(basePrice, sessionPercent, Number(rootSubType));
       }
 
-      // if (!revenueMap[dateKey]) revenueMap[dateKey] = 0;
-      // revenueMap[dateKey] += sessionRevenue;
         if (!revenueMap[dateKey]) {
           revenueMap[dateKey] = {
             revenue: 0,

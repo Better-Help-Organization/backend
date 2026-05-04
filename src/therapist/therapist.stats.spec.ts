@@ -21,6 +21,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-1',
+      attendanceCount: 2,
     },
     {
       session_id: 'session-1',
@@ -34,6 +35,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-1',
+      attendanceCount: 2,
     },
     {
       session_id: 'session-1',
@@ -47,6 +49,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-1',
+      attendanceCount: 2,
     },
     {
       session_id: 'session-1',
@@ -60,6 +63,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-2',
+      attendanceCount: 2,
     },
     {
       session_id: 'session-1',
@@ -73,6 +77,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-2',
+      attendanceCount: 2,
     },
     {
       session_id: 'session-1',
@@ -86,6 +91,7 @@ describe('TherapistStatisticsService', () => {
       gsub_price: 100,
       gsubRootSub_type: 1,
       gatt_id: 'attendee-2',
+      attendanceCount: 2,
     },
   ];
 
