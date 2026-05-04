@@ -152,23 +152,7 @@ export class ChatController {
   }
   }
 
-  @Post('call/:id')
-  @DynamicGuards(
-    new ClientJwtAuthGuard(),
-    new TherapistJwtAuthGuard(),
-  )
-  async call(
-    @Param('id') id: string,
-    @CurrentUser() user: TokenPayload,
-    @Body() createCallDto: CreateCallDto
-  ) {
-   try{
-      return await this.chatService.call(id,user, createCallDto);
-    } catch (error) {
-      this.logger.error(`Error finding chat: ${error.message}`);
-      return error;
-    }
-  }
+
 
   @Post("call/:id/join")
   @DynamicGuards(
@@ -222,6 +206,24 @@ export class ChatController {
   // async update(@Param('id') id: string, @Body() updateChatDto: UpdateChatDto) {
   //   return this.chatService.update(id, updateChatDto);
   // }
+
+    @Post('call/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
+  async call(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+    @Body() createCallDto: CreateCallDto
+  ) {
+   try{
+      return await this.chatService.call(id,user, createCallDto);
+    } catch (error) {
+      this.logger.error(`Error finding chat: ${error.message}`);
+      return error;
+    }
+  }
 
   @Patch('toggleChat/:id')
   async update(@Param('id') id: string, @Body() updateChatDto: ToggleChatDto) {

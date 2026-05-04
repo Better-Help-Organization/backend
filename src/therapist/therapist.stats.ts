@@ -149,7 +149,7 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.groupSubscription', 'gsub')
       .leftJoin('gsub.subscription', 'gsubRootSub')
-      .leftJoin('session.groupAttendance', 'gatt')
+      // .leftJoin('session.groupAttendance', 'gatt')
       .innerJoin('session.modal', 'modal')
       .select([
         'sub.price',
@@ -162,8 +162,14 @@ export class TherapistStatisticsService {
         'gsub.id',
         'gsubRootSub.type',
         'session.id',
-        'gatt.id'
+        // 'gatt.id'
       ])
+      .addSelect(subQ => {
+        return subQ
+          .select('COUNT(1)')
+          .from('session_group_attendance', 'ga') // ✅ correct table name
+          .where('ga.session_id = session.id');
+      }, 'attendanceCount')
       .andWhere(new Brackets(qb1 => {
         qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
           .orWhere('gsub.id IS NOT NULL');
@@ -191,13 +197,15 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          attendanceList: [],
+          // attendanceList: [],
+          hasAttendance: false,
           groupSubscriptionIds: new Set<string>(),
-          attendanceIds: new Set<string>(),
+          // attendanceIds: new Set<string>(),
         });
       }
 
       const sessionEntry = sessionMap.get(sid);
+      sessionEntry.hasAttendance = Number(r.attendanceCount) > 0;
   
       this.appendUniqueGroupSubscription(
         sessionEntry.groupSubscriptions,
@@ -207,16 +215,16 @@ export class TherapistStatisticsService {
         r.gsubRootSub_type,
       );
 
-      this.appendUniqueAttendance(
-        sessionEntry.attendanceList,
-        sessionEntry.attendanceIds,
-        r.gatt_id,
-      );
+      // this.appendUniqueAttendance(
+      //   sessionEntry.attendanceList,
+      //   sessionEntry.attendanceIds,
+      //   r.gatt_id,
+      // );
 
     }
 
     for (const entry of sessionMap.values()) {
-      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions, attendanceList } = entry;
+      const { subPrice, therapistPercentage, modalName, levelType, rootSubType, groupSubscriptions, hasAttendance } = entry;
 
       const sessionPercent = this.getSessionPercentage(
         therapistPercentage,
@@ -229,9 +237,13 @@ export class TherapistStatisticsService {
 
     if (isGroupSession) {
       // Logic from getRevenueOverTime: Only pay if attendance exists
-      if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
+      // if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
+      if (entry.hasAttendance && groupSubscriptions.length > 0) {
         totalRevenue += this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
-      }
+      } 
+      // else {
+      //   sessionRevenue = 0;
+      // }
     } else {
       // Standard Individual/Couple logic
       const basePrice = (subPrice || 0) / (1 + VAT);
@@ -443,7 +455,7 @@ export class TherapistStatisticsService {
       .leftJoin('sub.subscription', 'rootsub')
       .leftJoin('session.modal', 'modal')
       .leftJoin('session.groupSubscription', 'gsub')
-      .leftJoin('session.groupAttendance', 'gatt')
+      // .leftJoin('session.groupAttendance', 'gatt')
       .leftJoin('gsub.subscription', 'gsubRootSub')
       .select([
         'session.id',
@@ -455,10 +467,16 @@ export class TherapistStatisticsService {
         'rootsub.type',
         'gsub.price',
         'gsub.id',
-        "gatt.id",
+        // "gatt.id",
         'gsubRootSub.type',
         // 'session.groupAttendance'
       ])
+      .addSelect(subQ => {
+        return subQ
+          .select('COUNT(1)')
+          .from('session_group_attendance', 'ga') // ✅ correct table name
+          .where('ga.session_id = session.id');
+      }, 'attendanceCount')
       .andWhere(new Brackets(qb1 => {
         qb1.where('gsub.id IS NULL AND session.hasTherapistAttended = true')
           .orWhere('gsub.id IS NOT NULL');
@@ -493,13 +511,15 @@ export class TherapistStatisticsService {
           levelType: r.level_type,
           rootSubType: r.rootsub_type,
           groupSubscriptions: [],
-          attendanceList: [],
+          // attendanceList: [],
+          hasAttendance: false,
           groupSubscriptionIds: new Set<string>(),
-          attendanceIds: new Set<string>(),
+          // attendanceIds: new Set<string>(),
         });
       }
 
       const sessionEntry = sessionMap.get(sid);
+      sessionEntry.hasAttendance = Number(r.attendanceCount) > 0;
 
       this.appendUniqueGroupSubscription(
         sessionEntry.groupSubscriptions,
@@ -509,11 +529,11 @@ export class TherapistStatisticsService {
         r.gsubRootSub_type,
       );
 
-      this.appendUniqueAttendance(
-        sessionEntry.attendanceList,
-        sessionEntry.attendanceIds,
-        r.gatt_id,
-      );
+      // this.appendUniqueAttendance(
+      //   sessionEntry.attendanceList,
+      //   sessionEntry.attendanceIds,
+      //   r.gatt_id,
+      // );
     }
 
     interface RevenueDayData {
@@ -543,7 +563,8 @@ export class TherapistStatisticsService {
       if (isGroupSession) {
         // For groups: ONLY pay if there is attendance.
         // Also: Only pay for the number of people who actually showed up.
-        if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
+        // if (attendanceList.length > 0 && groupSubscriptions.length > 0) {
+        if (entry.hasAttendance && groupSubscriptions.length > 0) {
           console.log("counting group revenue");
           sessionRevenue = this.calculateGroupRevenue(groupSubscriptions, sessionPercent, VAT);
         } else {

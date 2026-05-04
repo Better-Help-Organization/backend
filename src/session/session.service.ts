@@ -569,7 +569,7 @@ export class SessionService {
       const session = await this.sessionRepo.findOne(
         {
           where: {id},
-          relations: ['client', 'therapist', 'chat', 'group'],
+          relations: ['client', 'therapist', 'chat', 'group','groupSubscription'],
         }
       );
 
@@ -725,7 +725,14 @@ export class SessionService {
           SessionNotif.THERAPIST_ATTENDANCE_MARKED,
           `Attendace marked for session with ${clientName}`
         );
-        await this.handleTherapistAttendanceCompletion(savedSession.client.id, savedSession.commonId);
+        // await this.handleTherapistAttendanceCompletion(savedSession?.client?.id, savedSession.commonId);
+        const subs = [
+          ...(savedSession.subscription ? [savedSession.subscription] : []),
+          ...(savedSession.groupSubscription || [])
+        ];
+        for (const sub of subs) {
+          await this.handleSingleSubscriptionCompletion(sub.id);
+        }
       }
 
       return savedSession;
@@ -1885,16 +1892,39 @@ export class SessionService {
     }
   }
 
-  private async handleTherapistAttendanceCompletion(clientId: string, commonId: string) {
+  private async handleTherapistAttendanceCompletion(clientId: string | null, commonId: string) {
     // Fetch all confirmed sessions for this client
-    const sessions = await this.sessionRepo.find({
-      where: {
-        client: { id: clientId },
-        commonId: commonId,
-        approvalStatus: ApprovalStatus.CONFIRMED,
-      },
-      relations: ['client', 'subscription'],
-    });
+    // const sessions = await this.sessionRepo.find({
+    //   where: {
+    //     client: { id: clientId },
+    //     commonId: commonId,
+    //     approvalStatus: ApprovalStatus.CONFIRMED,
+    //   },
+    //   relations: ['client', 'subscription'],
+    // });
+
+      let sessions: Session[];
+
+      if (clientId && commonId && clientId === commonId) {
+        // 🟣 Group session case (you passed commonId as clientId fallback)
+        sessions = await this.sessionRepo.find({
+          where: {
+            commonId: commonId,
+            approvalStatus: ApprovalStatus.CONFIRMED,
+          },
+          relations: ['client', 'subscription'],
+        });
+      } else {
+        // 🟢 Individual session
+        sessions = await this.sessionRepo.find({
+          where: {
+            client: { id: clientId },
+            commonId: commonId,
+            approvalStatus: ApprovalStatus.CONFIRMED,
+          },
+          relations: ['client', 'subscription'],
+        });
+      }
 
     if (sessions.length === 0) return;
 
@@ -1905,12 +1935,15 @@ export class SessionService {
 
     this.logger.log(`All therapist attendances complete for client ${clientId}`);
 
+    const subscriptionId = sessions[0]?.subscription?.id;
+    if (!subscriptionId) {
+      this.logger.warn(`No subscription found in sessions`);
+      return;
+    }
+
     // Mark client subscription inactive
     const clientSub = await this.clientSubscriptionRepo.findOne({
-      where: {
-        id: sessions[0].subscription.id,
-        client: { id: clientId },
-      },
+      where: { id: subscriptionId },
       relations: ['client', 'subscription'],
     });
 
@@ -1923,26 +1956,91 @@ export class SessionService {
       clientSub.status = SubscriptionStatus.INACTIVE;
       await this.clientSubscriptionRepo.save(clientSub);
 
-      const client = clientSub.client;
-      client.activeSubscription = null;
-      await this.clientRepo.save(client);
+      // const client = clientSub.client;
+      // client.activeSubscription = null;
+      // await this.clientRepo.save(client);
+
+      // ⚠️ Only clear client if it exists (not group)
+      if (clientSub.client) {
+        clientSub.client.activeSubscription = null;
+        await this.clientRepo.save(clientSub.client);
+      }
 
       this.logger.log(
         `ClientSubscription ${clientSub.id} set to INACTIVE and client.activeSubscription cleared`
       );
     }
 
-    // Send Firebase push notification
-    const clientToken = sessions[0]?.client?.firebaseToken;
-    if (clientToken) {
+    // 🔔 Notifications
+    const tokens: string[] = [];
+
+    sessions.forEach(s => {
+      if (s.client?.firebaseToken) tokens.push(s.client.firebaseToken);
+    });
+
+    if (tokens.length) {
       await this.firebaseService.sendPushNotification(
-        { client: [clientToken], therapist: [], admin: [] },
+        { client: tokens, therapist: [], admin: [] },
         JSON.stringify({ message: 'Program complete' }),
         SessionNotif.ALL_SESSIONS_COMPLETED,
         'Your therapist has completed all sessions for your program. Please log out and await your next cycle.'
       );
     }
 
-    this.logger.log(`Client ${clientId} completed all sessions for subscription ${sessions[0].subscription.id}`);
+    this.logger.log(`Completion handled for subscription ${subscriptionId}`);
+  }
+
+  private async handleSingleSubscriptionCompletion(subscriptionId: string) {
+    // 1. Fetch all sessions tied to this subscription
+    console.log({subscriptionId})
+    const sessions = await this.sessionRepo.find({
+      where: [
+        { subscription: { id: subscriptionId } },
+        { groupSubscription: { id: subscriptionId } }
+      ],
+      relations: ['client', 'group', 'subscription', 'groupSubscription'],
+    });
+
+    if (!sessions.length) return;
+
+    // 2. Check completion ONLY for this subscription
+    const allAttended = sessions.every(s => s.hasTherapistAttended);
+    console.log({allAttended})
+    if (!allAttended) return;
+
+    // 3. Fetch subscription
+    const clientSub = await this.clientSubscriptionRepo.findOne({
+      where: { id: subscriptionId },
+      relations: ['client'],
+    });
+    console.log({clientSub})
+    if (!clientSub) return;
+
+    if (clientSub.status === SubscriptionStatus.INACTIVE) return;
+
+    // 4. Deactivate subscription
+    clientSub.status = SubscriptionStatus.INACTIVE;
+    await this.clientSubscriptionRepo.save(clientSub);
+
+    // 5. Clear ONLY this client's active subscription
+    if (clientSub.client) {
+      clientSub.client.activeSubscription = null;
+      clientSub.client.isInGroup = false;
+      await this.clientRepo.save(clientSub.client);
+    }
+
+    // 6. Notify ONLY this client
+    const token = clientSub.client?.firebaseToken;
+    console.log({token})
+    if (token) {
+      await this.firebaseService.sendPushNotification(
+        { client: [token], therapist: [], admin: [] },
+        JSON.stringify({ subscriptionId }),
+        SessionNotif.ALL_SESSIONS_COMPLETED,
+        'Your program is complete. Please log out and await your next cycle.'
+      );
+    }
+
+    this.logger.log(`Subscription ${subscriptionId} completed and deactivated`);
   }
 }

@@ -88,7 +88,7 @@ export class FirebaseService {
 
 
       // if (!allTokens.length) return;
-      if (!allTokens.length && (!voip.tokens || !voip.tokens.length)) return;
+      if (!allTokens.length && (!voip?.tokens || !voip.tokens.length)) return;
 
       // ==========================================
       // PATH A: INCOMING CALLS (New Logic)
