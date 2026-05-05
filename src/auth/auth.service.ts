@@ -91,19 +91,23 @@ export class AuthService {
   
     const accessTokenSecret = this._getAccessTokenSecret(type);
     const refreshTokenSecret = this._getRefreshTokenSecret(type);
+    const accessTokenExpiresIn = parseInt(
+      this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_EXPIRATION_MS'),
+      10,
+    );
+    const refreshTokenExpiresIn = parseInt(
+      this.configService.getOrThrow<string>('JWT_REFRESH_TOKEN_EXPIRATION_MS'),
+      10,
+    );
   
     const accessToken = this.jwtService.sign(tokenPayload, {
       secret: accessTokenSecret,
-      expiresIn: `${this.configService.getOrThrow<string>(
-        'JWT_ACCESS_TOKEN_EXPIRATION_MS',
-      )}ms`,
+      expiresIn: accessTokenExpiresIn,
     });
 
     const refreshToken = this.jwtService.sign(tokenPayload, {
       secret: refreshTokenSecret,
-      expiresIn: `${this.configService.getOrThrow(
-        'JWT_REFRESH_TOKEN_EXPIRATION_MS',
-      )}ms`,
+      expiresIn: refreshTokenExpiresIn,
     });
 
     return [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken];
