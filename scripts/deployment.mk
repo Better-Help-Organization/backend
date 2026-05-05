@@ -9,7 +9,7 @@ proxy-down:
 
 proxy-logs:
 	@echo "📜 Fetching proxy logs..."
-	@docker logs -f --tail 100 haproxy
+	@docker logs -f --tail 100 traefik
 
 proxy-build:
 	@echo "🔨 Building proxy..."
@@ -80,3 +80,6 @@ many:
 
 seed:
 	@$(MAKE) docker-compose-command CMD="exec $(SERVICE) npx ts-node -r tsconfig-paths/register scripts/seed-client.ts $(ARGS)"
+
+reset:
+	@$(MAKE) down up logs
