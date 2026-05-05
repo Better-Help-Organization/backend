@@ -240,7 +240,7 @@ export class SessionService {
   }
 
   async create(id:string, createSessionDto: any) {
-    return await this.sessionRepo.manager.transaction(async (manager) => {
+    const sessions = await this.sessionRepo.manager.transaction(async (manager) => {
       this.logger.log('Creating new session(s)');
       let clientEntity = null;
       let groupEntities = null;
@@ -365,6 +365,10 @@ export class SessionService {
       console.log({sessions})
       return sessions;
     });
+
+    await this.reminderService.schedulePendingSessionExpiry(sessions);
+
+    return sessions;
   }
 
   async selectSession(token: TokenPayload, dto: SelectSessionDto) {
@@ -1953,6 +1957,8 @@ export class SessionService {
           schedule: session.schedule,
         });
       }
+
+      await this.reminderService.cancelReminders(session.id);
 
       // Remove the session itself
       await this.sessionRepo.remove(session);
