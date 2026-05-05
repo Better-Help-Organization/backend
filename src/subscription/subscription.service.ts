@@ -11,6 +11,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
+import { ReminderService } from 'src/reminder/reminder.service';
 import { EntityManager, Repository } from 'typeorm';
 import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -38,7 +39,8 @@ export class SubscriptionService {
 
     private readonly firebaseService: FirebaseService,
 
-    private readonly paramService: ParameterService
+    private readonly paramService: ParameterService,
+    private readonly reminderService: ReminderService,
 
     
   ) {}
@@ -85,7 +87,7 @@ export class SubscriptionService {
   }
 
   async activateClientSubscription(id: string) {
-    return await this.clientSubscriptionRepo.manager.transaction(async (manager) => {
+    const activeSubscription = await this.clientSubscriptionRepo.manager.transaction(async (manager) => {
       const subscription = await manager.findOne(ClientSubscription, {
         where: { id },
         relations: ['client', 'subscription'],
@@ -97,6 +99,9 @@ export class SubscriptionService {
 
       return await this.setClientActiveSubscription(manager, subscription);
     });
+
+    await this.reminderService.scheduleSubscriptionExpiryNotifications(activeSubscription);
+    return activeSubscription;
   }
 
   async createAdminSubscription(dto: CreateAdminSubscriptionDto) {
@@ -270,6 +275,8 @@ export class SubscriptionService {
     } else {
       // ✅ LOGIC for deactivation
       const client = subscription.client;
+
+      await this.reminderService.cancelSubscriptionExpiryNotifications(subscription.id);
 
       // If this subscription is currently the client's active one, remove it
       if (client.activeSubscription?.id === subscription.id) {

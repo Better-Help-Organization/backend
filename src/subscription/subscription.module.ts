@@ -11,6 +11,7 @@ import { FirebaseModule } from 'src/firebase/firebase.module';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerModule } from 'src/logger/logger.module';
 import { ParameterModule } from 'src/parameter/parameter.module';
+import { ReminderModule } from 'src/reminder/reminder.module';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
 
@@ -19,7 +20,8 @@ import { SubscriptionService } from './subscription.service';
     TypeOrmModule.forFeature([Client, Level, Subscription, ClientSubscription, Notification, Therapist, Preference]),
     LoggerModule,
     FirebaseModule,
-    ParameterModule
+    ParameterModule,
+    ReminderModule,
   ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService, FirebaseService],

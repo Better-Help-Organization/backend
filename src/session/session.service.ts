@@ -581,6 +581,7 @@ export class SessionService {
               clientSub.start_date = firstSessionDate;
               clientSub.end_date = lastSessionDate;
               await manager.save(clientSub);
+              await this.reminderService.scheduleSubscriptionExpiryNotifications(clientSub);
 
               this.logger.log(
                 `Updated ClientSubscription ${clientSub.id}: start=${firstSessionDate.toISOString()}, end=${lastSessionDate.toISOString()}`
@@ -1000,6 +1001,7 @@ export class SessionService {
             clientSub.therapist = therapist;
 
             await manager.save(clientSub);
+            await this.reminderService.scheduleSubscriptionExpiryNotifications(clientSub);
           }
           if (!client.isInGroup) {
             console.log({client})
@@ -2001,6 +2003,7 @@ export class SessionService {
     if (clientSub.status !== SubscriptionStatus.INACTIVE) {
       clientSub.status = SubscriptionStatus.INACTIVE;
       await this.clientSubscriptionRepo.save(clientSub);
+      await this.reminderService.cancelSubscriptionExpiryNotifications(clientSub.id);
 
       // const client = clientSub.client;
       // client.activeSubscription = null;
@@ -2067,6 +2070,7 @@ export class SessionService {
     // 4. Deactivate subscription
     clientSub.status = SubscriptionStatus.INACTIVE;
     await this.clientSubscriptionRepo.save(clientSub);
+    await this.reminderService.cancelSubscriptionExpiryNotifications(clientSub.id);
 
     // 5. Clear ONLY this client's active subscription
     if (clientSub.client) {
