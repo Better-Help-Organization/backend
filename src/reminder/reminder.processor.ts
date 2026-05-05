@@ -7,8 +7,9 @@ import { toEthiopianTime } from 'src/common/utils/toEthiopianTime';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { Repository } from 'typeorm';
 import { SessionNotif } from '../common/constants';
+import { SESSION_REMINDER_JOB, SESSION_REMINDERS_QUEUE } from './reminder.constants';
 
-@Processor('session-reminders')
+@Processor(SESSION_REMINDERS_QUEUE)
 export class ReminderProcessor extends WorkerHost {
   private readonly logger = new Logger(ReminderProcessor.name);
 
@@ -21,6 +22,11 @@ export class ReminderProcessor extends WorkerHost {
   }
 
   async process(job: Job) {
+    if (job.name !== SESSION_REMINDER_JOB) {
+      this.logger.warn(`Unknown reminder job ${job.name}`);
+      return;
+    }
+
     const { sessionId } = job.data;
 
     const session = await this.sessionRepo.findOne({
