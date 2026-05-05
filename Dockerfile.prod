@@ -1,14 +1,25 @@
-FROM node:18-alpine
+FROM node:18-slim
 
-# Install pnpm
-RUN apk add --no-cache git
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       git \
+       tzdata \
+    && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
+
+ARG TZ=Africa/Addis_Ababa
+ENV TZ=$TZ
+ENV CSS_INLINE_DISABLE_NATIVE=1
+
+RUN cp /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
