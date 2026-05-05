@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Payment } from 'src/common/entities/payment.entity';
 import { ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 import { Repository } from 'typeorm';
 import { TelebirrPayDto } from './dto/create-telebirr.dto';
 
@@ -20,6 +21,7 @@ export class TelebirrController {
 
   constructor(
     private readonly teleService: TelebirrService,
+    private readonly subscriptionService: SubscriptionService,
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(ClientSubscription)
@@ -86,7 +88,7 @@ export class TelebirrController {
     try {
       console.log('Received Telebirr notification: - telebirr.controller.ts:88', notification);
       console.log('Verifying payment for subscription ID: - telebirr.controller.ts:89', subId);
-      this.clientSubscriptionRepo.update(subId, {status:SubscriptionStatus.ACTIVE})
+      await this.subscriptionService.activateClientSubscription(subId);
       return 'Notification processed';
     } catch (error) {
       throw new BadRequestException('Unable to verify payment '+error?.message);
@@ -111,4 +113,3 @@ export class TelebirrController {
   // sign_type: 'SHA256WithRSA',
   // transId: 'CEL40PCHH8'
 // }
-

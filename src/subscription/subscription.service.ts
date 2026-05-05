@@ -11,7 +11,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateAdminSubscriptionDto, UpdateSubscriptionDto } from './dto/update-subscription.dto';
@@ -42,6 +42,62 @@ export class SubscriptionService {
 
     
   ) {}
+
+  private async setClientActiveSubscription(
+    manager: EntityManager,
+    subscription: ClientSubscription,
+  ) {
+    const { client } = subscription;
+    if (!client) {
+      throw new BadRequestException('Subscription has no client');
+    }
+
+    const now = new Date();
+    const durationMonths = subscription.subscription.type;
+
+    subscription.start_date = now;
+    subscription.end_date =
+      durationMonths === 0
+        ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+        : new Date(new Date(now).setMonth(now.getMonth() + durationMonths));
+
+    const activeClientSubs = await manager.find(ClientSubscription, {
+      where: {
+        client: { id: client.id },
+        status: SubscriptionStatus.ACTIVE,
+      },
+      relations: ['client', 'subscription'],
+    });
+
+    for (const cs of activeClientSubs) {
+      if (cs.id === subscription.id) continue;
+      cs.status = SubscriptionStatus.PAUSED;
+      await manager.save(ClientSubscription, cs);
+    }
+
+    subscription.status = SubscriptionStatus.ACTIVE;
+    await manager.save(ClientSubscription, subscription);
+
+    client.activeSubscription = subscription;
+    await manager.save(Client, client);
+
+    return subscription;
+  }
+
+  async activateClientSubscription(id: string) {
+    return await this.clientSubscriptionRepo.manager.transaction(async (manager) => {
+      const subscription = await manager.findOne(ClientSubscription, {
+        where: { id },
+        relations: ['client', 'subscription'],
+      });
+
+      if (!subscription) {
+        throw new NotFoundException(`Subscription with ID ${id} not found`);
+      }
+
+      return await this.setClientActiveSubscription(manager, subscription);
+    });
+  }
 
   async createAdminSubscription(dto: CreateAdminSubscriptionDto) {
     const level = await this.levelRepository.findOne({ where: { id: dto.level } });
@@ -207,55 +263,10 @@ export class SubscriptionService {
   // Handle status change
   if (dto.status && dto.status !== subscription.status) {
     if (dto.status === SubscriptionStatus.ACTIVE) {
-      const client = subscription.client;
-      const now = new Date();
-      const durationMonths = subscription.subscription.type;
-
-      // Always set correct start/end first
-      subscription.start_date = now;
-      subscription.end_date =
-        durationMonths === 0
-          ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-          : new Date(new Date(now).setMonth(now.getMonth() + durationMonths));
-
-      // Fetch existing active subscriptions
-      const activeClientSubs = await this.clientSubscriptionRepo.find({
-        where: { 
-          client: { id: client.id },
-          status: SubscriptionStatus.ACTIVE
-        },
-        relations: ['subscription'],
-      });
-
-      if (activeClientSubs.length === 0) {
-        subscription.status = SubscriptionStatus.ACTIVE;
-        client.activeSubscription = subscription;
-        await this.clientRepository.save(client);
-      } else {
-        // Include this one in the comparison
-        const candidates = [...activeClientSubs, subscription];
-
-        const latestSub = candidates.reduce((latest, curr) => {
-          const currEnd = curr.end_date ? new Date(curr.end_date) : null;
-          const latestEnd = latest.end_date ? new Date(latest.end_date) : null;
-
-          if (!currEnd) return latest;
-          if (!latestEnd) return curr;
-
-          return currEnd > latestEnd ? curr : latest;
-        });
-
-        for (const cs of candidates) {
-          cs.status = cs.id === latestSub.id
-            ? SubscriptionStatus.ACTIVE
-            : SubscriptionStatus.PAUSED;
-
-          await this.clientSubscriptionRepo.save(cs);
-        }
-
-        client.activeSubscription = latestSub;
-        await this.clientRepository.save(client);
-      }
+      await this.setClientActiveSubscription(
+        this.clientSubscriptionRepo.manager,
+        subscription,
+      );
     } else {
       // ✅ LOGIC for deactivation
       const client = subscription.client;

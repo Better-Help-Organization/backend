@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import https from 'https';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Payment } from 'src/common/entities/payment.entity';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TelebirrController } from './telebirr.controller';
 import { TelebirrService } from './telebirr.service';
 
@@ -15,6 +16,7 @@ import { TelebirrService } from './telebirr.service';
         rejectUnauthorized: false,
       }),
     }),
+    SubscriptionModule,
   ],
   controllers: [TelebirrController],
   providers: [TelebirrService],

@@ -1076,8 +1076,6 @@ export class SessionService {
       throw new BadRequestException('No related sessions found for this group');
     }
 
-    const lastSessionDate = relatedSessions[relatedSessions.length - 1]?.schedule;
-
     // 3️⃣ Collect existing client IDs across all sessions
     const existingClientIds = new Set(relatedSessions.flatMap(s => s.group.map(c => c.id)));
 
@@ -1121,108 +1119,70 @@ export class SessionService {
         continue;
       }
 
-      const subEnd = new Date(activeSub.end_date);
+      let remainingQuota = sessionQuota - usedSessions;
+      if (remainingQuota <= 0) continue;
 
-      // 6️⃣ Attach client only to future sessions within subscription
-      for (const session of relatedSessions) {
-        const sessionDate = new Date(session.schedule);
-
-        // Skip past sessions (already occurred)
-        if (sessionDate < now) continue;
-
-        // Join client if subscription covers the session
-        if (subEnd >= sessionDate) {
-          if (!session.group.find((c) => c.id === client.id)) {
-            session.group.push(client);
-
-            //Attach subscription to this session
-            if (!session.groupSubscription) session.groupSubscription = [];
-            const subToAttach = client.activeSubscription;
-            if (
-              subToAttach &&
-              !session.groupSubscription.find(s => s.id === subToAttach.id)
-            ) {
-              session.groupSubscription.push(subToAttach);
-            }
-
-            // Also sync DB relation (existing logic)
-            await manager
-              .createQueryBuilder()
-              .relation(Session, "groupSubscription")
-              .of(session.id)  // session entity or session.id
-              .add(activeSub);
-          }
-        } else {
-          // Extend subscription if session is beyond current end date
-          const existingSub = await manager.findOne(ClientSubscription, {
-
-            where: {
-              client: { id: client.id },
-              subscription: { id: activeSub.subscription.id },
-            },
-          });
-
-          if (!existingSub) {
-            const extensionSub = manager.create(ClientSubscription, {
-              client,
-              subscription: activeSub.subscription,
-              start_date: new Date(subEnd.getTime() + 1),
-              end_date: sessionDate,
-              status: SubscriptionStatus.ACTIVE,
-            });
-            await manager.save(extensionSub);
-            client.activeSubscription = extensionSub;
-            await manager.save(client);
-          }
-
-          if (!session.group.find((c) => c.id === client.id)) {
-            session.group.push(client);
-
-            // Attach subscription for extended case
-            if (!session.groupSubscription) session.groupSubscription = [];
-            const subToAttach = client.activeSubscription;
-            if (
-              subToAttach &&
-              !session.groupSubscription.find(s => s.id === subToAttach.id)
-            ) {
-              session.groupSubscription.push(subToAttach);
-            }
-          }
+      const attachClientToSession = async (session: Session) => {
+        if (!session.group.find((c) => c.id === client.id)) {
+          session.group.push(client);
         }
-      }
 
-      // 7️⃣ Create new sessions if subscription extends beyond the final session
-      if (subEnd > lastSessionDate) {
-        let nextDate = new Date(lastSessionDate);
-        nextDate.setDate(nextDate.getDate() + 7); // weekly offset
+        if (!session.groupSubscription) session.groupSubscription = [];
+        if (!session.groupSubscription.find((s) => s.id === activeSub.id)) {
+          session.groupSubscription.push(activeSub);
 
-        while (nextDate <= subEnd) {
-          const clonedSession = manager.create(Session, {
-            therapist: referenceSession.therapist,
-            group: [client],
-            groupName: referenceSession.groupName,
-            schedule: new Date(nextDate),
-            duration: referenceSession.duration,
-            type: referenceSession.type,
-            note: referenceSession.note,
-            approvalStatus: ApprovalStatus.CONFIRMED,
-            modal: referenceSession.modal ? ({ id: referenceSession.modal.id } as any) : null,
-            client: null,
-            commonId: referenceSession.commonId,
-          });
-
-          const saved = await manager.save(clonedSession);
-
-          // Attach subscription to new cloned sessions
           await manager
             .createQueryBuilder()
-            .relation(Session, "groupSubscription")
-            .of(saved.id)
-            .add(client.activeSubscription);
-
-          allUpdatedSessions.push(saved);
-          nextDate.setDate(nextDate.getDate() + 7);
+            .relation(Session, 'groupSubscription')
+            .of(session.id)
+            .add(activeSub);
         }
+      };
+
+      const futureSessions = allUpdatedSessions
+        .filter((session) => new Date(session.schedule) >= now)
+        .sort((a, b) => a.schedule.getTime() - b.schedule.getTime());
+
+      for (const session of futureSessions) {
+        if (remainingQuota <= 0) break;
+
+        await attachClientToSession(session);
+        remainingQuota -= 1;
+      }
+
+      while (remainingQuota > 0) {
+        const latestSchedule = allUpdatedSessions
+          .map((session) => session.schedule)
+          .sort((a, b) => b.getTime() - a.getTime())[0];
+
+        const nextDate = new Date(latestSchedule);
+        nextDate.setDate(nextDate.getDate() + 7);
+
+        const clonedSession = manager.create(Session, {
+          therapist: referenceSession.therapist,
+          group: [client],
+          groupName: referenceSession.groupName,
+          schedule: nextDate,
+          duration: referenceSession.duration,
+          type: referenceSession.type,
+          note: referenceSession.note,
+          approvalStatus: ApprovalStatus.CONFIRMED,
+          modal: referenceSession.modal ? ({ id: referenceSession.modal.id } as any) : null,
+          client: null,
+          commonId: referenceSession.commonId,
+        });
+
+        const saved = await manager.save(clonedSession);
+
+        await manager
+          .createQueryBuilder()
+          .relation(Session, 'groupSubscription')
+          .of(saved.id)
+          .add(activeSub);
+
+        saved.groupSubscription = [activeSub];
+        allUpdatedSessions.push(saved);
+        remainingQuota -= 1;
       }
     }
 
