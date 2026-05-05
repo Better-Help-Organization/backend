@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
@@ -12,10 +13,11 @@ import {
 } from './reminder.constants';
 import { ReminderService } from './reminder.service';
 import { SessionLifecycleProcessor } from './session-lifecycle.processor';
+import { SubscriptionLifecycleProcessor } from './subscription-lifecycle.processor';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, Client]),
+    TypeOrmModule.forFeature([Session, Client, ClientSubscription]),
     BullModule.registerQueue({
       name: SESSION_REMINDERS_QUEUE,
     }),
@@ -25,7 +27,12 @@ import { SessionLifecycleProcessor } from './session-lifecycle.processor';
     FirebaseModule,
     ParameterModule,
   ],
-  providers: [ReminderProcessor, SessionLifecycleProcessor, ReminderService],
+  providers: [
+    ReminderProcessor,
+    SessionLifecycleProcessor,
+    SubscriptionLifecycleProcessor,
+    ReminderService,
+  ],
   exports: [ReminderService],
 })
 export class ReminderModule {}

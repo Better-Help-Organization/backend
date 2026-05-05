@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { DefaultParameters } from 'src/common/constants';
+import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { ParameterService } from 'src/parameter/parameter.service';
 import {
@@ -10,6 +11,8 @@ import {
   SESSION_LIFECYCLE_QUEUE,
   SESSION_REMINDER_JOB,
   SESSION_REMINDERS_QUEUE,
+  SUBSCRIPTION_EXPIRY_DAY_JOB,
+  SUBSCRIPTION_EXPIRY_REMINDER_JOB,
 } from './reminder.constants';
 
 @Injectable()
@@ -91,5 +94,66 @@ export class ReminderService {
     );
 
     this.logger.log(`Scheduled pending expiry batch for ${sessions.length} session(s)`);
+  }
+
+  async scheduleSubscriptionExpiryNotifications(subscription: ClientSubscription) {
+    if (!subscription?.id || !subscription.end_date) return;
+
+    const subscriptionEnd = new Date(subscription.end_date);
+    if (Number.isNaN(subscriptionEnd.getTime())) return;
+
+    const sevenDayReminderAt = new Date(subscriptionEnd);
+    sevenDayReminderAt.setDate(sevenDayReminderAt.getDate() - 7);
+    sevenDayReminderAt.setHours(0, 0, 0, 0);
+
+    const expiryDayAt = new Date(subscriptionEnd);
+    expiryDayAt.setHours(23, 59, 0, 0);
+
+    await this.cancelSubscriptionExpiryNotifications(subscription.id);
+
+    const jobs = [
+      {
+        jobName: SUBSCRIPTION_EXPIRY_REMINDER_JOB,
+        jobId: `subscription-expiry-reminder--${subscription.id}`,
+        runAt: sevenDayReminderAt,
+      },
+      {
+        jobName: SUBSCRIPTION_EXPIRY_DAY_JOB,
+        jobId: `subscription-expiry-day--${subscription.id}`,
+        runAt: expiryDayAt,
+      },
+    ];
+
+    for (const { jobName, jobId, runAt } of jobs) {
+      const delay = runAt.getTime() - Date.now();
+      if (delay <= 0) continue;
+
+      await this.lifecycleQueue.add(
+        jobName,
+        { subscriptionId: subscription.id },
+        {
+          jobId,
+          delay,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+    }
+
+    this.logger.log(`Scheduled subscription expiry notifications for ${subscription.id}`);
+  }
+
+  async cancelSubscriptionExpiryNotifications(subscriptionId: string) {
+    const jobIds = [
+      `subscription-expiry-reminder--${subscriptionId}`,
+      `subscription-expiry-day--${subscriptionId}`,
+    ];
+
+    for (const jobId of jobIds) {
+      const job = await this.lifecycleQueue.getJob(jobId);
+      if (job) await job.remove();
+    }
   }
 }
