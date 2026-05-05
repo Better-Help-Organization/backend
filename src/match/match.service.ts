@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { DefaultParameters, ModalName, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
+import { DefaultParameters, ModalName, SessionNotif, SubscriptionStatus, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
@@ -249,9 +249,12 @@ export class MatchService {
       if (!therapist) {
         throw new NotFoundException('Therapist not found');
       }
-          const subscription = match.client.activeSubscription;
+      const subscription = match.client.activeSubscription;
     if (!subscription) {
       throw new BadRequestException('Client has no active subscription');
+    }
+    if (subscription.status !== SubscriptionStatus.ACTIVE) {
+      throw new BadRequestException('Client subscription is not active');
     }
     subscription.therapist = therapist;
 

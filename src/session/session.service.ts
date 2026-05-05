@@ -960,7 +960,10 @@ export class SessionService {
 
         const subs: ClientSubscription[] = [];
         for (const client of clientsForThisSession) {
-          if (client.activeSubscription && client.activeSubscription.subscription) {
+          if (
+            client.activeSubscription?.status === SubscriptionStatus.ACTIVE &&
+            client.activeSubscription.subscription
+          ) {
             subs.push(client.activeSubscription);
           }
         }
@@ -972,7 +975,9 @@ export class SessionService {
 
         // ✅ Update isInGroup for clients
         for (const client of clientsForThisSession) {
-          if (!client.activeSubscription) throw new BadRequestException('Client missing active subscription') ;
+          if (client.activeSubscription?.status !== SubscriptionStatus.ACTIVE) {
+            throw new BadRequestException('Client missing an active subscription');
+          }
           console.log({clientSubscription: client.activeSubscription})
           const clientSub = await manager.findOne(ClientSubscription, {
             where: { id: client.activeSubscription.id },
@@ -1098,7 +1103,12 @@ export class SessionService {
       }
 
       const activeSub = client.activeSubscription;
-      if (!activeSub || !activeSub.subscription) continue;
+      if (!activeSub || activeSub.status !== SubscriptionStatus.ACTIVE || !activeSub.subscription) {
+        this.logger.warn(
+          `Skipping client ${client.firstName} ${client.lastName} because activeSubscription is not ACTIVE`,
+        );
+        continue;
+      }
 
       // ✅ Precheck: ensure client hasn't exceeded their session quota
       const subType = activeSub.subscription.type;
