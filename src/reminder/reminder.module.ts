@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
+import { SessionClientNotes } from 'src/common/entities/session-client-notes.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { ParameterModule } from 'src/parameter/parameter.module';
@@ -17,7 +18,7 @@ import { SubscriptionLifecycleProcessor } from './subscription-lifecycle.process
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, Client, ClientSubscription]),
+    TypeOrmModule.forFeature([Session, Client, ClientSubscription, SessionClientNotes]),
     BullModule.registerQueue({
       name: SESSION_REMINDERS_QUEUE,
     }),

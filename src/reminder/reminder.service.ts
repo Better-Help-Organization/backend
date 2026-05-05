@@ -13,6 +13,7 @@ import {
   SESSION_REMINDERS_QUEUE,
   SUBSCRIPTION_EXPIRY_DAY_JOB,
   SUBSCRIPTION_EXPIRY_REMINDER_JOB,
+  THERAPIST_NOTE_REMINDER_JOB,
 } from './reminder.constants';
 
 @Injectable()
@@ -155,5 +156,27 @@ export class ReminderService {
       const job = await this.lifecycleQueue.getJob(jobId);
       if (job) await job.remove();
     }
+  }
+
+  async scheduleTherapistNoteReminder(session: Session) {
+    if (!session?.id || !session.therapist?.firebaseToken) return;
+
+    const runAt = new Date(session.schedule).getTime() + session.duration * 60_000;
+    const delay = Math.max(0, runAt - Date.now());
+
+    await this.lifecycleQueue.add(
+      THERAPIST_NOTE_REMINDER_JOB,
+      { sessionId: session.id },
+      {
+        jobId: `therapist-note-reminder--${session.id}`,
+        delay,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+
+    this.logger.log(`Scheduled therapist note reminder for session ${session.id}`);
   }
 }

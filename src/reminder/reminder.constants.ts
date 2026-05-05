@@ -5,6 +5,7 @@ export const SESSION_REMINDER_JOB = 'send-reminder';
 export const PENDING_SESSION_EXPIRY_JOB = 'expire-pending-session';
 export const SUBSCRIPTION_EXPIRY_REMINDER_JOB = 'subscription-expiry-reminder';
 export const SUBSCRIPTION_EXPIRY_DAY_JOB = 'subscription-expiry-day';
+export const THERAPIST_NOTE_REMINDER_JOB = 'therapist-note-reminder';
 
 export const REMINDER_DELAYS = [
   { minutes: 1440, jobSuffix: '24h' },

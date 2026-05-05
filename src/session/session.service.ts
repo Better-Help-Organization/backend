@@ -806,6 +806,10 @@ export class SessionService {
         for (const sub of subs) {
           await this.handleSingleSubscriptionCompletion(sub.id);
         }
+
+        if (sanitizedDto.hasTherapistAttended === true) {
+          await this.reminderService.scheduleTherapistNoteReminder(savedSession);
+        }
       }
 
       return savedSession;
