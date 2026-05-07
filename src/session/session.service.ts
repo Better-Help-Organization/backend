@@ -54,6 +54,21 @@ function getDateForWeekday(baseMonday: Date, weekday: DayOfWeek): Date {
   return result;
 }
 
+function formatAddisDateTime(date: Date | string): string {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Addis_Ababa',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(value);
+}
+
 @Injectable()
 export class SessionService {
 
@@ -688,7 +703,7 @@ export class SessionService {
 
         const prevTherapistToken = previousTherapist?.firebaseToken;
         const newTherapistToken = newTherapist?.firebaseToken;
-        const sessionTime = toEthiopianTime(session.schedule);
+        const sessionDateTime = formatAddisDateTime(session.schedule);
 
         // 🟢 Notify client(s)
         if (clientTokens.length) {
@@ -696,7 +711,7 @@ export class SessionService {
             { client: clientTokens, therapist: [], admin: [] },
             JSON.stringify({ therapistId: newTherapist.id }),
             SessionNotif.TH_REASSIGNED_CLIENT,
-            `Your therapist has been changed to ${newTherapist.firstName} for your session at ${sessionTime}.`
+            `Your therapist has been changed to ${newTherapist.firstName} for your session on ${sessionDateTime}.`
           );
         }
 
@@ -706,7 +721,7 @@ export class SessionService {
             { client: [], therapist: [prevTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-            `Client ${clientName} has been reassigned from your session at ${sessionTime}.`
+            `Client ${clientName} has been reassigned from your session on ${sessionDateTime}.`
           );
         }
 
@@ -716,7 +731,7 @@ export class SessionService {
             { client: [], therapist: [newTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-            `You have been assigned to ${clientName} for the session at ${sessionTime}.`
+            `You have been assigned to ${clientName} for the session on ${sessionDateTime}.`
           );
         }
       }
@@ -1679,9 +1694,9 @@ export class SessionService {
     const sortedSchedules = sessionsToUpdate
       .map((session) => session.schedule)
       .sort((a, b) => a.getTime() - b.getTime());
-    const firstSessionTime = sortedSchedules[0] ? toEthiopianTime(sortedSchedules[0]) : null;
+    const firstSessionTime = sortedSchedules[0] ? formatAddisDateTime(sortedSchedules[0]) : null;
     const lastSessionTime = sortedSchedules[sortedSchedules.length - 1]
-      ? toEthiopianTime(sortedSchedules[sortedSchedules.length - 1])
+      ? formatAddisDateTime(sortedSchedules[sortedSchedules.length - 1])
       : null;
     const scheduleSuffix = firstSessionTime
       ? count === 1 || firstSessionTime === lastSessionTime
