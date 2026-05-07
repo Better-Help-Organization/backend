@@ -106,39 +106,5 @@ export class NotificationScheduler {
     //     }
     // }
 
-    // 4. Inactivity re-engagement (subscription expired 2 weeks ago)
-    // TODO: REMOVE
-    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
-    async sendInactivityReminders() {
-        this.logger.log('Checking for inactive clients...');
-        const todayUTC = new Date();
-        todayUTC.setUTCHours(0, 0, 0, 0); // start of today UTC
-
-        const targetDate = new Date(todayUTC);
-        targetDate.setDate(targetDate.getDate() - 14); // 14 days ago (UTC)
-
-        const nextDay = new Date(targetDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-
-        const expiredSubs = await this.clientSubscriptionRepo.find({
-            where: {
-                status: SubscriptionStatus.INACTIVE,
-                end_date: Between(targetDate, nextDay),
-            },
-            relations: ['client'],
-        });
-
-        for (const cs of expiredSubs) {
-            const client = cs.client;
-            if (client?.firebaseToken) {
-                await this.firebaseService.sendPushNotification(
-                    { client: [client.firebaseToken], therapist: [], admin: [] },
-                    'REMINDER',
-                    SessionNotif.INACTIVITY,
-                    'It’s been a while since your last session. Come back and continue your journey.',
-                );
-            }
-        }
-    }
 
 }

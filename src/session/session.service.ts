@@ -700,7 +700,7 @@ export class SessionService {
             { client: clientTokens, therapist: [], admin: [] },
             JSON.stringify({ therapistId: newTherapist.id }),
             SessionNotif.TH_REASSIGNED_CLIENT,
-            `Your therapist has been changed to ${newTherapist.firstName}.`
+            `Your therapist has been changed to ${newTherapist.firstName} for the session on ${session.schedule}.`
           );
         }
 
@@ -710,7 +710,7 @@ export class SessionService {
             { client: [], therapist: [prevTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-            `Client ${clientName} has been reassigned from you.`
+            `Client ${clientName} has been reassigned from you for the session on ${session.schedule}.`
           );
         }
 
