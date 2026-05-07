@@ -688,6 +688,7 @@ export class SessionService {
 
         const prevTherapistToken = previousTherapist?.firebaseToken;
         const newTherapistToken = newTherapist?.firebaseToken;
+        const sessionTime = toEthiopianTime(session.schedule);
 
         // 🟢 Notify client(s)
         if (clientTokens.length) {
@@ -695,7 +696,7 @@ export class SessionService {
             { client: clientTokens, therapist: [], admin: [] },
             JSON.stringify({ therapistId: newTherapist.id }),
             SessionNotif.TH_REASSIGNED_CLIENT,
-            `Your therapist has been changed to ${newTherapist.firstName}.`
+            `Your therapist has been changed to ${newTherapist.firstName} for your session at ${sessionTime}.`
           );
         }
 
@@ -705,7 +706,7 @@ export class SessionService {
             { client: [], therapist: [prevTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-            `Client ${clientName} has been reassigned from you.`
+            `Client ${clientName} has been reassigned from your session at ${sessionTime}.`
           );
         }
 
@@ -715,7 +716,7 @@ export class SessionService {
             { client: [], therapist: [newTherapistToken], admin: [] },
             JSON.stringify({ clientId: clientIdForPayload }),
             SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-            `You have been assigned to ${clientName}.`
+            `You have been assigned to ${clientName} for the session at ${sessionTime}.`
           );
         }
       }
@@ -1675,6 +1676,18 @@ export class SessionService {
     const uniquePrevTherapistTokens = [...new Set(prevTherapistTokens)].filter(Boolean);
 
     const count = sessionsToUpdate.length;
+    const sortedSchedules = sessionsToUpdate
+      .map((session) => session.schedule)
+      .sort((a, b) => a.getTime() - b.getTime());
+    const firstSessionTime = sortedSchedules[0] ? toEthiopianTime(sortedSchedules[0]) : null;
+    const lastSessionTime = sortedSchedules[sortedSchedules.length - 1]
+      ? toEthiopianTime(sortedSchedules[sortedSchedules.length - 1])
+      : null;
+    const scheduleSuffix = firstSessionTime
+      ? count === 1 || firstSessionTime === lastSessionTime
+        ? ` at ${firstSessionTime}`
+        : ` between ${firstSessionTime} and ${lastSessionTime}`
+      : '';
 
     // 🔔 ONE notification block
 
@@ -1685,7 +1698,7 @@ export class SessionService {
           { client: uniqueClientTokens, therapist: [], admin: [] },
           JSON.stringify({ therapistId: therapist }),
           SessionNotif.TH_REASSIGNED_CLIENT,
-          `Your therapist has been updated for ${count} session(s).`
+          `Your therapist has been updated for ${count} session(s)${scheduleSuffix}.`
         );
       }
 
@@ -1694,7 +1707,7 @@ export class SessionService {
           { client: [], therapist: uniquePrevTherapistTokens, admin: [] },
           JSON.stringify({ commonId }),
           SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-          `${count} session(s) have been reassigned from you.`
+          `${count} session(s)${scheduleSuffix} have been reassigned from you.`
         );
       }
 
@@ -1703,7 +1716,7 @@ export class SessionService {
           { client: [], therapist: uniqueTherapistTokens, admin: [] },
           JSON.stringify({ commonId }),
           SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-          `You have been assigned to ${count} session(s).`
+          `You have been assigned to ${count} session(s)${scheduleSuffix}.`
         );
       }
     }
