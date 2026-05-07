@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
-import { DefaultParameters, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
+import { DefaultParameters, ModalName, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
@@ -16,6 +16,7 @@ import { TherapistService } from 'src/therapist/therapist.service';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
 
 @Injectable()
 export class MatchService {
@@ -39,7 +40,7 @@ export class MatchService {
     private readonly parameterService: ParameterService,
   ) {}
 
-  async create(token: TokenPayload, createMatchDto: CreateMatchDto): Promise<{ message: string }> {
+  async create(token: TokenPayload, createMatchDto: CreateMatchDto, mockId?: string): Promise<{ message: string }> {
     const existingMatch = await this.matchRepository.findOne({
       where: {
         client: { id: token.id },
@@ -51,7 +52,7 @@ export class MatchService {
 
     // if (existingMatch) {
     //   throw new ConflictException(
-    //     'You already have a pending match request. Please wait patiently while you are being matched — this may take up to 3 days.'
+    //     'You already have a pending match request. Please wait patiently while you are being matched.'
     //   );
     // }
 
@@ -67,6 +68,10 @@ export class MatchService {
 
     if (!preference) {
       throw new NotFoundException('Preference not found');
+    }
+
+    if(preference.modal.name == ModalName.GROUP_THERAPY) {
+      throw new BadRequestException('Group therapy matches are not handled here');
     }
 
     if (preference.client.id !== token.id) {
@@ -94,14 +99,9 @@ export class MatchService {
       .filter(id => id);
 
     const therapists = await this.therapistService.findMatchingTherapists({
-      gender: preference.gender,
-      level: preference.level?.id,
+      // gender: preference.gender,
+      // level: preference.level?.id,
       modal: preference.modal?.id,
-      // status: BaseStatus.ACTIVE,
-      // availability: preference.availability.map(a => ({
-      //   day: a.day,
-      //   day_period: a.day_period,
-      // })),
     });
     // const {data:therapists} = await this.therapistService.findAll({take:'0'});
 
@@ -160,11 +160,69 @@ export class MatchService {
 
     return { message: 'Match request created successfully' };
   }
+
+    private SENSITIVE_KEYS = [
+    'password',
+    'refreshToken',
+    'firebaseToken',
+    'OTP',
+    'OTPExpires',
+    'email',
+    'phoneNumber',
+    'dob',
+    'lastSeenAt',
+    'createdAt',
+    'updatedAt',
+    'gender',
+    'isEmailAuthenticated',
+    'isPhoneNumberAuthenticated',
+    'status',
+    'gender',
+    'isLinked',
+    'emergencyContact',
+    'isVisible',
+    'address',
+    'bio',
+    'isInGroup'
+  ];
+
+  protected maskValue(value: any) {
+      // return "***"; // If you prefer masking
+      return undefined; // remove key entirely
+  }
+
+  private sanitize(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+
+      // Arrays → sanitize each element
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.sanitize(item));
+      }
+
+      // Objects
+      const sanitized: any = {};
+
+      for (const [key, value] of Object.entries(obj)) {
+        // Remove sensitive keys
+        if (this.SENSITIVE_KEYS.includes(key)) {
+          sanitized[key] = this.maskValue(value);
+          continue;
+        }
+
+        // Recursively sanitize nested objects
+        sanitized[key] = this.sanitize(value);
+      }
+
+      return sanitized;
+  }
+
+
   
-  async acceptMatch(token: TokenPayload, acceptMatchDto: AcceptMatchDto): Promise<{ message: string }> {
+  async acceptMatch(token: TokenPayload, acceptMatchDto: AcceptMatchDto, mockId?: String): Promise<{ message: string }> {
     const queryRunner = this.matchRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    let isAdmin = Boolean(mockId);
 
     try {
       console.log({acceptMatchDto})
@@ -181,12 +239,13 @@ export class MatchService {
         throw new ConflictException('Match already accepted by another therapist');
       }
 
-      if (match.expiresAt && match.expiresAt < new Date()) {
+      if (!mockId && match.expiresAt && match.expiresAt < new Date()) {
         throw new BadRequestException('This match request has expired');
       }
 
-      const therapist = await this.therapistService.findOne(token.id);
-
+      const therapistId =  mockId ? mockId.toString() : token.id;
+      const therapist = await this.therapistService.findOne(therapistId);
+      console.log({therapist})
       if (!therapist) {
         throw new NotFoundException('Therapist not found');
       }
@@ -201,12 +260,14 @@ export class MatchService {
 
 
     const matchTherapist = match.matchedTherapist.find(mt => mt.therapist.id === therapist.id);
-    if (!matchTherapist) {
+    if (!isAdmin && !matchTherapist) {
       throw new BadRequestException('Therapist not part of this match');
     }
 
-      matchTherapist.respondedAt = new Date();
-      await queryRunner.manager.save(matchTherapist);
+      // matchTherapist.respondedAt = new Date();
+      !isAdmin ?
+      await queryRunner.manager.save(matchTherapist) :
+      await queryRunner.manager.save(therapist);
 
       match.accepted = therapist;
       await queryRunner.manager.save(match);
@@ -247,6 +308,20 @@ export class MatchService {
           SessionNotif.MATCH_ACCEPTED,
           'Your match request has been accepted!'
         );
+      }
+
+      // If mockId is present → send notification to that therapist
+      if (mockId) {
+        if (therapist.firebaseToken) {
+          await this.firebaseService.sendPushNotification(
+            { therapist: [therapist.firebaseToken], client: [], admin: [] },
+            JSON.stringify({ match:this.sanitize(match) }),
+            SessionNotif.NEW_MATCH,
+            'You have been matched with a new client by an admin.'
+          );
+        }
+        await queryRunner.commitTransaction();
+        return { message: 'Match assigned and therapist notified successfully' };
       }
 
       await queryRunner.commitTransaction();
@@ -290,9 +365,65 @@ export class MatchService {
     }
   }
 
-  // update(token: TokenPayload, id: string, updateMatchDto: UpdateMatchDto) {
-  //   return `This action updates a #${id} match`;
-  // }
+  async update(token: TokenPayload, id: string, updateMatchDto: UpdateMatchDto) {
+    try {
+      if ('accepted' in updateMatchDto)
+        {
+          const match = await this.matchRepository.findOne({
+            where: { id },
+            relations: ['accepted','client'],
+          });
+          const { accepted } = match
+          const newTherapist = await this.therapistService.findOne(updateMatchDto.accepted!);
+          if (!newTherapist) {
+            throw new NotFoundException('Therapist not found');
+          }
+
+          const prevTherapistToken = accepted?.firebaseToken;
+          const newTherapistToken = newTherapist?.firebaseToken;
+    
+            // // 🟢 Notify client
+            // if (clientToken) {
+            //   await this.firebaseService.sendPushNotification(
+            //     { client: [clientToken], therapist: [], admin: [] },
+            //     JSON.stringify({ therapistId: newTherapist.id }),
+            //     SessionNotif.TH_REASSIGNED_CLIENT,
+            //     `Your therapist has been changed to ${newTherapist.fullName}.`
+            //   );
+            // }
+    
+            // 🟠 Notify previous therapist
+            if (prevTherapistToken) {
+              await this.firebaseService.sendPushNotification(
+                { client: [], therapist: [prevTherapistToken], admin: [] },
+                JSON.stringify({ matchId: id }),
+                SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
+                `Client ${match.client.firstName + " " + match.client.lastName} has been reassigned from you.`
+              );
+            }
+    
+            // 🔵 Notify new therapist
+            if (newTherapistToken) {
+              await this.firebaseService.sendPushNotification(
+                { client: [], therapist: [newTherapistToken], admin: [] },
+                JSON.stringify({ clientId: match.client.id }),
+                SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
+                `You have been assigned to client ${match.client.firstName + " " + match.client.lastName}.`
+              );
+            }
+          // }
+          
+          // match.accepted = therapist;
+          Object.assign(match, updateMatchDto);
+          const updated = await this.matchRepository.save(match);
+          this.logger.log(`Updated match with ID: ${id}`);
+          return updated;
+        }
+    } catch (error) {
+      this.logger.error(`Error updating match: ${error.message}`);
+      throw error;
+    }  
+  }
 
   async remove(token: TokenPayload, id: string): Promise<void> {
     try {

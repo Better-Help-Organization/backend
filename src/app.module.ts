@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
@@ -20,6 +21,7 @@ import { FirebaseModule } from './firebase/firebase.module';
 import { LanguageModule } from './language/language.module';
 import { LevelModule } from './level/level.module';
 import { LicenseModule } from './license/license.module';
+import { LivekitModule } from './livekit/livekit.module';
 import { LoggerModule } from './logger/logger.module';
 import { MatchModule } from './match/match.module';
 import { ModalModule } from './modal/modal.module';
@@ -33,10 +35,28 @@ import { PresenceModule } from './presence/presence.module';
 import { QuestionModule } from './question/question.module';
 import { QuoteModule } from './quote/quote.module';
 import { RatingModule } from './rating/rating.module';
+import { ReminderModule } from './reminder/reminder.module';
 import { SessionModule } from './session/session.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { TelebirrModule } from './telebirr/telebirr.module';
+import { TherapistPaymentPeriodModule } from './therapist-payment-period/therapist-payment-period.module';
 import { TherapistModule } from './therapist/therapist.module';
+
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { ExpressAdapter } from '@bull-board/express';
+import { BullBoardModule } from '@bull-board/nestjs';
+
+// const bullBoardAdapter = new ExpressAdapter();
+// bullBoardAdapter.setBasePath('/dev/api/queues');
+
+class CustomExpressAdapter extends ExpressAdapter {
+  constructor() {
+    super();
+    const basePath = `/dev/api/queues`;
+    console.error('Bull Board basePath:', basePath); // use console.error so it shows even with console.log suppressed
+    this.setBasePath(basePath);
+  }
+}
 
 @Module({
   imports: [
@@ -49,6 +69,23 @@ import { TherapistModule } from './therapist/therapist.module';
     }),
     JwtModule.register({
         global: true,   // make JwtService available app-wide
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST ?? 'redis',
+        port: parseInt(process.env.REDIS_PORT ?? '6379'),
+      },
+    }),
+    BullBoardModule.forRoot({
+      route: '/queues',
+      adapter: CustomExpressAdapter,
+      // adapterOptions: {
+      //   basePath: process.env.BULL_BOARD_BASE_PATH ?? '/api/queues',
+      // },
+    }),
+    BullBoardModule.forFeature({
+          name: 'session-reminders',
+          adapter: BullMQAdapter,
     }),
     ScheduleModule.forRoot(),
     DatabaseModule,    
@@ -69,7 +106,10 @@ import { TherapistModule } from './therapist/therapist.module';
     PaymentModule,
     BankModule,
     NotificationModule,
-    TelebirrModule
+    TelebirrModule,
+    LivekitModule,
+    TherapistPaymentPeriodModule,
+    ReminderModule
   ],
   controllers: [AppController],
   providers: [AppService,   

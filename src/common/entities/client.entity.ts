@@ -1,15 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, OneToOne } from 'typeorm';
 import { BaseStatus } from '../constants';
 import { Answer } from './answer.entity';
+import { Chat } from './chat.entity';
 import { ClientSubscription } from './client-subscription.entity';
 import { Diary } from './diary.entity';
+import { Language } from './language.entity';
 import { Match } from './match.entity';
 import { Mood } from './mood.entity';
 import { Notification } from './notification.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
+import { Session } from './session.entity';
 import { User } from './user.entity';
+import { SessionClientNotes } from './session-client-notes.entity';
+
 
 @Entity()
 export class Client extends User {
@@ -75,6 +80,23 @@ export class Client extends User {
   @OneToOne(() => Notification, { nullable: true, cascade: true })
   @JoinColumn()
   hasNotification?: Notification | null;
+
+  @ApiProperty({ type: () => Chat, isArray: true })
+  @ManyToMany(() => Chat, chat => chat.group)
+  chats: Chat[];
+
+  @ApiProperty({ type: () => [Language] })
+  @ManyToMany(() => Language, language => language.client)
+  @JoinTable()
+  language: Language[];
+
+  @ApiProperty({ type: () => Session, isArray: true })
+  @OneToMany(() => Session, ss => ss.client)
+  session: Session[];
+
+  @OneToMany(() => SessionClientNotes, (n) => n.client)
+  sessionNotes: SessionClientNotes[];
+  
 
     // @Expose()
     // get type() {

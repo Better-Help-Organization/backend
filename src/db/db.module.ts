@@ -27,8 +27,8 @@ export class DatabaseModule implements OnModuleInit {
   async onModuleInit() {
     return
     await this.dbService.seedSubscriptions();
+    await this.dbService.seedParameters();
     await this.dbService.seedAdmin();
     await this.dbService.seedOnboarding();
-    await this.dbService.seedParameters();
   }
 }

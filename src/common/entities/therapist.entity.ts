@@ -1,15 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 import { BaseStatus } from '../constants';
 import { Availability } from './availability.entity';
 import { Bank } from './bank.entity';
 import { ClientSubscription } from './client-subscription.entity';
 import { Expertise } from './expertise.entity';
+import { Language } from './language.entity';
 import { Level } from './level.entity';
 import { License } from './license.entity';
 import { MatchTherapist } from './match-therapist.entity';
 import { Match } from './match.entity';
 import { Rating } from './rating.entity';
+import { Session } from './session.entity';
 import { TherapistBank } from './therapist-bank.entity';
 import { User } from './user.entity';
 
@@ -83,5 +85,14 @@ export class Therapist extends User {
   @ApiProperty({ type: () => ClientSubscription, isArray: true })
   @OneToMany(() => ClientSubscription, cs => cs.therapist)
   subscription: ClientSubscription[];
+
+  @ApiProperty({ type: () => Session, isArray: true })
+  @OneToMany(() => Session, ss => ss.therapist)
+  session: Session[];
+
+  @ApiProperty({ type: () => [Language] })
+  @ManyToMany(() => Language, language => language.therapist)
+  @JoinTable()
+  language: Language[];
 
 }

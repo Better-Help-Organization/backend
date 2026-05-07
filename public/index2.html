@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button
+      id="myButton"
+      class="btn btn-primary"
+      data-action="submit"
+      aria-label="Submit Button"
+    >
+      Click Me
+    </button>
+  </body>
+  <script>
+    function startPay(checkOutUrl) {
+      // rawRequest get from create order api
+      let anchorEle = document.createElement("a");
+      anchorEle.setAttribute("href", checkOutUrl);
+      anchorEle.setAttribute("target", "_blank");
+      anchorEle.setAttribute("rel", "external");
+      anchorEle.style.display = "none";
+      anchorEle.click();
+    }
+
+    const button = document.getElementById("myButton");
+    button.addEventListener("click", () => {
+      alert("Button clicked!");
+      startPay(
+        "https://developerportal.ethiotelebirr.et:38443/payment/web/paygate?appid=1511910021811206&merch_code=841050&nonce_str=2O9DT1O7LC6F2HYC6JC2WFFTC80BY2OM&prepay_id=019c4de571b9266814ed64f4b258cd40d83003&timestamp=1764777155&sign=sxzFWQ/5072LV4G0KlQ2f8Vdi7WB0vAq5bbWwYU6dgByKQZiFw2tRITEKRJOk9zA58xnJH9KxOSYOGQOlgHJWf4rL78a3p1nR7ZqheGA5tew5BbMOzJrnHbBVBigfqUgtUbilD/518XtPPpHWk9/V2axGEHrXnzPGiPu/E2WyS67ClVQHAr/8HjwVzpvpqXzdiEBFpuIbQyedEr3ipb/uP+sunFv+1LOV7QriSXey0U6JicUhx1WhnRQnXiYGqsOPEe8NXNmF+00bwU7LG6fOOY5+S8tsDitrxLo5ArW5g463RUKkfUj7+iZTAoZPF3rXwMQ5QQG04vEllmNtFtrTQ==&sign_type=SHA256WithRSA&version=1.0&trade_type=Checkout"
+      );
+    });
+  </script>
+</html>

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { hash } from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Final_Files_Dir, Tmp_Files_Dir, TokenPayload, ValidFolders } from 'src/common/constants';
@@ -9,6 +10,7 @@ import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/a
 import { LoggerService } from 'src/logger/logger.service';
 import { Repository } from 'typeorm';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Injectable()
 export class AdminService {
@@ -60,8 +62,14 @@ export class AdminService {
     }
   }
 
-  async update(id: string, updateDto: UpdateAdminDto) {
+  async update(id: string, updateDto: UpdateAdminDto | UpdateMeDto) {
     const admin = await this.findOne(id);
+
+    if (updateDto?.password) {
+      const hashedPassword = await hash(updateDto.password, 10);
+      updateDto["password"] =  hashedPassword;
+    }
+
     Object.assign(admin, updateDto);
     try {
       const updated = await this.adminRepo.save(admin);

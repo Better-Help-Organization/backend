@@ -6,8 +6,10 @@ import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { AuthEnforcedQueryParams } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { OwnershipCheck } from 'src/common/decorators/ownership-check.decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { StatusDto } from 'src/common/dto/status.dto';
+import { Session } from 'src/common/entities/session.entity';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -42,6 +44,21 @@ export class TherapistController {
     return await this.therapistService.findOne(user.id, queryParams);
   }
 
+  @Get('usersTreated')
+  @DynamicGuards(
+    new TherapistJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
+  @ApiFindOneQueryParams()
+  async getUsersTreated(
+    @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
+    @Query() queryParams,
+    @CurrentUser() user: TokenPayload,
+    @Query('mockId') mockId?: string,
+  ) {
+    return await this.therapistService.getUsersTreated(mockId);
+  }
+
   @Get('stats')
   @ApiFilterByDate()
   @ApiQuery({ 
@@ -59,7 +76,10 @@ export class TherapistController {
     @Query('endDate') endDate?: string,
     @Query('mockId') mockId?: string
   ) {
-    return this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
+    if (mockId) {
+      therapist = { id: mockId } as TokenPayload;
+    }
+    return await this.stats.getAnalyticsOverTime(startDate, endDate, therapist.id);
   }
 
   @ApiFindAllQueryParams()
@@ -145,7 +165,8 @@ export class TherapistController {
   @ApiFindOneQueryParams()
   @Get('me/sessions/:id')
   @UseGuards(TherapistJwtAuthGuard)
-  async findOneSession(
+  @OwnershipCheck(Session, UserTypes.THERAPIST)
+    async findOneSession(
     @CurrentUser() _: TokenPayload,
     @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
     @Param('id') id: string

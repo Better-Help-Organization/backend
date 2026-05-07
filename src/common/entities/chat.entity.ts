@@ -1,4 +1,5 @@
 import {
+  Column,
   Entity,
   JoinColumn,
   JoinTable,
@@ -11,6 +12,7 @@ import {
 } from 'typeorm';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
+import { Session } from './session.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
@@ -20,11 +22,12 @@ import { Message } from './message.entity';
 @Entity('chat')
 export class Chat extends CommonEntity {
 
+  @ApiProperty({nullable:true})
+  @Column({ type: 'text', nullable:true })
+  groupName: string;
+  
   @ApiProperty({ type : () => [Client] })
-  @ManyToMany(() => Client, {
-    nullable: true,
-    // eager:true
-  })
+  @ManyToMany(() => Client, client => client.chats, { nullable: true })
   @JoinTable({
     name: 'chat_group_clients',
     joinColumn: { name: 'chat_id', referencedColumnName: 'id' },
@@ -53,6 +56,18 @@ export class Chat extends CommonEntity {
   @OneToOne(() => Message, { nullable: true, cascade: true, eager: true , onDelete: 'SET NULL' })
   @JoinColumn({ name: 'last_message_id' })
   lastMessage: Message;
+
+  @Column({ nullable: true })
+  activeCallRoom: string;
+
+
+  @ApiProperty({ default: false })
+  @Column({default: false })
+  closed: boolean;
+
+  @ApiProperty({ type: () => [Session] })
+  @OneToMany(() => Session, (session) => session.chat)
+  session: Session[];
 
   async addMessage(
     msgRepo: Repository<Message>,

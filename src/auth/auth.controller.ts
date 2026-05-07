@@ -20,7 +20,7 @@ import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { EmailAuthGuard } from 'src/common/guard/email.guard';
-import { PhonePwdAuthGuard } from 'src/common/guard/email.pwd.guard';
+import { EmailPwdAuthGuard, PhonePwdAuthGuard } from 'src/common/guard/email.pwd.guard';
 import {
   AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard
 } from 'src/common/guard/jwt-auth.guard';
@@ -34,7 +34,7 @@ import { AuthService } from './auth.service';
 import { ClientSignupDto } from './dto/ client-signup.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
 import { EmailDto } from './dto/EmailDto';
-import { LoginDto } from './dto/LoginDto';
+import { EmailLoginDto, LoginDto } from './dto/LoginDto';
 import { oAuthDto } from './dto/oauth.dto';
 import { ResetPwdDto } from './dto/ResetPwdDto';
 import { TherapistSignupDto } from './dto/therapist-signup.dto';
@@ -130,12 +130,12 @@ export class AuthController {
   //   return therapist;
   // }
 
-  // @HttpCode(200)
-  // @UseGuards(EmailPwdAuthGuard)
-  // @Post('login/admin')
-  // async adminLogin(@CurrentUser() admin: Admin, @Body() _: LoginDto) {
-  //   return admin;
-  // }
+  @HttpCode(200)
+  @UseGuards(EmailPwdAuthGuard)
+  @Post('login-email/admin')
+  async adminLoginEmail(@CurrentUser() admin: Admin, @Body() _: EmailLoginDto) {
+    return admin;
+  }
 
   @HttpCode(200)
   @UseGuards(PhonePwdAuthGuard)
@@ -245,12 +245,17 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@CurrentUser() user: any, @Req() req) {
+  async googleAuthCallback(@CurrentUser() user: any, @Req() req, @Res() res: Response) {
     const role = req.query.state;
 
     const [firebaseToken, userRole, _] = role?.split('_');
     const result = await this.authService.oAuthLogin(user, userRole, firebaseToken);
-    return result;
+
+    res.cookie('accessToken', result.accessToken, { domain: ".navigo.et", httpOnly: false, secure: true, sameSite: 'lax' });
+    res.cookie('refreshToken', result.refreshToken, { domain: ".navigo.et", httpOnly: false, secure: true, sameSite: 'lax' });
+    console.log({res})
+    // Redirect user to frontend
+    return res.redirect('https://admin.navigo.et/');
   }
 
 }

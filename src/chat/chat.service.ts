@@ -3,10 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
 import { SessionNotif, TokenPayload, Tokens, UserTypes } from 'src/common/constants';
 import { Chat } from 'src/common/entities/chat.entity';
+import { Client } from 'src/common/entities/client.entity';
 import { Message } from 'src/common/entities/message.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { LivekitService } from 'src/livekit/livekit.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TherapistService } from 'src/therapist/therapist.service';
 import { Repository } from 'typeorm';
@@ -15,7 +17,7 @@ import { UpdateMessageDto } from '../session/dto/message/update-message.dto';
 import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
-
+import { ToggleChatDto } from './dto/toggle-chat.dto';
 
 @Injectable()
 export class ChatService {
@@ -27,264 +29,153 @@ export class ChatService {
     private readonly logger: LoggerService,  
     private readonly clientService: ClientService,  
     private readonly therapistService: TherapistService,  
+    private readonly livekitService: LivekitService,
 
   ) {}
+
   async create(id: string, createChatDto: CreateChatDto) {
-  this.logger.log('Creating a new chat');
-  try {
-    const therapist = await this.therapistService.findOne(id);
+    this.logger.log('Creating a new chat');
+    try {
+      const therapist = await this.therapistService.findOne(id);
 
-    let clients = [];
-    if (createChatDto.client) {
-      // 1-on-1 chat
-      const client = await this.clientService.findOne(createChatDto.client);
-      clients = [client];
-    } else if (createChatDto.groupClients?.length) {
-      // Group chat
-      const group = await this.clientService.findAll({ ids: createChatDto.groupClients.join(',') });
-      clients = group.data;
+      let clients = [];
+      if (createChatDto.client) {
+        // 1-on-1 chat
+        const client = await this.clientService.findOne(createChatDto.client);
+        clients = [client];
+      } else if (createChatDto.groupClients?.length) {
+        // Group chat
+        const group = await this.clientService.findAll({ ids: createChatDto.groupClients.join(',') });
+        clients = group.data;
+      }
+
+      const newChat = this.chatRepo.create({
+        ...createChatDto,
+        client: createChatDto.client ? clients[0] : null,
+        therapist,
+        group: createChatDto.client ? null : clients,
+      });
+
+      const savedChat = await this.chatRepo.save(newChat);
+      const tokens: Tokens = {
+        client: [],
+        therapist: [],
+        admin: [],
+      };
+      // Collect tokens
+      tokens.client = [...clients.map(c => c.firebaseToken).filter(Boolean)]
+      tokens.therapist= [therapist?.firebaseToken]
+
+      this.firebaseService.sendPushNotification(
+        tokens,
+        `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`,
+        SessionNotif.CHAT,
+        `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`
+      );
+
+      this.logger.log('Chat created successfully');
+      return savedChat;
+    } catch (error) {
+      this.logger.error(`Error creating chat: ${error.message}`);
+      throw error;
     }
+  }
+    // Example for Chat entity
+  async findMyChats(clientId: string) {
+  // 🧩 Step 1: Fetch all chats (simple query, no grouping)
+    const chats = await this.chatRepo
+      .createQueryBuilder('chat')
+      .leftJoinAndSelect('chat.group', 'group')
+      .leftJoinAndSelect('chat.client', 'client')
+      .leftJoinAndSelect('chat.therapist', 'therapist')
+      .leftJoinAndSelect('chat.lastMessage', 'lastMessage')
+      .where(qb => {
+        qb.where('client.id = :clientId', { clientId })
+          .orWhere('group.id = :clientId', { clientId });
+      })
+      .orderBy('chat.updatedAt', 'DESC')
+      .getMany();
 
-    const newChat = this.chatRepo.create({
-      ...createChatDto,
-      client: createChatDto.client ? clients[0] : null,
-      therapist,
-      group: createChatDto.client ? null : clients,
-    });
+    // 🧮 Step 2: Compute unread counts per chat (separate lightweight query)
+    const unreadCounts = await this.chatRepo.manager
+      .createQueryBuilder(Message, 'message')
+      .select('message.chatId', 'chatId')
+      .addSelect('COUNT(*)', 'unreadCount')
+      .where('message.isRead = false')
+      .andWhere('message.clientId != :clientId', { clientId })
+      .groupBy('message.chatId')
+      .getRawMany();
 
-    const savedChat = await this.chatRepo.save(newChat);
-    const tokens: Tokens = {
-      client: [],
-      therapist: [],
-      admin: [],
-    };
-    // Collect tokens
-    tokens.client = [...clients.map(c => c.firebaseToken).filter(Boolean)]
-    tokens.therapist= [therapist?.firebaseToken]
-
-    this.firebaseService.sendPushNotification(
-      tokens,
-      `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`,
-      SessionNotif.CHAT,
-      `You have been added to a ${createChatDto.client ? 'chat' : 'group chat'}`
+    // 🧠 Step 3: Merge counts into chats
+    const unreadMap = Object.fromEntries(
+      unreadCounts.map(u => [u.chatId, Number(u.unreadCount)])
     );
 
-    this.logger.log('Chat created successfully');
-    return savedChat;
-  } catch (error) {
-    this.logger.error(`Error creating chat: ${error.message}`);
-    throw error;
+    return chats.map(chat => ({
+      ...chat,
+      unreadCount: unreadMap[chat.id] || 0,
+    }));
   }
-}
-
-    // async create(id:string, createChatDto: CreateChatDto) {
-    //   this.logger.log('Creating a new chat');
-    //   try {
-    //     let clientEntity = null;
-    //     let groupEntities = null;
-    //     if(createChatDto.client) {
-    //       clientEntity = await this.clientService.findOne(createChatDto.client);
-    //   }
-    //       console.log(createChatDto.groupClients)
-    //     if(createChatDto.groupClients && createChatDto.groupClients.length !== 0) {
-    //       groupEntities = await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`});
-    //       console.log('Group entities: - chat.service.ts:43', groupEntities);
-    //     }
-    //     console.log({groupEntities})
-    //     const therapistEntity = await this.therapistService.findOne(id);
-  
-    //     const newChat = this.chatRepo.create({
-    //       ...createChatDto,
-    //       client: clientEntity,
-    //       therapist: therapistEntity,
-    //       group: groupEntities ? groupEntities?.data : null,
-    //     });
-  
-    //     const savedChat = await this.chatRepo.save(newChat);
-        
-    //     const tokens: string[] = []
-    //     let clientToken: string[] = []
-    //     if (createChatDto.client != null) {
-    //       const client = await this.clientService.findOne(createChatDto.client)
-    //       console.log('Client token: - chat.service.ts:61', client); 
-    //       clientToken.push(client.firebaseToken);     
-    //     }
-    //     else {
-    //       const clients = (await this.clientService.findAll({ids: `${createChatDto.groupClients.join(',')}`}))
-    //       clientToken.push(clients.data.map(c => {
-    //         console.log(c.firebaseToken,'cht-ser 67')
-    //         return c.firebaseToken
-    //       }));
-    //       console.log({clients}, 'chat.service.ts:70')
-    //       console.log('Group client tokens: - chat.service.ts:71', ...clientToken);
-    //     }
-  
-    //     const therapistToken = await this.therapistService.findOne(id)
-    //     console.log('Therapist token: - chat.service.ts:75', therapistToken.firebaseToken);
-    //     tokens.push(...clientToken, therapistToken.firebaseToken);
-    //     console.log(tokens)
-    //     console.log(tokens.length)
-    //     this.firebaseService.sendPushNotification(
-    //       tokens,
-    //       `You have been added to a group chat`,
-    //       SessionNotif.SCHEDULED,
-    //       `You have been added to a group chat`
-    //     );
-    
-    //     this.logger.log('chat created successfully');
-    //     return savedChat;
-    //   } catch (error) {
-    //     this.logger.error(`Error creating chat: ${error.message}`);
-    //     throw error;
-    //   }
-    // }
 
   async findAll(queryParams?: FindAllQueryParams, user?: TokenPayload) {
   try {
-    // Step 1: get chats with API features
-    let updatedFilters = queryParams?.filters || '';
+    // 1️⃣ Fetch chats without joining group members
+    const chats = await new APIFeatures(this.chatRepo, queryParams).getMany();
 
-    // Add client or therapist filter
-    if (user?.type === UserTypes.CLIENT) {
-      if (updatedFilters) updatedFilters += ', ';
-      updatedFilters += `clientId:=${user.id}`;
-    } else if (user?.type === UserTypes.THERAPIST) {
-      if (updatedFilters) updatedFilters += ', ';
-      updatedFilters += `therapistId:=${user.id}`;
-    }
+    const chatIds = chats.data.map(c => c.id);
+    if (!chatIds.length) return chats;
 
-    // Then pass it to APIFeatures
-    const updatedQueryParams: FindAllQueryParams = {
-      ...queryParams,
-      filters: updatedFilters,
-    };
+    // 2️⃣ Fetch group members for all chats in one query
+    const groupMembers = await this.chatRepo
+      .createQueryBuilder('chat')
+      .leftJoinAndSelect('chat.group', 'member')
+      .where('chat.id IN (:...ids)', { ids: chatIds })
+      .getMany();
 
-    // Then call APIFeatures with the updated queryParams
-    const chats = await new APIFeatures(this.chatRepo, updatedQueryParams).getMany();
-    // Step 2: extract chat IDs
-    const ids = chats.data.map(c => c.id);
-    if (!ids.length) return chats;
+    // 3️⃣ Create a map from chatId → members
+    const groupMap = groupMembers.reduce<Record<string, Client[]>>((acc, chat) => {
+      acc[chat.id] = chat.group || [];
+      return acc;
+    }, {});
 
-    // Step 3: count unread messages grouped by chatId
+    // 4️⃣ Attach members to original chat objects
+    const dataWithMembers = chats.data.map(chat => ({
+      ...chat,
+      group: groupMap[chat.id] || [],
+    }));
+
+    // 5️⃣ Count unread messages
     const qb = this.msgRepo
       .createQueryBuilder('m')
       .select('m.chatId', 'chatId')
       .addSelect('COUNT(*)', 'unreadCount')
       .where('m.isRead = false')
-      .andWhere('m.chatId IN (:...ids)', { ids });
+      .andWhere('m.chatId IN (:...ids)', { ids: chatIds });
 
-      if (user?.type === UserTypes.CLIENT) {
-        qb.andWhere('m.therapistId IS NOT NULL') // must be from therapist
-      } else if (user?.type === UserTypes.THERAPIST) {
-        qb.andWhere('m.clientId IS NOT NULL') // must be from client
-      }
+    if (user?.type === UserTypes.CLIENT) {
+      qb.andWhere('m.therapistId IS NOT NULL');
+    } else if (user?.type === UserTypes.THERAPIST) {
+      qb.andWhere('m.clientId IS NOT NULL');
+    }
 
     const counts = await qb.groupBy('m.chatId').getRawMany();
-
-    // Step 4: put counts into a map for quick lookup
     const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
       acc[row.chatId] = parseInt(row.unreadCount, 10);
       return acc;
     }, {});
 
-    // Step 5: attach unreadCount to each chat`
-    let data = chats.data.map(chat => ({
+    // 6️⃣ Attach unread counts
+    const finalData = dataWithMembers.map(chat => ({
       ...chat,
       unreadCount: countsMap[chat.id] || 0,
     }));
-    return {data, pagination:chats.pagination}
+
+    return { data: finalData, pagination: chats.pagination };
   } catch (error) {
-    this.logger.error(`Error finding chats with unread counts: ${error.message}`);
+    this.logger.error(`Error fetching chats and group members: ${error.message}`);
     return error;
   }
-
-
-    // try {
-  //   console.log({ user });
-
-  //   // Step 1: get chats
-  //   const { data, pagination } = await new APIFeatures(this.chatRepo, queryParams).getMany();
-
-  //   const ids = data.map(c => c.id);
-  //   if (!ids.length) return { data, pagination };
-
-  //   // Step 2: build query for unread counts
-  //   const qb = this.msgRepo
-  //     .createQueryBuilder('m')
-  //     .select('m.chatId', 'chatId')
-  //     .addSelect('COUNT(*)', 'unreadCount')
-  //     .where('m.isRead = false')
-  //     .andWhere('m.chatId IN (:...ids)', { ids });
-
-  //   // Step 3: add role-specific condition
-  //   if (user?.type === 'client') {
-  //     // count messages sent by therapists (ignore messages from same client)
-  //     qb.andWhere('m.therapistId IS NOT NULL');
-  //     qb.andWhere('m.clientId != :clientId', { clientId: user.id });
-  //   } else if (user?.type === 'therapist') {
-  //     // count messages sent by clients (ignore messages from same therapist)
-  //     qb.andWhere('m.clientId IS NOT NULL');
-  //     qb.andWhere('m.therapistId != :therapistId', { therapistId: user.id });
-  //   }
-
-  //   const counts = await qb.groupBy('m.chatId').getRawMany();
-
-  //   // Step 4: map counts
-  //   const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
-  //     acc[row.chatId] = parseInt(row.unreadCount, 10);
-  //     return acc;
-  //   }, {});
-
-  //   // Step 5: attach unreadCount to each chat
-  //   const datas = data.map(chat => ({
-  //     ...chat,
-  //     unreadCount: countsMap[chat.id] || 0,
-  //   }));
-
-  //   return { data: datas, pagination };
-  // } catch (error) {
-  //   this.logger.error(`Error finding chats with unread counts: ${error.message}`);
-  //   throw error;
-  // }
-}
-
-  // async findAll(queryParams?: FindAllQueryParams, user?:TokenPayload ) {
-  // try {
-  //   console.log({user})
-  //   // Step 1: get chats with API features
-  //   const {data, pagination} = await new APIFeatures(this.chatRepo, queryParams).getMany();
-  //   // Step 2: extract chat IDs
-  //   const ids = data.map(c => c.id);
-  //   if (!ids.length) return data;
-
-  //   // Step 3: count unread messages grouped by chatId
-  //   const counts = await this.msgRepo
-  //     .createQueryBuilder('m')
-  //     .select('m.chatId', 'chatId')
-  //     .addSelect('COUNT(*)', 'unreadCount')
-  //     .where('m.isRead = false')
-  //     .andWhere('m.chatId IN (:...ids)', { ids })
-  //     // .andWhere('m.senderId != :currentUserId', { currentUserId }) // exclude current user
-  //     .groupBy('m.chatId')
-  //     .getRawMany();
-
-  //   // Step 4: put counts into a map for quick lookup
-  //   const countsMap = counts.reduce<Record<string, number>>((acc, row) => {
-  //     acc[row.chatId] = parseInt(row.unreadCount, 10);
-  //     return acc;
-  //   }, {});
-
-  //   // Step 5: attach unreadCount to each chat`
-  //   let datas = data.map(chat => ({
-  //     ...chat,
-  //     unreadCount: countsMap[chat.id] || 0,
-  //   }));
-  //   return {data:datas, pagination}
-  // } catch (error) {
-  //   this.logger.error(`Error finding chats with unread counts: ${error.message}`);
-  //   return error;
-  // }
-  // }
+  }
 
   async getMessages(id: string, queryParams?: FindAllQueryParams){
     try {
@@ -303,6 +194,61 @@ export class ChatService {
       return error;
     }
   }
+  private SENSITIVE_KEYS = [
+    'password',
+    'refreshToken',
+    'firebaseToken',
+    'OTP',
+    'OTPExpires',
+    'email',
+    'phoneNumber',
+    'dob',
+    'lastSeenAt',
+    'createdAt',
+    'updatedAt',
+    'gender',
+    'isEmailAuthenticated',
+    'isPhoneNumberAuthenticated',
+    'status',
+    'gender',
+    'isLinked',
+    'emergencyContact',
+    'isVisible',
+    'address',
+    'bio',
+    'isInGroup',
+    'voIpToken'
+  ];
+
+  protected maskValue(value: any) {
+      // return "***"; // If you prefer masking
+      return undefined; // remove key entirely
+  }
+
+  private sanitize(obj: any): any {
+      if (obj === null || typeof obj !== 'object') return obj;
+
+      // Arrays → sanitize each element
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.sanitize(item));
+      }
+
+      // Objects
+      const sanitized: any = {};
+
+      for (const [key, value] of Object.entries(obj)) {
+        // Remove sensitive keys
+        if (this.SENSITIVE_KEYS.includes(key)) {
+          sanitized[key] = this.maskValue(value);
+          continue;
+        }
+
+        // Recursively sanitize nested objects
+        sanitized[key] = this.sanitize(value);
+      }
+
+      return sanitized;
+  }
 
   async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto) {
   try {
@@ -316,7 +262,7 @@ export class ChatService {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
     console.log({chat})
     const { content } = createMessageDto;
-    const msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
+    let msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
     if (!msg) throw new BadRequestException("Unable to send message");
 
@@ -348,7 +294,9 @@ export class ChatService {
         profile = chat.therapist?.profile? chat.therapist?.profile : chat.therapist?.avatar.toString()
       }
     }
-    console.log({tk:tokens})
+
+    msg = this.sanitize(msg);
+
       await this.firebaseService.sendPushNotification(
         tokens, 
         JSON.stringify(msg), 
@@ -361,37 +309,7 @@ export class ChatService {
     this.logger.error(`Error sending message: ${error.message}`);
     throw error;
   }
-}
-
-  // async createOneMessage(chatId: string, sender: TokenPayload, createMessageDto: CreateMessageDto){
-  //   try {
-  //     let client = null
-  //     let therapist = null
-
-  //     if (sender.type === UserTypes.CLIENT) client = sender.id 
-  //     if (sender.type === UserTypes.THERAPIST) therapist = sender.id
-      
-  //     const chat = await this.findOne(chatId,{fields:"client.*,therapist.*"})
-
-  //     const { content  } = createMessageDto
-  //     const msg = await chat.addMessage(this.msgRepo,content,therapist,client, this.chatRepo)
-
-  //     if(msg) {
-  //       let token: string[] = []
-  //       if (sender.type === UserTypes.CLIENT) token.push(chat.therapist.firebaseToken)
-  //       if( sender.type === UserTypes.THERAPIST) token.push(chat.client.firebaseToken)
-
-  //       await this.firebaseService.sendPushNotification(token, JSON.stringify(msg), SessionNotif.NEW_MESSAGE, content)
-  //     }
-  //     else {
-  //       throw new BadRequestException("Unable to send message")
-  //     }
-
-  //   } catch (error) {
-  //     this.logger.error(`Error finding all message: ${error.message}`);
-  //     return error;
-  //   }
-  // }
+  }
 
   async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto) {
   try {
@@ -448,48 +366,7 @@ export class ChatService {
   } catch (error) {
     throw error;
   }
-}
-
-  // async editOneMessage(chatId: string, id: string, sender: TokenPayload, updateMessageDto: UpdateMessageDto){
-  //   try {
-  //     let client = null
-  //     let therapist = null
-  //     if (sender.type == UserTypes.CLIENT) client = sender.type 
-  //     if (sender.type == UserTypes.THERAPIST) therapist = sender.type
-  //     // console.log({client, therapist, id})
-  //     const { content } = updateMessageDto
-  //     const msg = await  this.msgRepo.findOne({
-  //       where: {id},
-  //       relations:["client","therapist"]
-  //     });
-
-  //   if(!msg) throw new NotFoundException("Message Not Found")
-
-  //   if (msg.client.id !== client ||  msg.therapist.id !== therapist)
-  //     throw new MethodNotAllowedException("You can't edit a message in this chat")
-      
-  //   const chat = await this.findOne(chatId, {fields:"client.firebaseToken, therapist.firebaseToken"})
-  //   const editedMsg = await chat.editMessage(this.msgRepo,id,content)
-
-  //   console.log({chat})
-  //   console.log({editedMsg})
-
-  //   if(editedMsg) {
-  //       let token: string[] = []
-  //     if (sender.type == UserTypes.THERAPIST) token.push(chat.therapist.firebaseToken)
-      
-  //     if( sender.type == UserTypes.CLIENT) token.push(chat.client.firebaseToken)
-
-  //     await this.firebaseService.sendPushNotification(token, JSON.stringify(editedMsg), SessionNotif.EDIT_MESSAGE, content)
-      
-  //   }
-  //   else {
-  //     throw new BadRequestException("Error while editing the message")
-  //   }
-  //   } catch (error) {
-  //     throw  error;
-  //   }
-  // }
+  }
 
   async markMessagesAsRead(chatId: string, user: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
@@ -533,7 +410,7 @@ export class ChatService {
         token,
         JSON.stringify({ chatId, readBy, count: result.affected }),
         SessionNotif.MESSAGE_READ,
-        `Messages marked as read in chat ${chatId}`,
+        `Message read`,
       );
 
 
@@ -552,18 +429,28 @@ export class ChatService {
     }
   }
 
-  // update(id: string, updateChatDto: UpdateChatDto) {
-  //   return `This action updates a #${id} chat`;
-  // }
-
   async remove(id: string) {
     try {
-      return await this.chatRepo.delete(id);
+      return await this.chatRepo.update(id,{closed:true});
     } catch (error) {
       this.logger.error(`Error removing chat: ${error.message}`);
       return error;
     }
   }
+
+  async update(id: string, togglechatdTO: ToggleChatDto) {
+      const chat = await this.findOne(id);
+      Object.assign(chat, togglechatdTO);
+      try {
+        const updated = await this.chatRepo.save(chat);
+        this.logger.log(`Updated chat with ID: ${id}`);
+        return updated;
+      } catch (error) {
+        this.logger.error(`Error updating chatchat: ${error.message}`);
+        throw error;
+      }  
+    }
+  
 
   async call(id: string, caller: TokenPayload, createCallDto: CreateCallDto) {
     try {
@@ -573,23 +460,117 @@ export class ChatService {
       therapist: [],
       admin: [],
     };
-    const chat = await this.findOne(id, {fields:"client.*,therapist.*"});
+    let  isGroupCall = createCallDto.calleeIds && createCallDto.calleeIds.length > 0 ? true : false;
+    let chat;
+
+  if (!isGroupCall) {
+    chat = await this.findOne(id, { fields: "client.*,therapist.*" });
+
     const isCallerClient = chat.client.id === caller.id;
-    // const recipient = 
-    isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
-    const callerData = isCallerClient ? chat.client : chat.therapist ;
+    const callerData = isCallerClient ? chat.client : chat.therapist;
+    const calleeData = isCallerClient ? chat.therapist : chat.client;
+    const room = `chat_${id}`;
 
-    const room = createCallDto.room;
-    const isVideoCall = createCallDto.isVideoCall;
+    // Generate tokens uniquely for each participant
+    const callerToken = await this.livekitService.createToken(
+      callerData.firstName,
+      room,
+    );
+
+    const calleeToken = await this.livekitService.createToken(
+      calleeData.firstName,
+      room,
+    );
+
+    const payload = {
+      room,
+      callerData:this.sanitize(callerData),
+      chatId: id,
+      isVideoCall: createCallDto.isVideoCall,
+      isGroupCall: false,
+    };
+    console.log({payload})
+    // Send token only to the callee
     await this.firebaseService.sendPushNotification(
-      tokens, 
-      JSON.stringify({ room, callerData, chatId: id, isVideoCall }), 
-      SessionNotif.INCOMING_CALL, 
-      `Incoming ${isVideoCall ? 'video' : 'audio'} call from ${callerData.firstName}`,
-      callerData.profile? callerData.profile: callerData.avatar.toString() 
-    )
+      {
+        client: isCallerClient ? [] : [chat.client.firebaseToken],
+        therapist: isCallerClient ? [chat.therapist.firebaseToken] : [],
+        admin: [],
+      },
+      JSON.stringify({
+        ...payload,
+        token: calleeToken, // THE IMPORTANT PART
+      }),
+      SessionNotif.INCOMING_CALL,
+      `Incoming call from ${callerData.firstName}`,
+      callerData.profile || callerData.avatar.toString(),
+      {
+        isClient: !isCallerClient,
+        tokens: [calleeData.voIpToken],
+      }
+    );
 
-    return chat;
+    // Return caller's own token in API response
+    return {
+      room,
+      token: callerToken,
+      chat,
+    };
+  }
+
+  else {
+    chat = await this.findOne(id, { fields: "group.*, activeCallRoom" });
+    const room = `group_${id}`;
+    const callerData = await this.therapistService.findOne(caller.id);
+
+    const callerToken = await this.livekitService.createToken(
+      callerData.firstName,
+      room,
+    );
+    
+    chat.activeCallRoom = room;
+    await this.chatRepo.save(chat);
+    const groupMembers = chat.group;
+    const callees = groupMembers.filter(c => createCallDto.calleeIds.includes(c.id));
+
+    const notifications = [];
+
+    for (const callee of callees) {
+      const calleeToken = await this.livekitService.createToken(
+        callee.firstName,
+        room,
+      );
+
+      notifications.push(
+        this.firebaseService.sendPushNotification(
+          {
+            client: [callee.firebaseToken],
+            therapist: [],
+            admin: [],
+          },
+          JSON.stringify({
+            room,
+            callerData:this.sanitize(callerData),
+            chatId: id,
+            isVideoCall: createCallDto.isVideoCall,
+            isGroupCall: true,
+            token: calleeToken, 
+          }),
+          SessionNotif.INCOMING_GROUP_CALL,
+          `Incoming group call from ${callerData.firstName}`,
+          callerData.profile || callerData.avatar.toString(),
+        )
+      );
+    }
+
+    await Promise.all(notifications);
+
+    return {
+      room,
+      token: callerToken,  // caller's token
+      chat,
+    };
+  }
     } catch (error) {
       this.logger.error(`Error finding chat for call: ${error.message}`);
       throw error;
@@ -597,20 +578,55 @@ export class ChatService {
   }
 
   async endCall(chatId: string, caller: TokenPayload) {
-    const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
-    const isCallerClient = chat.client.id === caller.id;
+    const chat = await this.findOne(chatId, {
+      fields: "client.*, therapist.*, group.*, activeCallRoom"
+    });
+
+    // ── Group chat ──
+    if (chat.group?.length) {
+      if (caller.type === UserTypes.CLIENT) {
+        return { success: true, status: 'left' };
+      }
+
+      chat.activeCallRoom = null;
+      await this.chatRepo.save(chat);
+
+      const tokens: Tokens = {
+        client: chat.group
+          .filter(c => c.firebaseToken)
+          .map(c => c.firebaseToken),
+        therapist: [],
+        admin: [],
+      };
+
+      await this.firebaseService.sendPushNotification(
+        tokens,
+        JSON.stringify({ chatId, callerData: this.sanitize(chat.therapist) }),
+        SessionNotif.CALL_ENDED,
+        `Call ended by ${chat.therapist.firstName}`,
+        chat.therapist.profile ?? chat.therapist.avatar?.toString()
+      );
+
+      return { success: true, status: 'ended' };
+    }
+
+    // ── Individual chat (unchanged) ──
+    const isCallerClient = chat.client?.id === caller.id;
     const tokens:Tokens = {
       client: [],
       therapist: [],
       admin: [],
     };
-    // const recipient = 
+
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
     const callerData = isCallerClient ? chat.client : chat.therapist;
 
+    chat.activeCallRoom = null;
+    await this.chatRepo.save(chat);
+
     await this.firebaseService.sendPushNotification(
       tokens,
-      JSON.stringify({ chatId, callerData }),
+      JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
       SessionNotif.CALL_ENDED,
       `Call ended by ${callerData.firstName}`,
       callerData.profile? callerData.profile: callerData.avatar.toString()
@@ -619,6 +635,27 @@ export class ChatService {
     return { success: true, status: 'ended' };
   }
 
+  async joinCall(id: string, user: TokenPayload) {
+    const chat = await this.findOne(id, { fields: "group.*,client.*,therapist.*, activeCallRoom" });
+  
+    if (!chat.activeCallRoom) {
+      throw new BadRequestException("No active call in this chat");
+    }
+  
+    const room = chat.activeCallRoom;
+    let actor = null
+    if (user.type === UserTypes.CLIENT) {
+      actor = await this.clientService.findOne(user.id); // or therapist
+    }
+    if (user.type === UserTypes.THERAPIST) {
+      actor = await this.therapistService.findOne(user.id); // or therapist
+    }
+    const token = await this.livekitService.createToken(actor.firstName, room);
+  
+    return { token, room };
+
+  }
+  
   async rejectCall(chatId: string, caller: TokenPayload) {
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*" });
     const isCallerClient = chat.client.id === caller.id;
@@ -630,12 +667,12 @@ export class ChatService {
     };
 
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
+    console.log("reject notif sent to: ",{tokens, isCallerClient})
     
     const callerData = isCallerClient ? chat.client : chat.therapist;
-
     await this.firebaseService.sendPushNotification(
       tokens,
-      JSON.stringify({ chatId, callerData }),
+      JSON.stringify({ chatId, callerData:this.sanitize(callerData) }),
       SessionNotif.CALL_REJECTED,
       `Call rejected by ${callerData.firstName}`,
       callerData.profile? callerData.profile: callerData.avatar.toString()
@@ -644,10 +681,10 @@ export class ChatService {
     return { success: true, status: 'rejected' };
   }
 
-  async addToChat(sessionId: string, dto: AddToChatDto) {
+  async addToChat(chatId: string, dto: AddToChatDto) {
       const { groupClients } = dto;
   
-      const chat = await this.findOne(sessionId, { fields: 'client.*, group.*, therapist.*' });
+      const chat = await this.findOne(chatId, { fields: 'client.*, group.*, therapist.*' });
   
       if(chat.client != null) {
         throw new BadRequestException('Cannot add clients to a 1-on-1 chat');
@@ -667,5 +704,5 @@ export class ChatService {
       chat.group = [...chat.group, ...newClients];
       console.log(chat.group)
       return await this.chatRepo.save(chat);
-    }
+  }
 }

@@ -118,7 +118,7 @@ export class TelebirrService {
     };
     const env = process.env.NODE_ENV
     let biz = {
-      notify_url: `http://195.201.134.129/${env}/api/v1/payment/telebirr/verify/${this.subId}`,
+      notify_url: `https://app.navigo.et/${env}/api/v1/telebirr/verify/${this.subId}`,
       appid: this.configService.get<string>('MERCHANT_APP_ID'),
       merch_code: this.configService.get<string>('MERCHANT_CODE'),
       merch_order_id:this.createMerchantOrderId(),
@@ -131,7 +131,7 @@ export class TelebirrService {
       payee_identifier: this.configService.get<string>('MERCHANT_CODE'),
       payee_identifier_type: "04",
       payee_type: "5000",
-      redirect_url: "https://ethiodelivery.com/",
+      redirect_url: "https://google.com/",
       callback_info: "From web",
     };
     req['biz_content'] = biz;

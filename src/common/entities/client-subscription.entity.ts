@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Column, Entity, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 import { SubscriptionStatus } from '../constants';
 import { Client } from './client.entity';
 import { CommonEntity } from './common.entity';
@@ -9,7 +9,6 @@ import { Subscription } from './subscription.entity';
 import { Therapist } from './therapist.entity';
 
 @Entity()
-@Unique(['client', 'subscription']) // prevent duplicates
 export class ClientSubscription extends CommonEntity {
   
   @ApiProperty({ type: () => Client })
@@ -28,9 +27,20 @@ export class ClientSubscription extends CommonEntity {
   @OneToMany(() => Payment, payment => payment.subscription, { cascade: true })
   payment: Payment[];
 
+  @ApiProperty({ example: 0.4, description: 'percentage at time of subscription (if applicable)' })
+  @Column('float', { nullable: true })
+  therapistPercentage: number;
+
   @ApiProperty({ type: () => Session, isArray: true })
   @OneToMany(() => Session, session => session.subscription, { cascade: true, eager: true })
   session: Session[];
+
+  @ManyToMany(() => Session, (session) => session.groupSubscription, { cascade: true, eager: true })
+  groupSessions: Session[]; // This will now populate from the join table
+  // chat 
+  // pref
+  // modal
+  // match
 
   @ApiProperty({ enum: SubscriptionStatus, description: 'Current subscription status' })
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.INACTIVE })

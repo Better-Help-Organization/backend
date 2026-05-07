@@ -19,7 +19,7 @@ export class TelebirrPayDto {
   subscriptionId: string;
 
   @ApiProperty({ description: 'Payment amount', example: 499.99 })
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0, { message: 'amount must be a positive number' })
   amount: number;

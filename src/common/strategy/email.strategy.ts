@@ -61,27 +61,25 @@ export class EmailPwdStrategy extends PassportStrategy(Strategy, 'email-pwd') {
   }
 
   async validate(req: any, email: string, password: string) {
-    const { firebaseToken } = req.body;
+    const { firebaseToken, voIpToken } = req.body;
 
     if (!firebaseToken) {
       throw new BadRequestException('Firebase token is required.');
     }
-
+    console.log("body.....",req.body)
     // Determine user type based on request path
     const path = req.path.toLowerCase();
     let userType: UserTypes;
 
-    if (path.includes('client')) {
-      userType = UserTypes.CLIENT;
-    } else if (path.includes('therapist')) {
-      userType = UserTypes.THERAPIST;
-    } else if (path.includes('admin')) {
+
+    if (path.includes('admin')) {
       userType = UserTypes.ADMIN;
-    } else {
+    } 
+    else {
       throw new BadRequestException('Invalid login path');
     }
 
-    const user = await this.authService.loginUser(email, password, firebaseToken, userType);
+    const user = await this.authService.loginUser(email, password, firebaseToken, userType, voIpToken);
 
     if (!user) {
       throw new UnauthorizedException(`Invalid credentials for ${userType}`);
@@ -105,7 +103,7 @@ export class PhonePwdStrategy extends PassportStrategy(Strategy, 'phone-pwd') {
   }
 
   async validate(req: any, phoneNumber: string, password: string) {
-    const { firebaseToken } = req.body;
+    const { firebaseToken, voIpToken } = req.body;
 
     if (!firebaseToken) {
       throw new BadRequestException('Firebase token is required.');
@@ -125,7 +123,7 @@ export class PhonePwdStrategy extends PassportStrategy(Strategy, 'phone-pwd') {
       throw new BadRequestException('Invalid login path');
     }
 
-    const user = await this.authService.loginUserPhone(phoneNumber, password, firebaseToken, userType);
+    const user = await this.authService.loginUserPhone(phoneNumber, password, firebaseToken, userType, voIpToken);
 
     if (!user) {
       throw new UnauthorizedException(`Invalid credentials for ${userType}`);

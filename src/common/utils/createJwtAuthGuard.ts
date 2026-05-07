@@ -1,11 +1,11 @@
 
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { UserTypes } from '../constants';
+import { AdminRoles, BaseStatus, UserTypes } from '../constants';
 
 // TODO: add this to the guards
 type IArgs = {
-  roles?: UserTypes[]
+  role?: AdminRoles[]
   // status?: BaseStatus[]
 }
 
@@ -21,21 +21,13 @@ export function createJwtAuthGuard(strategy: string) {
   
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const isAuthenticated = await super.canActivate(context);
-        console.log({isAuthenticated})
-
-      // const request = context.switchToHttp().getRequest();
-      // const user = request.user as TokenPayload;
-      // console.log({user})
-      // // ✅ Always allow ADMIN users to pass any guard
-      // if (user?.type === UserTypes.ADMIN) {
-      //   return true;
-      // }
 
       if (!isAuthenticated)  return false;
 
-      // const user = context.switchToHttp().getRequest().user;
-      // if (this.args?.roles && this.args?.roles.length > 0) {
-      //   if (!this.args.roles.includes(user?.kind)) return false;
+      const user  = context.switchToHttp().getRequest().user;
+      // TokenPayload → Admin data
+      // if (this.args?.role && this.args?.role.length > 0) {
+      //   if (!this.args.role.includes(user?.kind)) return false;
       // }
 
       // if (this.args?.status && this.args?.status.length > 0) {
@@ -45,14 +37,21 @@ export function createJwtAuthGuard(strategy: string) {
 
       // const request = context.switchToHttp().getRequest();
       // const user = request.user as TokenPayload;
-      // console.log({user})
       // // ✅ Always allow ADMIN users to pass any guard
-      // if (user?.type === UserTypes.ADMIN) {
-      //   return true;
-      // }
-
-      return true; // Allow access if all checks pass or if no role or status is required
-        
+      
+      if (user?.type === UserTypes.ADMIN) {
+        if (user.role === AdminRoles.SUPER) return true   
+          if (user.status !== BaseStatus.ACTIVE) return false   
+            if (this.args?.role && this.args.role.length > 0) {
+              if (!this.args.role.includes(user?.role)) {
+                // NOTICE: Forbidden messages inside of the guards will be masked by Forbidden resource
+                throw new ForbiddenException(
+                  `${user?.role} is not allowed to access this resource`
+                );
+              }
+            }
+          }
+      return true; // Allow access if all checks pass or if no role or status is required  
     }
   }
     return  JwtAuthGuardStrategy

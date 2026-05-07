@@ -1,6 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+</head>
+<body>
+    <p>Redirecting to payment page...</p>
+    
+    <script>
+        // Get URL parameter from Flutter app
+        function getUrlParameter(name) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+            const results = regex.exec(window.location.href);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        // Check if URL parameter exists
+        const paymentUrl = getUrlParameter('url');
+        
+        if (paymentUrl) {
+            // Redirect immediately
+            window.location.replace(paymentUrl);
+        } else {
+            // Optionally handle missing URL
+            document.body.innerHTML = '<p>Error: No payment URL provided</p>';
+        }
+    </script>
+</body>
+</html>
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8" />
   <title>Redirecr to telebirr payment</title>
       <link
@@ -53,4 +87,4 @@
 
   <p id="status">Redirecting</p>
 </body>
-</html>
+</html> -->

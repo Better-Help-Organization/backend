@@ -15,6 +15,7 @@ import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { ModalService } from 'src/modal/modal.service';
+import { ParameterModule } from 'src/parameter/parameter.module';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -27,6 +28,7 @@ import { AdminStatisticsService } from './admin.stats';
       Subscription, Match, Mood, Diary, Modal, ClientSubscription, Level, Preference,
       Notification, Therapist]),
       FirebaseModule,
+      ParameterModule
   ],  
   controllers: [AdminController],
   providers: [AdminService, AdminStatisticsService, ModalService, SubscriptionService],

@@ -1,12 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiQuery } from '@nestjs/swagger';
-import { TokenPayload } from 'src/common/constants';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { AcceptMatchDto } from './dto/accept-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
 import { MatchService } from './match.service';
 
 @Controller('match')
@@ -14,12 +16,21 @@ export class MatchController {
   constructor(private readonly matchService: MatchService) {}
 
   @Post()
-  @UseGuards(ClientJwtAuthGuard)
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard()
+  )
   async create(
-    @CurrentUser() client: TokenPayload,
-    @Body() createMatchDto: CreateMatchDto
+    @AllowAdminAccess(UserTypes.CLIENT) client: TokenPayload,
+    @Body() createMatchDto: CreateMatchDto,
+    @Query('mockId') mockId?: string
   ) {
-    return this.matchService.create(client, createMatchDto);
+    return this.matchService.create(client, createMatchDto, mockId);
   }
 
   @Post('/accept')
@@ -33,11 +44,11 @@ export class MatchController {
     new AdminJwtAuthGuard()
   )
   async accept(
-    @CurrentUser() therapist: TokenPayload,
+    @AllowAdminAccess(UserTypes.THERAPIST) therapist: TokenPayload,
     @Body() acceptMatchDto: AcceptMatchDto,
     @Query('mockId') mockId?: string
   ) {
-    return await this.matchService.acceptMatch(therapist, acceptMatchDto);
+    return await this.matchService.acceptMatch(therapist, acceptMatchDto, mockId);
   }
 
 
@@ -68,11 +79,11 @@ export class MatchController {
     return this.matchService.findOne(id, queryParams);
   }
 
-  // @Patch(':id')
-  // @UseGuards(ClientJwtAuthGuard)
-  // update(@CurrentUser() client: TokenPayload, @Param('id') id: string, @Body() updateMatchDto: UpdateMatchDto) {
-  //   return this.matchService.update(client, id, updateMatchDto);
-  // }
+  @Patch(':id')
+  @UseGuards(AdminJwtAuthGuard)
+  update(@CurrentUser() admin: TokenPayload, @Param('id') id: string, @Body() updateMatchDto: UpdateMatchDto) {
+    return this.matchService.update(admin, id, updateMatchDto);
+  }
 
   @Delete(':id')
   // @UseGuards(ClientJwtAuthGuard)

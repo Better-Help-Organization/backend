@@ -10,6 +10,7 @@ import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerModule } from 'src/logger/logger.module';
+import { ParameterModule } from 'src/parameter/parameter.module';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
 
@@ -17,7 +18,8 @@ import { SubscriptionService } from './subscription.service';
   imports: [
     TypeOrmModule.forFeature([Client, Level, Subscription, ClientSubscription, Notification, Therapist, Preference]),
     LoggerModule,
-    FirebaseModule
+    FirebaseModule,
+    ParameterModule
   ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService, FirebaseService],

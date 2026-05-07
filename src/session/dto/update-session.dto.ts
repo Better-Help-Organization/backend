@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { SessionStatus, SessionType } from 'src/common/constants';
 import { IsFutureDateOrDateTime } from 'src/common/validators/is-future-date.validator';
 
@@ -116,3 +116,58 @@ export class AssignSessionDto {
   @IsUUID()
   therapist?: string;
 }
+
+export class UpdateGroupSessionNoteEntry {
+  @ApiProperty({
+    description: 'UUID of the client belonging to this group session',
+    example: '8e0c10f7-836b-4dfe-a21a-3b77e869c5c1',
+  })
+  @IsUUID()
+  clientId: string;
+
+  @ApiProperty({
+    description: 'The note text assigned to the client for this session',
+    example: 'Client participated actively and showed improvement.',
+  })
+  @IsString()
+  note: string;
+}
+
+export class UpdateGroupSessionNote {
+  @ApiProperty({
+    description: 'List of notes for each client in the group session',
+    type: [UpdateGroupSessionNoteEntry],
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateGroupSessionNoteEntry)
+  notes: UpdateGroupSessionNoteEntry[];
+}
+
+// export class BatchUpdateSessionDto {
+//   @ApiProperty({
+//     description: 'Common ID for grouped sessions',
+//     example: 'd43b2298-5437-4fee-a4c2-b4d6b47a5519',
+//   })
+//   @IsUUID()
+//   commonId: string;
+
+//   @ApiProperty({
+//     description: 'Sessions to exclude from update',
+//     required: false,
+//     type: [String],
+//   })
+//   @IsOptional()
+//   @IsArray()
+//   @IsUUID('all', { each: true })
+//   excludedSessionIds?: string[];
+
+//   // Reuse existing DTO
+//   @ApiProperty({
+//     type: UpdateSessionDto,
+//     description: 'Fields to update across sessions',
+//   })
+//   @ValidateNested()
+//   @Type(() => UpdateSessionDto)
+//   updates: UpdateSessionDto;
+// }

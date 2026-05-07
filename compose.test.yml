@@ -17,6 +17,7 @@ services:
 
 volumes:
   test_db_data:
+  test_redis_data:
   test_node_modules:
 
 

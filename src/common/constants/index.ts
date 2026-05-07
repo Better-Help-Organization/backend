@@ -13,6 +13,12 @@ export enum UserTypes {
     THERAPIST = "therapist"
 }
 
+export enum AdminRoles {
+    SUPER = "super",
+    DISPATCH = "dispatch",
+    SUPPORT = "support"
+}
+
 export enum BaseStatus {
     INACTIVE = "inactive",
     PENDING = "pending",
@@ -86,7 +92,8 @@ export interface TokenPayload {
     id: string
     name: string
     status: BaseStatus,
-    type: UserTypes
+    type: UserTypes,
+    role?: AdminRoles
 }
 
 export enum ValidFolders {
@@ -180,18 +187,19 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   SCHEDULED: { code: "1", title: 'Session scheduled', showNotification: true },
   NEW_MESSAGE: { code: "2", title: 'New message', showNotification: true },
   EDIT_MESSAGE: { code: "3", title: 'Edit message', showNotification: true },
-  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: false },
+  MESSAGE_READ: { code: "4", title: 'Message Read', showNotification: true },
   INCOMING_CALL: { code: "5", title: 'Incoming Call', showNotification: true },
   CALL_ENDED: { code: "6", title: 'Call Ended', showNotification: true },
   CALL_REJECTED: { code: "7", title: 'Call Rejected', showNotification: true },
-  CHAT: { code: "8", title: 'Added to Chat', showNotification: false },
+  CHAT: { code: "8", title: 'Added to Chat', showNotification: true },
   // Match-related notifications
   MATCH_ACCEPTED: { code: '9', title: 'Match accepted', showNotification: true  },
   MATCH_TAKEN: { code: '10', title: 'Match already taken', showNotification: true  },
+  NEW_MATCH: { code: '29', title: 'New client match', showNotification: true },
   STATUS_CHANGED: { code: '11', title: 'Status Update', showNotification: true  },
   MATCH_REQUEST: { code: '12', title: 'New match request', showNotification: true  },
   TAKEN: { code: "13", title: 'Session slot is no longer available', showNotification: true },
-  MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: false },
+  MESSAGE_REMOVED: { code: "14", title: 'Message has been deleted', showNotification: true },
   CONFIRMED: { code: "15", title: "Upcoming confirmed sessions with client", showNotification: true },
   // 🔔 Scheduled notifications
   PENDING_SESSION_DELETED: { code: "16", title: "🗓️ Pending session removed", showNotification: true, },
@@ -204,7 +212,17 @@ export const SessionNotif: Record<string, { code: string; title: string; showNot
   SUBSCRIPTION_EXPIRED: { code: "23", title: "❌ Subscription expired", showNotification: true },
   GROUP_SCHEDULED: { code: "24", title: 'Group Session Created', showNotification: true },
   ALL_SESSIONS_COMPLETED: { code: "25", title: "All Sessions Completed", showNotification: true },
-
+  // 🆕 Therapist reassignment notifications
+  TH_REASSIGNED_CLIENT: { code: "26", title: "Therapist Reassigned", showNotification: true },
+  TH_REASSIGNED_OLD_THERAPIST: { code: "27", title: "Client Reassigned", showNotification: true },
+  TH_REASSIGNED_NEW_THERAPIST: { code: "28", title: "New Client Assigned", showNotification: true },
+  // Therapist attendance
+  THERAPIST_ATTENDANCE_MARKED: { code: "29", title: "Attendance has been marked", showNotification: true },
+  INCOMING_GROUP_CALL: { code: "30", title: 'Incoming  Group Call', showNotification: true },
+  RE_SCHEDULED: { code: "31", title: 'Session re-scheduled', showNotification: true },
+  GROUP_SESSION_ADDED: { code: "32", title: 'Added to  group session', showNotification: true },
+  GROUP_SESSION_UPDATED: { code: "33", title: 'Group members updated', showNotification: true },
+  GROUP_SESSION_REMOVED: { code: "34", title: 'Removed from group session', showNotification: true },
 } as const;
 
 export enum DefaultParameters {
@@ -212,7 +230,13 @@ export enum DefaultParameters {
   NOTIFICATION_EXPIRY="notification expiry",
   MATCH_EXPIRY_IN_MINUTES="MATCH expiry",
   PENDING_SESSION_EXPIRY_IN_MINUTES="pending session expiry in minutes",
-  SESSION_HOUR="SESSION_HOUR"
+  SESSION_HOUR="SESSION_HOUR",
+  ADVANCED_PRICE_PERCENTAGE="ADVANCED_PRICE_PERCENTAGE",
+  ASSOCIATE_PRICE_PERCENTAGE="ASSOCIATE_PRICE_PERCENTAGE",
+  MODERATE_PRICE_PERCENTAGE="MODERATE_PRICE_PERCENTAGE",
+  COUPLE_PRICE_PERCENTAGE="COUPLE_PRICE_PERCENTAGE",
+  GROUP_PRICE_PERCENTAGE="GROUP_PRICE_PERCENTAGE"
+
 }
 
 export type SessionNotifValue = (typeof SessionNotif)[keyof typeof SessionNotif];
@@ -224,7 +248,7 @@ export const FILE_UPLOAD_KEY = 'file';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_FILE_COUNT = 15;
-export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf','  "application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const Tmp_Files_Dir = join(process.cwd(),'uploads','tmp')

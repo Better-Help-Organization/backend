@@ -6,8 +6,14 @@ import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { AuthEnforcedQueryParams, GroupScope } from 'src/common/decorators/auth-enforced-query-decorator';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
+import { OwnershipCheck } from 'src/common/decorators/ownership-check.decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
 import { StatusDto } from 'src/common/dto/status.dto';
+import { Diary } from 'src/common/entities/diary.entity';
+import { Match } from 'src/common/entities/match.entity';
+import { Notification } from 'src/common/entities/notification.entity';
+import { Session } from 'src/common/entities/session.entity';
+import { GroupScopeGuard } from 'src/common/guard/group-scope,guard';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { UploadInterceptor } from 'src/common/interceptors/upload.interceptor';
 import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -67,10 +73,10 @@ export class ClientController {
 
   @ApiFindAllQueryParams()
   @Get('me/chats')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
   async findMyChats(
-    @CurrentUser() client: TokenPayload,
     @GroupScope() _gs: boolean,
+    @CurrentUser() client: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
     return this.chatService.findAll(queryParams,client );
@@ -78,7 +84,8 @@ export class ClientController {
 
   @ApiFindOneQueryParams()
   @Get('me/chats/:id')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
+  // @OwnershipCheck(Chat, UserTypes.CLIENT)
   async findOneChat(
     @CurrentUser() _: TokenPayload,
     @GroupScope() _gs: boolean,
@@ -122,6 +129,7 @@ export class ClientController {
   @ApiFindOneQueryParams()
   @Get('me/notifications/:id')
   @UseGuards(ClientJwtAuthGuard)
+  @OwnershipCheck(Notification, UserTypes.CLIENT)
   async findOneNotification(
     @CurrentUser() _: TokenPayload,
     @GroupScope() _gs: boolean,
@@ -144,6 +152,7 @@ export class ClientController {
   @ApiFindOneQueryParams()
   @Get('me/matches/:id')
   @UseGuards(ClientJwtAuthGuard)
+  @OwnershipCheck(Match, UserTypes.CLIENT)
   async findOneMatch(
     @CurrentUser() _: TokenPayload,
     @AuthEnforcedQueryParams(FindOneQueryParams) queryParams,
@@ -154,8 +163,9 @@ export class ClientController {
 
   @ApiFindAllQueryParams()
   @Get('me/sessions')
-  @UseGuards(ClientJwtAuthGuard)
+  @UseGuards(ClientJwtAuthGuard, GroupScopeGuard)
   async findMySession(
+    @GroupScope() _gs: boolean,
     @CurrentUser() _: TokenPayload,
     @AuthEnforcedQueryParams(FindAllQueryParams) queryParams,
   ) {
@@ -164,6 +174,7 @@ export class ClientController {
 
   @ApiFindOneQueryParams()
   @Get('me/sessions/:id')
+  @OwnershipCheck(Session, UserTypes.CLIENT)
   @UseGuards(ClientJwtAuthGuard)
   async findOneSession(
     @CurrentUser() _: TokenPayload,
@@ -195,6 +206,7 @@ export class ClientController {
 
   @ApiFindOneQueryParams()
   @Get('me/diary/:id')
+  @OwnershipCheck(Diary, UserTypes.CLIENT)
   @UseGuards(ClientJwtAuthGuard)
   async findOneDiary(
     @CurrentUser() _: TokenPayload,

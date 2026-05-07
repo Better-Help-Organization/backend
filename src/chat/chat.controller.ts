@@ -1,31 +1,43 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
-import { TokenPayload } from 'src/common/constants';
+import { ApiQuery } from '@nestjs/swagger';
+import { ClientService } from 'src/client/client.service';
+import { TokenPayload, UserTypes } from 'src/common/constants';
+import { AllowAdminAccess } from 'src/common/decorators/allow-admin-acess';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { ApiFindAllQueryParams, ApiFindOneQueryParams } from 'src/common/middlewares/api-features.dto';
+import { LivekitService } from 'src/livekit/livekit.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { CreateMessageDto } from '../session/dto/message/create-message.dto';
 import { ChatService } from './chat.service';
 import { AddToChatDto } from './dto/add-chat.dto';
 import { CreateCallDto } from './dto/create-call.dto';
 import { CreateChatDto } from './dto/create-chat.dto';
+import { ToggleChatDto } from './dto/toggle-chat.dto';
 
 @Controller('chat')
 export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly logger: LoggerService,
-    
+    private readonly livekitService: LivekitService,
+    private readonly clientService: ClientService
   ) {}
 
   @DynamicGuards(
-    // new ClientJwtAuthGuard(),
+    new AdminJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
+  @ApiQuery({ 
+      name: 'mockId', 
+      required: false, 
+      type: String, 
+    })
   @Post()
   async create(
-    @CurrentUser() user:TokenPayload, 
+    @AllowAdminAccess(UserTypes.THERAPIST) user: TokenPayload,
+    @Query('mockId') mockId: string,
     @Body() createChatDto: CreateChatDto) {
        return this.chatService.create(user.id, createChatDto);  
   }
@@ -36,11 +48,11 @@ export class ChatController {
     new TherapistJwtAuthGuard()
   )
   addToSession(
-    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
     @CurrentUser() user: TokenPayload,
     @Body() addToSession: AddToChatDto
   ) {
-    return this.chatService.addToChat(sessionId, addToSession);
+    return this.chatService.addToChat(chatId, addToSession);
   }
 
   @DynamicGuards(
@@ -140,22 +152,20 @@ export class ChatController {
   }
   }
 
-  @Post('call/:id')
+
+
+  @Post("call/:id/join")
   @DynamicGuards(
     new ClientJwtAuthGuard(),
     new TherapistJwtAuthGuard(),
   )
-  async call(
-    @Param('id') id: string,
-    @CurrentUser() user: TokenPayload,
-    @Body() createCallDto: CreateCallDto
-  ) {
-   try{
-    return await this.chatService.call(id,user, createCallDto);
-  } catch (error) {
-    this.logger.error(`Error finding chat: ${error.message}`);
-    return error;
-  }
+  async joinCall(@Param('id') id: string, @CurrentUser() user: TokenPayload) {
+      try{
+        return await this.chatService.joinCall(id,user);
+      } catch (error) {
+      this.logger.error(`Error joining call: ${error.message}`);
+      return error;
+    }
   }
 
   @Post('call/end/:id')
@@ -197,6 +207,32 @@ export class ChatController {
   //   return this.chatService.update(id, updateChatDto);
   // }
 
+    @Post('call/:id')
+  @DynamicGuards(
+    new ClientJwtAuthGuard(),
+    new TherapistJwtAuthGuard(),
+  )
+  async call(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+    @Body() createCallDto: CreateCallDto
+  ) {
+   try{
+      return await this.chatService.call(id,user, createCallDto);
+    } catch (error) {
+      this.logger.error(`Error finding chat: ${error.message}`);
+      return error;
+    }
+  }
+
+  @Patch('toggleChat/:id')
+  async update(@Param('id') id: string, @Body() updateChatDto: ToggleChatDto) {
+    return this.chatService.update(id, updateChatDto);
+  }
+
+  @DynamicGuards(
+    new AdminJwtAuthGuard()
+  )
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return this.chatService.remove(id);

@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'bcryptjs';
-import { BaseStatus, LangCode, LevelType, ModalName, SubscriptionType } from 'src/common/constants';
+import { AdminRoles, BaseStatus, LangCode, LevelType, ModalName, SubscriptionType } from 'src/common/constants';
 import { onboardingData } from 'src/common/default-data/onboarding.default';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Language } from 'src/common/entities/language.entity';
@@ -62,6 +62,7 @@ export class DbService implements OnModuleInit {
     const admin = {
     name: "Admin",
     email,
+    role: AdminRoles.SUPER,
     isEmailAuthenticated: true,
     password: hashedPassword,
     status: BaseStatus.ACTIVE,

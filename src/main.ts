@@ -30,6 +30,12 @@ import { VERSION } from './common/constants';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
+
+  if(false){
+    console.log = () => {};
+    console.debug = () => {};
+    console.info = () => {};
+  }
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix(`/api`);

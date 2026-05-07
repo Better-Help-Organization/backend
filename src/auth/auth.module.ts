@@ -17,6 +17,8 @@ import * as jwtStrategies from 'src/common/strategy/jwt.strategy';
 import { AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy } from 'src/common/strategy/jwt.strategy';
 import { EmailModule } from 'src/email/email.module';
 import { TherapistModule } from 'src/therapist/therapist.module';
+import { AccountDeletionController } from './account-deletion.controller';
+import { AccountDeletionService } from './account-deletion.service';
 
 @Module({
   imports: [
@@ -27,7 +29,7 @@ import { TherapistModule } from 'src/therapist/therapist.module';
     ,EmailModule
     ,TypeOrmModule.forFeature([Admin, Client, Therapist])
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AccountDeletionController],
   providers: [
     AuthService,
     EmailStrategy,
@@ -35,9 +37,10 @@ import { TherapistModule } from 'src/therapist/therapist.module';
     PhonePwdStrategy,
     AdminJwtStrategy, ClientJwtStrategy, TherapistJwtStrategy,
     GoogleStrategy,
+    AccountDeletionService,
     ...Object.values(jwtStrategies),
     ...Object.values(jwtRereshStrategies), 
   ],
-  exports: [AuthService]
+  exports: [AuthService, AccountDeletionService]
 })
 export class AuthModule {}

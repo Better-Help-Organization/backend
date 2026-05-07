@@ -1,7 +1,7 @@
 # Default configurations
 # Add these new migration commands to your Makefile
 MIGRATIONTAG=-migration
-ENVIRONMENT ?= test
+ENVIRONMENT ?= dev
 SERVICE ?= app
 
 DOCKERFILE_DEV = Dockerfile.dev

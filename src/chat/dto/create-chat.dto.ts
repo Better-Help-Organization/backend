@@ -1,9 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { RequiredIfPropertyMissing } from 'src/common/validators/required-if.validator';
 
 export class CreateChatDto {
 
+
+  @ApiProperty({
+    description: 'Name of the group',
+    example: 'Anxiety Support Group',
+  })
+  @IsOptional()
+  @IsString()
+  groupName: string;
+  
   @ApiProperty({
     description: 'Array of client UUIDs for group sessions',
     example: [

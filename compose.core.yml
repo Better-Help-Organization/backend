@@ -3,6 +3,7 @@ services:
   haproxy:
     image: haproxy:latest
     container_name: haproxy
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -13,9 +14,6 @@ services:
       - test_default
     volumes:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-    depends_on:
-      - caddy
-      - traefik
 
   traefik:
     image: traefik:v2.10

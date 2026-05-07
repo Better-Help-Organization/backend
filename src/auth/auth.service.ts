@@ -6,7 +6,7 @@ import { compare, hash } from 'bcryptjs';
 import * as speakeasy from 'speakeasy';
 import { AdminService } from 'src/admin/admin.service';
 import { ClientService } from 'src/client/client.service';
-import { BaseStatus, TokenPayload, UserTypes } from 'src/common/constants';
+import { TokenPayload, UserTypes } from 'src/common/constants';
 import { Admin } from 'src/common/entities/admin.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -63,7 +63,7 @@ export class AuthService {
     }
   }
 
-  private _generateTokens({ id, type, status, name }: TokenPayload): [string, string, Date, Date] {
+  private _generateTokens({ id, type, status, name, role }: TokenPayload): [string, string, Date, Date] {
     
     const expiresAccessToken = new Date();
     
@@ -87,7 +87,7 @@ export class AuthService {
       ),
     );
   
-    const tokenPayload: TokenPayload = { id, type, status, name };
+    const tokenPayload: TokenPayload = { id, type, status, name, role };
   
     const accessTokenSecret = this._getAccessTokenSecret(type);
     const refreshTokenSecret = this._getRefreshTokenSecret(type);
@@ -146,6 +146,36 @@ export class AuthService {
         return this.adminService.getRepository();
       default:
         throw new BadRequestException('Unknown user type: ' + type);
+    }
+  }
+
+  private async clearClaimedTokensInRepo(
+    repo: Repository<any>,
+    currentUserId: string,
+    firebaseToken?: string | null,
+    voIpToken?: string | null,
+  ) {
+    // A device token should belong to only one account in a given user table.
+    // Keep the current user intact and clear the same token from every other row.
+    if (firebaseToken) {
+      await repo
+        .createQueryBuilder()
+        .update()
+        .set({ firebaseToken: null })
+        .where('id != :currentUserId', { currentUserId })
+        .andWhere('firebaseToken = :firebaseToken', { firebaseToken })
+        .execute();
+    }
+
+    // Apply the same ownership rule for VoIP tokens.
+    if (voIpToken) {
+      await repo
+        .createQueryBuilder()
+        .update()
+        .set({ voIpToken: null })
+        .where('id != :currentUserId', { currentUserId })
+        .andWhere('voIpToken = :voIpToken', { voIpToken })
+        .execute();
     }
   }
 
@@ -229,6 +259,12 @@ export class AuthService {
       });
     
     client.refreshToken = refreshToken;
+    await this.clearClaimedTokensInRepo(
+      this.clientRepo,
+      client.id,
+      clientSignupDto?.firebaseToken,
+      null,
+    );
     client.firebaseToken = clientSignupDto?.firebaseToken ? clientSignupDto?.firebaseToken : '';
     this.clientRepo.save(client)
     await this.clientRepo.save(client);
@@ -260,6 +296,12 @@ export class AuthService {
       });
     
     therapist.refreshToken = refreshToken;
+    await this.clearClaimedTokensInRepo(
+      this.therapistRepo,
+      therapist.id,
+      therapistSignupDto?.firebaseToken,
+      null,
+    );
     therapist.firebaseToken = therapistSignupDto?.firebaseToken ? therapistSignupDto?.firebaseToken : '';
     this.therapistRepo.save(therapist)
     await this.therapistRepo.save(therapist);
@@ -286,10 +328,17 @@ export class AuthService {
           id: admin.id,
           type: UserTypes.ADMIN,
           status: admin.status,
-          name: admin.firstName
+          name: admin.firstName,
+          role: admin.role
       });
     
     admin.refreshToken = refreshToken;
+    await this.clearClaimedTokensInRepo(
+      this.adminRepo,
+      admin.id,
+      adminSignupDto?.firebaseToken,
+      null,
+    );
     admin.firebaseToken = adminSignupDto?.firebaseToken ? adminSignupDto?.firebaseToken : '';
     this.adminRepo.save(admin)
     await this.adminRepo.save(admin);
@@ -299,13 +348,13 @@ export class AuthService {
     }
   }
 
-  async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes) {
+  async loginUser(email: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
 
     try{
 
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  User)[] = ['password'];
+      const inclusiveOf: (keyof  User)[] = ['password','role'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
       const user = await repo.findOne({ where: { email }, select: selectColumns });
@@ -331,11 +380,14 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
-          name: user.firstName
+          name: user.firstName,
+          role: user.role? user.role : undefined,
       });
 
+      await this.clearClaimedTokensInRepo(repo, user.id, firebaseToken, voipToken ?? null);
       user.refreshToken = refreshToken;
       user.firebaseToken = firebaseToken;
+      user.voIpToken = voipToken ? voipToken : null;
       await repo.save(user);
 
       return { user, accessToken, refreshToken };
@@ -345,13 +397,13 @@ export class AuthService {
     }
   }
 
-    async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes) {
+  async loginUserPhone(phoneNumber: string, password: string , firebaseToken: string, type: UserTypes, voipToken?: string) {
 
     try{
 
       const repo = await this.getRepo(type);
 
-      const inclusiveOf: (keyof  User)[] = ['password'];
+      const inclusiveOf: (keyof  User)[] = ['password','role','voIpToken'];
       const { selectColumns } = await getInclusiveColumns(repo, inclusiveOf);
 
       const user = await repo.findOneOrFail({ where: { phoneNumber }, select: selectColumns });
@@ -367,11 +419,14 @@ export class AuthService {
           id: user.id,
           type,
           status: user.status,
-          name: user.firstName
+          name: user.firstName,
+          role: user.role? user.role : undefined,
       });
 
+      await this.clearClaimedTokensInRepo(repo, user.id, firebaseToken, voipToken ?? null);
       user.refreshToken = refreshToken;
       user.firebaseToken = firebaseToken;
+      user.voIpToken = voipToken ? voipToken : null;
       await repo.save(user);
 
       return { user, accessToken, refreshToken };
@@ -382,18 +437,21 @@ export class AuthService {
   }
 
   async loginOAuthUser(user: User, firebaseToken: string, type: UserTypes) {
+    const repo = await this.getRepo(type);
     const [accessToken, refreshToken, expiresAccessToken, expiresRefreshToken] =
       this._generateTokens({
         id: user.id,
         type,
         status: user.status,
         name: user.firstName,
+        role: user.role? user.role : undefined,
       });
 
+    await this.clearClaimedTokensInRepo(repo, user.id, firebaseToken, null);
     user.refreshToken = refreshToken;
     user.firebaseToken = firebaseToken;
 
-    await (await this.getRepo(type)).save(user);
+    await repo.save(user);
 
     return { user, accessToken, refreshToken };
   }
@@ -502,8 +560,10 @@ export class AuthService {
         type,
         status: user.status,
         name: user.firstName,
+        role: user.role? user.role : undefined,
       });
 
+      await this.clearClaimedTokensInRepo(repo, user.id, firebaseToken, null);
       user.refreshToken = refreshToken;
       user.firebaseToken = firebaseToken;
     
@@ -556,7 +616,8 @@ export class AuthService {
 
   async handleOAuthLogin(email: string, firstName: string, lastName: string, type: UserTypes, firebaseToken: string) {
     const repo = await this.getRepo(type);
-    let user = await repo.findOne({ where: { email } });
+    // if type === UserTypes.ADMIN
+    let user = await repo.findOne({ where: { email } })
     if (!user) {
       const [OTP, OTPExpires] = this._generateOTP();
 
@@ -568,7 +629,7 @@ export class AuthService {
         OTP,
         OTPExpires,
         isEmailAuthenticated: true,
-        status: BaseStatus.ACTIVE,
+        // status: BaseStatus.ACTIVE,
         firebaseToken,
         isLinked: true,
       } as any);
@@ -577,7 +638,7 @@ export class AuthService {
     }
 
     // If user exists, just log them in
-    return this.loginOAuthUser(user, user.firebaseToken || firebaseToken, type);
+    return this.loginOAuthUser(user, firebaseToken, type);
   }
 
 

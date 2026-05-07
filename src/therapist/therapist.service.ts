@@ -4,15 +4,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Final_Files_Dir, SessionNotif, Tmp_Files_Dir, TokenPayload, UserTypes, ValidFolders } from 'src/common/constants';
 import { StatusDto } from 'src/common/dto/status.dto';
+import { Language } from 'src/common/entities/language.entity';
 import { License } from 'src/common/entities/license.entity';
 import { Preference } from 'src/common/entities/preference.entity';
+import { Session } from 'src/common/entities/session.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { PresenceService } from 'src/presence/presence.service';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UpdateTherapistDto } from './dto/update-therapist.dto';
 
 @Injectable()
@@ -21,8 +23,12 @@ export class TherapistService {
     private readonly logger: LoggerService,
     @InjectRepository(Therapist)
     private readonly therapistRepo: Repository<Therapist>,
+     @InjectRepository(Session)
+    private readonly sessionRepo: Repository<Session>,
     @InjectRepository(License)
     private readonly licenseRepo: Repository<License>,
+    @InjectRepository(Language)
+    private readonly languageRepo: Repository<Language>,
     @InjectRepository(Preference)
     private readonly preferenceRepo:Repository<Preference>,
     private readonly firebaseService: FirebaseService,
@@ -76,7 +82,7 @@ export class TherapistService {
   }
 
   async findMatchingTherapists(preference: {
-    gender: string;
+    gender?: string;
     level?: string;
     modal?: string;
     // availability: {
@@ -131,9 +137,16 @@ export class TherapistService {
   async update(id: string, updateDto: UpdateTherapistDto) {
     const therapist = await this.findOne(id);
     Object.assign(therapist, updateDto);
+      if (updateDto.language) {
+    therapist.language = await this.languageRepo.findBy({
+      id: In(updateDto.language),
+    });
+  }
+
     try {
       const updated = await this.therapistRepo.save(therapist);
       this.logger.log(`Updated therapist with ID: ${id}`);
+      console.log({updated})
       return updated;
     } catch (error) {
       this.logger.error(`Error updating therapist: ${error.message}`);
@@ -345,5 +358,30 @@ export class TherapistService {
     }
         await this.licenseRepo.save(license);
         return finalFilePath;
+  }
+
+  async getUsersTreated(therapistId) {
+    const qb = this.sessionRepo.createQueryBuilder('session')
+      .leftJoin('session.client', 'client')
+      .leftJoin('session.group', 'groupClients')
+      .leftJoin('session.modal', 'modal'); // Corrected alias here
+
+    // 1. Filter by Modal Name
+    qb.where('modal.name = :modalName', { modalName: 'Group Therapy' });
+    qb.andWhere('session.therapistId = :therapistId', { therapistId });
+
+    // // 2. Date filtering (uncommented and refined)
+    // if (start && end) {
+    //   qb.andWhere('session.schedule BETWEEN :start AND :end', { start, end });
+    // }
+
+    // 3. Therapist filter
+    return qb
+    .select("DISTINCT(COALESCE(client.id, groupClients.id))", "id")
+    .addSelect("COALESCE(client.firstName, groupClients.firstName)", "firstName")
+    .addSelect("COALESCE(client.lastName, groupClients.lastName)", "lastName")
+    .addSelect("COALESCE(client.email, groupClients.email)", "email")
+    .orderBy("lastName", "ASC")
+    .getRawMany();
   }
 }

@@ -48,6 +48,20 @@ export class ParameterService {
     }
   }
 
+  async getAllParsedParams(): Promise<Record<string, any>> {
+  // 1. Fetch all parameters in exactly ONE database call
+    const response = await this.findAll({take:'0'}); 
+    const parsedMap: Record<string, any> = {};
+
+    // 2. Loop through and parse each one using your existing logic
+    for (const param of response.data) {
+      // We reuse your logic based on the name
+      parsedMap[param.name] = await this.parseFloatParams(param);
+    }
+    this.logger.log(`Successfully fetched all params and parsed them`);
+    return parsedMap;
+  }
+
   async getDefaultByName(name: string): Promise<string | number | number[]> {
     this.logger.log(`Fetching default parameter by name: ${name}`);
     try {
@@ -55,8 +69,14 @@ export class ParameterService {
       const queryParams: FindAllQueryParams<Parameter> = {
         filters: `name=${name}`,
       };
-
+      console.log({queryParams})
       const response = await this.findAll(queryParams);
+      console.log(response.data[0])
+
+      if (!response.data?.[0]) {
+        this.logger.warn(`Parameter "${name}" not found in database`);
+        throw new NotFoundException(`Parameter "${name}" not found`);
+      }
 
       this.logger.log(`Successfully fetched default parameter by name: ${name}`);
 
@@ -70,6 +90,16 @@ export class ParameterService {
         case DefaultParameters.MATCH_EXPIRY_IN_MINUTES:
           return this.parseFloatParams(response.data[0]);
         case DefaultParameters.SESSION_HOUR:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.ADVANCED_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);        
+        case DefaultParameters.MODERATE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);        
+        case DefaultParameters.COUPLE_PRICE_PERCENTAGE:
+          return this.parseFloatParams(response.data[0]);
+        case DefaultParameters.GROUP_PRICE_PERCENTAGE:
           return this.parseFloatParams(response.data[0]);
         default:
           throw new NotFoundException(`Default parameter with name ${name} not found`);

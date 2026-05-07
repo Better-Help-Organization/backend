@@ -11,6 +11,7 @@ services:
 
 volumes:
   prod_db_data:
+  prod_redis_data:
   prod_node_modules:
 
 

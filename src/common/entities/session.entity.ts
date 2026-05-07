@@ -15,9 +15,13 @@ import { Status } from './status.entity';
 import { Therapist } from './therapist.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
+import { Chat } from './chat.entity';
 import { ClientSubscription } from './client-subscription.entity';
 import { Message } from './message.entity';
 import { Modal } from './modal.entity';
+import { SessionClientNotes } from './session-client-notes.entity';
+import { TherapistPaymentPeriod } from './therapist-payment-period.entity';
+
 
 @Entity('session')
 @Unique(['client', 'therapist', 'modal', 'schedule'])
@@ -45,6 +49,15 @@ export class Session extends CommonEntity {
   })
   group: Client[];
 
+  @ApiProperty({ type: () => [Client] })
+  @ManyToMany(() => Client, { nullable: true })
+  @JoinTable({
+    name: 'session_group_attendance',
+    joinColumn: { name: 'session_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'client_id', referencedColumnName: 'id' },
+  })
+  groupAttendance: Client[];
+
   @ApiProperty({nullable:true})
   @Column({ type: 'text', nullable:true })
   groupName: string;
@@ -53,9 +66,16 @@ export class Session extends CommonEntity {
   @ApiProperty({type : () => Therapist})
   @ManyToOne(() => Therapist, { 
     nullable: true,
-    // cascade: true
+    eager: true
   })
   therapist: Therapist;
+
+    @ApiProperty({type : () => Client})
+  @ManyToOne(() => Client, { 
+    nullable: true,
+    // cascade: true
+  })
+  Client: Client;
 
   @ApiProperty({ default: false })
   @Column({default: false })
@@ -119,8 +139,37 @@ export class Session extends CommonEntity {
   modal: Modal;
 
   @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
-  @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ClientSubscription, (sub) => sub.session, { onDelete: 'CASCADE' })
   subscription: ClientSubscription;
+
+  @ApiProperty({ type: () => [ClientSubscription] })
+  @ManyToMany(() => ClientSubscription, (sub) => sub.groupSessions, {
+    nullable: true,
+  })
+  @JoinTable({
+    name: 'session_group_subscriptions',
+    joinColumn: { name: 'session_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'subscription_id', referencedColumnName: 'id' },
+  })
+  groupSubscription: ClientSubscription[];
+
+  @ManyToOne(() => TherapistPaymentPeriod, period => period.session, {
+    nullable: true,     // session might not belong to a period yet
+    onDelete: 'SET NULL',
+    eager: true
+  })
+  paymentPeriod: TherapistPaymentPeriod;
+
+  @ApiProperty({ type: () => [SessionClientNotes] })
+  @OneToMany(() => SessionClientNotes, (n) => n.session, {
+    cascade: true,
+    // eager:true
+  })
+  clientNotes: SessionClientNotes[];
+
+  @ApiProperty({ type: () => Chat })
+  @ManyToOne(() => Chat, (chat) => chat.session, { nullable: true, onDelete: 'SET NULL' })
+  chat: Chat;
 
   async addMessage(
     msgRepo: Repository<Message>,

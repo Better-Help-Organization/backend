@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
-import { FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
+import { AdminRoles, FILE_UPLOAD_KEY, TokenPayload, ValidFolders } from 'src/common/constants';
 import { DynamicGuards } from 'src/common/decorators/dynamic-guard.decorator';
 import { CurrentUser } from 'src/common/decorators/get-user-decorator';
 import { ValidatedFolder } from 'src/common/decorators/valid-folder.decorator';
@@ -10,6 +10,7 @@ import { ApiFilterByDate, ApiFindAllQueryParams, ApiFindOneQueryParams, FindAllQ
 import { AdminService } from './admin.service';
 import { AdminStatisticsService } from './admin.stats';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -30,7 +31,6 @@ export class AdminController {
   @Query() queryParams,
   @CurrentUser() user: TokenPayload,
   ) {
-    console.log({user})
     return await this.adminService.findOne(user.id,queryParams);
   }
 
@@ -72,13 +72,13 @@ export class AdminController {
   @DynamicGuards(
   new AdminJwtAuthGuard()
   )
-  updateMe( @CurrentUser() user: TokenPayload, @Body() updateAdminDto: UpdateAdminDto) {
+  updateMe( @CurrentUser() user: TokenPayload, @Body() updateAdminDto: UpdateMeDto) {
     return this.adminService.update(user.id, updateAdminDto);
   }
 
   @Patch(':id')
   @DynamicGuards(
-    new AdminJwtAuthGuard()
+    new AdminJwtAuthGuard({ role: [AdminRoles.SUPER] })
   )
   update(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
     return this.adminService.update(id, updateAdminDto);

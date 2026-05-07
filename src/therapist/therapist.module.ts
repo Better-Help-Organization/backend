@@ -13,11 +13,13 @@ import { ModalModule } from 'src/modal/modal.module';
 import { PreferenceModule } from 'src/preference/preference.module';
 import { PresenceModule } from 'src/presence/presence.module';
 import { RatingModule } from 'src/rating/rating.module';
+import { ParameterModule } from 'src/parameter/parameter.module';
 import { SessionModule } from 'src/session/session.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TherapistController } from './therapist.controller';
 import { TherapistService } from './therapist.service';
 import { TherapistStatisticsService } from './therapist.stats';
+import { Language } from 'src/common/entities/language.entity';
 
 @Module({
   imports: [
@@ -26,7 +28,8 @@ import { TherapistStatisticsService } from './therapist.stats';
       License,
       Session,
       ClientSubscription,
-      Preference
+      Preference,
+      Language
     ]),
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),
@@ -36,7 +39,8 @@ import { TherapistStatisticsService } from './therapist.stats';
     SessionModule,
     FirebaseModule,
     PreferenceModule,
-    RatingModule
+    RatingModule,
+    ParameterModule
   ],  
   controllers: [TherapistController],
   providers: [TherapistService, TherapistStatisticsService],

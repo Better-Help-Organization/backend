@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
+import { DefaultParameters, ModalName, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Level } from 'src/common/entities/level.entity';
@@ -10,6 +10,7 @@ import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { ParameterService } from 'src/parameter/parameter.service';
 import { Repository } from 'typeorm';
 import { CreateAdminSubscriptionDto } from './dto/create-admin-subscription.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -36,6 +37,9 @@ export class SubscriptionService {
     private readonly logger: LoggerService,
 
     private readonly firebaseService: FirebaseService,
+
+    private readonly paramService: ParameterService
+
     
   ) {}
 
@@ -85,10 +89,34 @@ export class SubscriptionService {
 
       const selectedSub = await this.subscriptionRepo.findOne({
         where: { id: dto.subscriptionId, is_admin_created: true },
-        relations: ['level'],
+        relations: ['level','modal'],
       });
       if (!selectedSub) throw new NotFoundException('Admin-created subscription not found');
 
+      // Determine multiplier (TRIAL counts as 1 session week)
+      // const multiplier = selectedSub.type === SubscriptionType.TRIAL ? 1 : selectedSub.type;
+
+      // const finalPrice = selectedSub.price ? selectedSub.price * multiplier : null;
+      // const finalOldPrice = selectedSub.old_price ? selectedSub.old_price * multiplier : null;
+
+      const params = await this.paramService.getAllParsedParams();
+
+      const ADVANCED = params[DefaultParameters.ADVANCED_PRICE_PERCENTAGE] as number;
+      const ASSOCIATE = params[DefaultParameters.ASSOCIATE_PRICE_PERCENTAGE] as number;
+      const MODERATE = params[DefaultParameters.MODERATE_PRICE_PERCENTAGE] as number;
+      const COUPLE = params[DefaultParameters.COUPLE_PRICE_PERCENTAGE] as number;
+      const GROUP = params[DefaultParameters.GROUP_PRICE_PERCENTAGE] as number;
+
+      let sessionPercent = 1;
+      const modalName = selectedSub.modal.name.toUpperCase();
+      const levelType = selectedSub?.level?.type.toUpperCase();
+
+      if (modalName === ModalName.COUPLE_THERAPY.toUpperCase()) sessionPercent = COUPLE;
+      else if (modalName === ModalName.GROUP_THERAPY.toUpperCase()) sessionPercent = GROUP;
+      else if (levelType === 'ADVANCED') sessionPercent = ADVANCED;
+      else if (levelType === 'ASSOCIATE') sessionPercent = ASSOCIATE;
+      else if (levelType === 'MODERATE') sessionPercent = MODERATE;
+      
       const clientSub = this.clientSubscriptionRepo.create({
         client,
         subscription: selectedSub,
@@ -96,7 +124,8 @@ export class SubscriptionService {
         start_date: null,
         end_date: null,
         old_price: selectedSub.old_price,
-        price: selectedSub.price
+        price: selectedSub.price,
+        therapistPercentage: sessionPercent
       });
 
       const csub = await this.clientSubscriptionRepo.save(clientSub);
@@ -123,7 +152,7 @@ export class SubscriptionService {
     async findAllUsersubs(queryParams?: FindAllQueryParams, start?: string, end?: string) {
     try {
     const dateFilter = {
-      field: 'start_date', // 👈 dynamically choose the date field here
+      field: 'createdAt', // 👈 dynamically choose the date field here
       start,
       end,
     };
@@ -207,9 +236,13 @@ export class SubscriptionService {
         const candidates = [...activeClientSubs, subscription];
 
         const latestSub = candidates.reduce((latest, curr) => {
-          if (!curr.end_date) return latest;
-          if (!latest.end_date) return curr;
-          return curr.end_date > latest.end_date ? curr : latest;
+          const currEnd = curr.end_date ? new Date(curr.end_date) : null;
+          const latestEnd = latest.end_date ? new Date(latest.end_date) : null;
+
+          if (!currEnd) return latest;
+          if (!latestEnd) return curr;
+
+          return currEnd > latestEnd ? curr : latest;
         });
 
         for (const cs of candidates) {
@@ -223,7 +256,17 @@ export class SubscriptionService {
         client.activeSubscription = latestSub;
         await this.clientRepository.save(client);
       }
+    } else {
+      // ✅ LOGIC for deactivation
+      const client = subscription.client;
+
+      // If this subscription is currently the client's active one, remove it
+      if (client.activeSubscription?.id === subscription.id) {
+        client.activeSubscription = null;
+        await this.clientRepository.save(client);
+      }
     }
+
 
     // ✅ Send single push notification for status change
     const client = subscription.client;
@@ -231,10 +274,10 @@ export class SubscriptionService {
       const message = 'Subscription Status Changed';
 
       const start = subscription.start_date
-        ? subscription.start_date.toLocaleDateString()
+        ? new Date(subscription.start_date).toLocaleDateString()
         : 'N/A';
       const end = subscription.end_date
-        ? subscription.end_date.toLocaleDateString()
+        ? new Date(subscription.end_date).toLocaleDateString()
         : 'N/A';
 
       const body = `Your subscription is now ${dto.status}. It started on ${start} and will end on ${end}.`;
@@ -262,8 +305,6 @@ export class SubscriptionService {
 
   return result;
 }
-
-
 
   async updateSub(id: string, updateDto: UpdateAdminSubscriptionDto) {
     const sub = await this.findOne(id);
