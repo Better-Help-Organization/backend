@@ -1,26 +1,26 @@
 services:
 
-  haproxy:
-    image: haproxy:latest
-    container_name: haproxy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    networks:
-    # DONOT CHANGE THESE VALUES
-      - dev_default
-      - prod_default
-      - test_default
-    volumes:
-      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+  # haproxy:
+  #   image: haproxy:latest
+  #   container_name: haproxy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   networks:
+  #   # DONOT CHANGE THESE VALUES
+  #     - dev_default
+  #     - prod_default
+  #     - test_default
+  #   volumes:
+  #     - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
 
   traefik:
     image: traefik:v2.10
     container_name: traefik
-    expose:
-      - "8080"
-      - "8443"
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
     # DONOT CHANGE THESE VALUES
       - dev_default
@@ -31,8 +31,8 @@ services:
       - "--log.level=DEBUG"
       - "--api.dashboard=true"
       - "--providers.docker=true"
-      - "--entrypoints.web.address=:8080"
-      - "--entrypoints.websecure.address=:8443"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
       # cert
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=tibesolomon7@gmail.com"
@@ -46,22 +46,22 @@ services:
     labels:
       - "traefik.enable=true"
 
-  caddy:
-    image: livekit/caddyl4
-    container_name: caddy
-    command: run --config /etc/caddy.yaml --adapter yaml
-    restart: unless-stopped
-    expose:
-      - "8080"
-      - "8443"
-    networks:
-    # DONOT CHANGE THESE VALUES
-      - dev_default
-      - prod_default
-      - test_default
-    volumes:
-      - ./livekit/caddy.yaml:/etc/caddy.yaml
-      - ./caddy_data:/data
+  # caddy:
+  #   image: livekit/caddyl4
+  #   container_name: caddy
+  #   command: run --config /etc/caddy.yaml --adapter yaml
+  #   restart: unless-stopped
+  #   expose:
+  #     - "8080"
+  #     - "8443"
+  #   networks:
+  #   # DONOT CHANGE THESE VALUES
+  #     - dev_default
+  #     - prod_default
+  #     - test_default
+  #   volumes:
+  #     - ./livekit/caddy.yaml:/etc/caddy.yaml
+  #     - ./caddy_data:/data
 
 networks:
 # # DONOT CHANGE THESE VALUES
@@ -76,8 +76,8 @@ networks:
     # name: test_default
 
 volumes:
-  caddy_data:
-  caddy_config:
+  # caddy_data:
+  # caddy_config:
 
   traefik-data:
     driver: local
