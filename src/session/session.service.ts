@@ -650,7 +650,7 @@ export class SessionService {
       const session = await this.sessionRepo.findOne(
         {
           where: {id},
-          relations: ['client', 'therapist', 'chat', 'group','groupSubscription'],
+          relations: ['client', 'therapist', 'chat', 'group','groupSubscription', 'subscription'],
         }
       );
 
