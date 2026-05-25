@@ -131,11 +131,54 @@ export class SessionService {
     return `${baseName} (with ${therapistLabel})`;
   }
 
+  // private async findReassignedGroupChatForSeries(
+  //   session: Session,
+  //   newTherapist: Therapist,
+  // ): Promise<Chat | null> {
+  //   if (!session.commonId) return null;
+
+  //   const siblingSession = await this.sessionRepo.findOne({
+  //     where: {
+  //       commonId: session.commonId,
+  //       id: Not(session.id),
+  //       therapist: { id: newTherapist.id },
+  //     },
+  //     relations: ['chat'],
+  //     order: { createdAt: 'DESC' },
+  //   });
+
+  //   return siblingSession?.chat ?? null;
+  // }
+
+  private async findExistingGroupReassignmentChat(
+  session: Session,
+  newTherapist: Therapist,
+  ): Promise<Chat | null> {
+    if (!session.commonId) return null;
+
+    const siblingSession = await this.sessionRepo.findOne({
+      where: {
+        commonId: session.commonId,
+        id: Not(session.id),
+        therapist: { id: newTherapist.id },
+      },
+      relations: ['chat'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return siblingSession?.chat ?? null;
+  }
+
   private async resolveReassignedChat(
     session: Session,
     newTherapist: Therapist,
   ): Promise<Chat | null> {
     if (!session.client?.id) {
+      const existingSeriesChat = await this.findExistingGroupReassignmentChat(session, newTherapist);
+      if (existingSeriesChat) {
+        return existingSeriesChat;
+      }
+
       if (session.chat?.id) {
         const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
         if (isShared) {
@@ -156,6 +199,32 @@ export class SessionService {
           } as Chat)
         : null;
     }
+    // if (!session.client?.id) {
+    //   if (session.chat?.id) {
+    //     const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+    //     if (isShared) {
+    //         const existingSeriesChat = await this.findReassignedGroupChatForSeries(session, newTherapist);
+    //         if (existingSeriesChat) {
+    //           return existingSeriesChat;
+    //         }
+
+    //       return await this.cloneChatForTherapist(session.chat, newTherapist);
+    //     }
+
+    //     await this.chatRepo.update(session.chat.id, {
+    //       therapist: newTherapist,
+    //       groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+    //     });
+    //   }
+
+    //   return session.chat
+    //     ? ({
+    //         ...session.chat,
+    //         therapist: newTherapist,
+    //         groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+    //       } as Chat)
+    //     : null;
+    // }
 
     const existingChat = await this.chatRepo.findOne({
       where: {
