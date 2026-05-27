@@ -118,6 +118,13 @@ export class SessionService {
     );
   }
 
+  private async loadChatWithParticipants(chatId: string): Promise<Chat | null> {
+    return await this.chatRepo.findOne({
+      where: { id: chatId },
+      relations: ['client', 'group'],
+    });
+  }
+
   private getReassignedGroupChatName(
     chat: Chat,
     therapist: Therapist,
@@ -131,28 +138,9 @@ export class SessionService {
     return `${baseName} (with ${therapistLabel})`;
   }
 
-  // private async findReassignedGroupChatForSeries(
-  //   session: Session,
-  //   newTherapist: Therapist,
-  // ): Promise<Chat | null> {
-  //   if (!session.commonId) return null;
-
-  //   const siblingSession = await this.sessionRepo.findOne({
-  //     where: {
-  //       commonId: session.commonId,
-  //       id: Not(session.id),
-  //       therapist: { id: newTherapist.id },
-  //     },
-  //     relations: ['chat'],
-  //     order: { createdAt: 'DESC' },
-  //   });
-
-  //   return siblingSession?.chat ?? null;
-  // }
-
   private async findExistingGroupReassignmentChat(
-  session: Session,
-  newTherapist: Therapist,
+    session: Session,
+    newTherapist: Therapist,
   ): Promise<Chat | null> {
     if (!session.commonId) return null;
 
@@ -162,11 +150,16 @@ export class SessionService {
         id: Not(session.id),
         therapist: { id: newTherapist.id },
       },
-      relations: ['chat'],
+      relations: ['chat', 'chat.group', 'chat.client'],
       order: { createdAt: 'DESC' },
     });
 
-    return siblingSession?.chat ?? null;
+    if (!siblingSession?.chat?.id) return null;
+    if (siblingSession.chat.id === session.chat?.id) return null;
+    if (siblingSession.chat.client) return null;
+    if (!siblingSession.chat.group?.length) return null;
+
+    return siblingSession.chat;
   }
 
   private async resolveReassignedChat(
@@ -180,51 +173,30 @@ export class SessionService {
       }
 
       if (session.chat?.id) {
-        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
-        if (isShared) {
-          return await this.cloneChatForTherapist(session.chat, newTherapist);
+        const hydratedChat = await this.loadChatWithParticipants(session.chat.id);
+        if (!hydratedChat) {
+          return null;
         }
 
-        await this.chatRepo.update(session.chat.id, {
+        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+        if (isShared) {
+          return await this.cloneChatForTherapist(hydratedChat, newTherapist);
+        }
+
+        await this.chatRepo.update(hydratedChat.id, {
           therapist: newTherapist,
-          groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+          groupName: this.getReassignedGroupChatName(hydratedChat, newTherapist),
         });
+
+        return {
+          ...hydratedChat,
+          therapist: newTherapist,
+          groupName: this.getReassignedGroupChatName(hydratedChat, newTherapist),
+        } as Chat;
       }
 
-      return session.chat
-        ? ({
-            ...session.chat,
-            therapist: newTherapist,
-            groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
-          } as Chat)
-        : null;
+      return null;
     }
-    // if (!session.client?.id) {
-    //   if (session.chat?.id) {
-    //     const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
-    //     if (isShared) {
-    //         const existingSeriesChat = await this.findReassignedGroupChatForSeries(session, newTherapist);
-    //         if (existingSeriesChat) {
-    //           return existingSeriesChat;
-    //         }
-
-    //       return await this.cloneChatForTherapist(session.chat, newTherapist);
-    //     }
-
-    //     await this.chatRepo.update(session.chat.id, {
-    //       therapist: newTherapist,
-    //       groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
-    //     });
-    //   }
-
-    //   return session.chat
-    //     ? ({
-    //         ...session.chat,
-    //         therapist: newTherapist,
-    //         groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
-    //       } as Chat)
-    //     : null;
-    // }
 
     const existingChat = await this.chatRepo.findOne({
       where: {
