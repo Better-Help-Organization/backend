@@ -139,27 +139,40 @@ export class SessionService {
   }
 
   private async findExistingGroupReassignmentChat(
-    session: Session,
+    sourceChat: Chat,
     newTherapist: Therapist,
   ): Promise<Chat | null> {
-    if (!session.commonId) return null;
+    const sourceMemberIds = (sourceChat.group ?? [])
+      .map((client) => client.id)
+      .filter(Boolean)
+      .sort();
 
-    const siblingSession = await this.sessionRepo.findOne({
+    if (!sourceMemberIds.length) return null;
+
+    const candidateChats = await this.chatRepo.find({
       where: {
-        commonId: session.commonId,
-        id: Not(session.id),
         therapist: { id: newTherapist.id },
+        client: null,
       },
-      relations: ['chat', 'chat.group', 'chat.client'],
-      order: { createdAt: 'DESC' },
+      relations: ['client', 'group', 'therapist'],
     });
 
-    if (!siblingSession?.chat?.id) return null;
-    if (siblingSession.chat.id === session.chat?.id) return null;
-    if (siblingSession.chat.client) return null;
-    if (!siblingSession.chat.group?.length) return null;
+    return (
+      candidateChats.find((chat) => {
+        if (!chat.id || chat.id === sourceChat.id) return false;
+        if (chat.client) return false;
 
-    return siblingSession.chat;
+        const candidateMemberIds = (chat.group ?? [])
+          .map((client) => client.id)
+          .filter(Boolean)
+          .sort();
+
+        return (
+          candidateMemberIds.length === sourceMemberIds.length &&
+          candidateMemberIds.every((id, index) => id === sourceMemberIds[index])
+        );
+      }) ?? null
+    );
   }
 
   private async resolveReassignedChat(
@@ -167,15 +180,18 @@ export class SessionService {
     newTherapist: Therapist,
   ): Promise<Chat | null> {
     if (!session.client?.id) {
-      const existingSeriesChat = await this.findExistingGroupReassignmentChat(session, newTherapist);
-      if (existingSeriesChat) {
-        return existingSeriesChat;
-      }
-
       if (session.chat?.id) {
         const hydratedChat = await this.loadChatWithParticipants(session.chat.id);
         if (!hydratedChat) {
           return null;
+        }
+
+        const existingSeriesChat = await this.findExistingGroupReassignmentChat(
+          hydratedChat,
+          newTherapist,
+        );
+        if (existingSeriesChat) {
+          return existingSeriesChat;
         }
 
         const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
