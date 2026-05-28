@@ -19,7 +19,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
 import { ReminderService } from 'src/reminder/reminder.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Between, DataSource, In, MoreThan, Not, Repository } from 'typeorm';
+import { Between, DataSource, EntityManager, In, MoreThan, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { BatchUpdateSessionDto } from './dto/batch-update-session.dto';
@@ -88,13 +88,22 @@ export class SessionService {
     private readonly reminderService: ReminderService,
   ) {}
 
+  private getSessionRepository(manager?: EntityManager): Repository<Session> {
+    return manager ? manager.getRepository(Session) : this.sessionRepo;
+  }
+
+  private getChatRepository(manager?: EntityManager): Repository<Chat> {
+    return manager ? manager.getRepository(Chat) : this.chatRepo;
+  }
+
   private async isChatSharedByOtherSessions(
     sessionId: string,
     chatId?: string | null,
+    manager?: EntityManager,
   ): Promise<boolean> {
     if (!chatId) return false;
 
-    const linkedSessions = await this.sessionRepo.find({
+    const linkedSessions = await this.getSessionRepository(manager).find({
       where: { chat: { id: chatId } as Chat },
     });
 
@@ -104,11 +113,13 @@ export class SessionService {
   private async cloneChatForTherapist(
     sourceChat: Chat,
     therapist: Therapist,
+    manager?: EntityManager,
   ): Promise<Chat> {
     const groupName = this.getReassignedGroupChatName(sourceChat, therapist);
+    const chatRepo = this.getChatRepository(manager);
 
-    return await this.chatRepo.save(
-      this.chatRepo.create({
+    return await chatRepo.save(
+      chatRepo.create({
         client: sourceChat.client ?? null,
         therapist,
         group: sourceChat.group ?? null,
@@ -118,8 +129,8 @@ export class SessionService {
     );
   }
 
-  private async loadChatWithParticipants(chatId: string): Promise<Chat | null> {
-    return await this.chatRepo.findOne({
+  private async loadChatWithParticipants(chatId: string, manager?: EntityManager): Promise<Chat | null> {
+    return await this.getChatRepository(manager).findOne({
       where: { id: chatId },
       relations: ['client', 'group'],
     });
@@ -141,6 +152,7 @@ export class SessionService {
   private async findExistingGroupReassignmentChat(
     sourceChat: Chat,
     newTherapist: Therapist,
+    manager?: EntityManager,
   ): Promise<Chat | null> {
     const sourceMemberIds = (sourceChat.group ?? [])
       .map((client) => client.id)
@@ -149,7 +161,7 @@ export class SessionService {
 
     if (!sourceMemberIds.length) return null;
 
-    const candidateChats = await this.chatRepo.find({
+    const candidateChats = await this.getChatRepository(manager).find({
       where: {
         therapist: { id: newTherapist.id },
         client: null,
@@ -178,10 +190,12 @@ export class SessionService {
   private async resolveReassignedChat(
     session: Session,
     newTherapist: Therapist,
+    manager?: EntityManager,
   ): Promise<Chat | null> {
     if (!session.client?.id) {
       if (session.chat?.id) {
-        const hydratedChat = await this.loadChatWithParticipants(session.chat.id);
+        const chatRepo = this.getChatRepository(manager);
+        const hydratedChat = await this.loadChatWithParticipants(session.chat.id, manager);
         if (!hydratedChat) {
           return null;
         }
@@ -189,17 +203,18 @@ export class SessionService {
         const existingSeriesChat = await this.findExistingGroupReassignmentChat(
           hydratedChat,
           newTherapist,
+          manager,
         );
         if (existingSeriesChat) {
           return existingSeriesChat;
         }
 
-        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id, manager);
         if (isShared) {
-          return await this.cloneChatForTherapist(hydratedChat, newTherapist);
+          return await this.cloneChatForTherapist(hydratedChat, newTherapist, manager);
         }
 
-        await this.chatRepo.update(hydratedChat.id, {
+        await chatRepo.update(hydratedChat.id, {
           therapist: newTherapist,
           groupName: this.getReassignedGroupChatName(hydratedChat, newTherapist),
         });
@@ -214,7 +229,8 @@ export class SessionService {
       return null;
     }
 
-    const existingChat = await this.chatRepo.findOne({
+    const chatRepo = this.getChatRepository(manager);
+    const existingChat = await chatRepo.findOne({
       where: {
         client: { id: session.client.id },
         therapist: { id: newTherapist.id },
@@ -227,12 +243,12 @@ export class SessionService {
     }
 
     if (session.chat?.id) {
-      const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+      const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id, manager);
       if (isShared) {
-        return await this.cloneChatForTherapist(session.chat, newTherapist);
+        return await this.cloneChatForTherapist(session.chat, newTherapist, manager);
       }
 
-      await this.chatRepo.update(session.chat.id, {
+      await chatRepo.update(session.chat.id, {
         therapist: newTherapist,
         groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
       });
@@ -244,8 +260,8 @@ export class SessionService {
       } as Chat;
     }
 
-    return await this.chatRepo.save(
-      this.chatRepo.create({
+    return await chatRepo.save(
+      chatRepo.create({
         client: session.client,
         therapist: newTherapist,
         group: null,
@@ -751,10 +767,48 @@ export class SessionService {
         const newTherapist = await this.therapistService.findOne(sanitizedDto.therapist);
         if (!newTherapist) throw new NotFoundException('New therapist not found');
 
-        session.therapist = newTherapist;
-        // TODO: Keep reassignment chat resolution centralized here so partial reassignments
-        // can split shared chats without affecting other sessions on the old therapist.
-        session.chat = await this.resolveReassignedChat(session, newTherapist);
+        if (!session.client?.id && session.commonId) {
+          const lockedSession = await this.dataSource.transaction(async (manager) => {
+            await manager.getRepository(Session)
+              .createQueryBuilder('seriesSession')
+              .setLock('pessimistic_write')
+              .where('seriesSession.commonId = :commonId', { commonId: session.commonId })
+              .getMany();
+
+            const transactionalSession = await manager.getRepository(Session)
+              .createQueryBuilder('session')
+              .leftJoinAndSelect('session.client', 'client')
+              .leftJoinAndSelect('session.therapist', 'therapist')
+              .leftJoinAndSelect('session.chat', 'chat')
+              .leftJoinAndSelect('session.group', 'group')
+              .leftJoinAndSelect('session.groupSubscription', 'groupSubscription')
+              .leftJoinAndSelect('session.subscription', 'subscription')
+              .setLock('pessimistic_write')
+              .where('session.id = :id', { id })
+              .getOne();
+
+            if (!transactionalSession) {
+              throw new NotFoundException('Session not found');
+            }
+
+            transactionalSession.therapist = newTherapist;
+            transactionalSession.chat = await this.resolveReassignedChat(
+              transactionalSession,
+              newTherapist,
+              manager,
+            );
+
+            return await manager.getRepository(Session).save(transactionalSession);
+          });
+
+          session.therapist = lockedSession.therapist;
+          session.chat = lockedSession.chat;
+        } else {
+          session.therapist = newTherapist;
+          // TODO: Keep reassignment chat resolution centralized here so partial reassignments
+          // can split shared chats without affecting other sessions on the old therapist.
+          session.chat = await this.resolveReassignedChat(session, newTherapist);
+        }
 
         // --- Send push notifications ---
 
