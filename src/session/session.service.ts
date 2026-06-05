@@ -182,6 +182,7 @@ export class SessionService {
 
   private async resolveForwardSeriesChat(
     sessions: Session[],
+    commonId: string,
     currentChat: Chat | null | undefined,
     newTherapist: Therapist,
     manager: EntityManager,
@@ -202,6 +203,27 @@ export class SessionService {
 
       if (hydratedExistingChat) {
         return hydratedExistingChat;
+      }
+    }
+
+    const existingSeriesChat = await manager.getRepository(Session)
+      .createQueryBuilder('session')
+      .leftJoinAndSelect('session.chat', 'chat')
+      .leftJoinAndSelect('chat.therapist', 'chatTherapist')
+      .where('session.commonId = :commonId', { commonId })
+      .andWhere('chat.id IS NOT NULL')
+      .andWhere('chatTherapist.id = :therapistId', { therapistId: newTherapist.id })
+      .orderBy('session.schedule', 'ASC')
+      .getOne();
+
+    if (existingSeriesChat?.chat?.id) {
+      const hydratedSeriesChat = await chatRepo.findOne({
+        where: { id: existingSeriesChat.chat.id },
+        relations: ['client', 'group'],
+      });
+
+      if (hydratedSeriesChat) {
+        return hydratedSeriesChat;
       }
     }
 
@@ -888,6 +910,7 @@ export class SessionService {
 
             const canonicalChat = await this.resolveForwardSeriesChat(
               futureSessions,
+              session.commonId,
               selectedSession.chat,
               newTherapist,
               manager,
