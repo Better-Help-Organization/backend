@@ -118,7 +118,7 @@ export class TelebirrService {
     };
     const env = process.env.NODE_ENV
     let biz = {
-      notify_url: `https://app.navigo.et/${env}/api/v1/telebirr/verify/${this.subId}`,
+      notify_url: `https://app.navithera.com/${env}/api/v1/telebirr/verify/${this.subId}`,
       appid: this.configService.get<string>('MERCHANT_APP_ID'),
       merch_code: this.configService.get<string>('MERCHANT_CODE'),
       merch_order_id:this.createMerchantOrderId(),

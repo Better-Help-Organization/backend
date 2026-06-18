@@ -12,7 +12,7 @@ redis:
     max_redirects: null
 api_key: APIY64mRzLyKhzH
 api_secret: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
-ws_url: wss://livekit.navigo.et
+ws_url: wss://livekit.navithera.com
 rtmp_port: 1935
 whip_port: 8080
 http_relay_port: 9090

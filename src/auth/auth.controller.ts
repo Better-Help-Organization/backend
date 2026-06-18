@@ -1,11 +1,11 @@
 import {
-  Body,
-  Controller, Get,
-  HttpCode,
-  Post,
-  Req,
-  Res,
-  UseGuards
+    Body,
+    Controller, Get,
+    HttpCode,
+    Post,
+    Req,
+    Res,
+    UseGuards
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
@@ -22,12 +22,12 @@ import { Therapist } from 'src/common/entities/therapist.entity';
 import { EmailAuthGuard } from 'src/common/guard/email.guard';
 import { EmailPwdAuthGuard, PhonePwdAuthGuard } from 'src/common/guard/email.pwd.guard';
 import {
-  AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard
+    AdminJwtAuthGuard, ClientJwtAuthGuard, TherapistJwtAuthGuard
 } from 'src/common/guard/jwt-auth.guard';
 import {
-  AdminJwtRefreshAuthGuard,
-  ClientJwtRefreshAuthGuard,
-  TherapistJwtRefreshAuthGuard
+    AdminJwtRefreshAuthGuard,
+    ClientJwtRefreshAuthGuard,
+    TherapistJwtRefreshAuthGuard
 } from 'src/common/guard/jwt-refresh.guard';
 import { LoggerService } from 'src/logger/logger.service';
 import { AuthService } from './auth.service';
@@ -251,11 +251,11 @@ export class AuthController {
     const [firebaseToken, userRole, _] = role?.split('_');
     const result = await this.authService.oAuthLogin(user, userRole, firebaseToken);
 
-    res.cookie('accessToken', result.accessToken, { domain: ".navigo.et", httpOnly: false, secure: true, sameSite: 'lax' });
-    res.cookie('refreshToken', result.refreshToken, { domain: ".navigo.et", httpOnly: false, secure: true, sameSite: 'lax' });
+    res.cookie('accessToken', result.accessToken, { domain: ".navithera.com", httpOnly: false, secure: true, sameSite: 'lax' });
+    res.cookie('refreshToken', result.refreshToken, { domain: ".navithera.com", httpOnly: false, secure: true, sameSite: 'lax' });
     console.log({res})
     // Redirect user to frontend
-    return res.redirect('https://admin.navigo.et/');
+    return res.redirect('https://admin.navithera.com/');
   }
 
 }

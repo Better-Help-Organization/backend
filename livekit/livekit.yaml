@@ -4,7 +4,7 @@ bind_addresses:
 rtc:
   # other settings...
     # web_cors:
-    #     - https://app.navigo.et
+    #     - https://app.navithera.com
     #     - https://app.localhost
     tcp_port: 7881
     port_range_start: 50000
@@ -25,12 +25,12 @@ redis:
     max_redirects: null
 turn:
     enabled: true
-    domain: turn.navigo.et
+    domain: turn.navithera.com
     tls_port: 5349
     udp_port: 3478
     external_tls: true
 ingress:
-    rtmp_base_url: rtmp://livekit.navigo.et:1935/x
-    whip_base_url: https://livekit-whip.navigo.et/w
+    rtmp_base_url: rtmp://livekit.navithera.com:1935/x
+    whip_base_url: https://livekit-whip.navithera.com/w
 keys:
     APIY64mRzLyKhzH: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB

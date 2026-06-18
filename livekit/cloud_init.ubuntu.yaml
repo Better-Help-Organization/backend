@@ -38,13 +38,13 @@ write_files:
           max_redirects: null
       turn:
           enabled: true
-          domain: turn.navigo.et
+          domain: turn.navithera.com
           tls_port: 5349
           udp_port: 3478
           external_tls: true
       ingress:
-          rtmp_base_url: rtmp://livekit.navigo.et:1935/x
-          whip_base_url: https://livekit-whip.navigo.et/w
+          rtmp_base_url: rtmp://livekit.navithera.com:1935/x
+          whip_base_url: https://livekit-whip.navithera.com/w
       keys:
           APIY64mRzLyKhzH: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
       
@@ -62,9 +62,9 @@ write_files:
         tls:
           certificates:
             automate:
-              - livekit.navigo.et
-              - turn.navigo.et
-              - livekit-whip.navigo.et
+              - livekit.navithera.com
+              - turn.navithera.com
+              - livekit-whip.navithera.com
         layer4:
           servers:
             main:
@@ -73,7 +73,7 @@ write_files:
                 - match:
                   - tls:
                       sni:
-                        - "turn.navigo.et"
+                        - "turn.navithera.com"
                   handle:
                     - handler: tls
                     - handler: proxy
@@ -82,7 +82,7 @@ write_files:
                 - match:
                     - tls:
                         sni:
-                          - "livekit.navigo.et"
+                          - "livekit.navithera.com"
                   handle:
                     - handler: tls
                       connection_policies:
@@ -93,7 +93,7 @@ write_files:
                 - match:
                     - tls:
                         sni:
-                          - "livekit-whip.navigo.et"
+                          - "livekit-whip.navithera.com"
                   handle:
                     - handler: tls
                       connection_policies:
@@ -202,7 +202,7 @@ write_files:
           max_redirects: null
       api_key: APIY64mRzLyKhzH
       api_secret: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
-      ws_url: wss://livekit.navigo.et
+      ws_url: wss://livekit.navithera.com
       
 
   - path: /opt/livekit/ingress.yaml
@@ -221,7 +221,7 @@ write_files:
           max_redirects: null
       api_key: APIY64mRzLyKhzH
       api_secret: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
-      ws_url: wss://livekit.navigo.et
+      ws_url: wss://livekit.navithera.com
       rtmp_port: 1935
       whip_port: 8080
       http_relay_port: 9090

@@ -12,4 +12,4 @@ redis:
     max_redirects: null
 api_key: APIY64mRzLyKhzH
 api_secret: PeSoRVkmyfNqL8ThefHQ3vN6d8xp8dw8UZbyRAazRduB
-ws_url: wss://livekit.navigo.et
+ws_url: wss://livekit.navithera.com

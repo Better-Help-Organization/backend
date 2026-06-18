@@ -9,9 +9,9 @@ apps:
   tls:
     certificates:
       automate:
-        - livekit.navigo.et
-        - turn.navigo.et
-        - livekit-whip.navigo.et
+        - livekit.navithera.com
+        - turn.navithera.com
+        - livekit-whip.navithera.com
   http:
     servers:
       http:
@@ -31,7 +31,7 @@ apps:
           - match:
             - tls:
                 sni:
-                  - "turn.navigo.et"
+                  - "turn.navithera.com"
             handle:
               - handler: tls
               - handler: proxy
@@ -40,7 +40,7 @@ apps:
           - match:
               - tls:
                   sni:
-                    - "livekit.navigo.et"
+                    - "livekit.navithera.com"
             handle:
               - handler: tls
                 connection_policies:
@@ -52,7 +52,7 @@ apps:
           - match:
               - tls:
                   sni:
-                    - "livekit-whip.navigo.et"
+                    - "livekit-whip.navithera.com"
             handle:
               - handler: tls
                 connection_policies:
