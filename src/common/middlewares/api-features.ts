@@ -9,6 +9,8 @@ export class APIFeatures {
   protected query: any;
   protected tableName: string
   private joinedRelations: Set<string> = new Set();
+  private selectedRelationAliases: Set<string> = new Set();
+  private relationAliases: Map<string, string> = new Map();
   private parsedPage: number;
   private parsedLimit: number;
   private skip: number;
@@ -44,25 +46,34 @@ export class APIFeatures {
     return raw; // fallback: string
   }
 
-  private resolveNestedRelation(path: string): string {
-    const parts = path.split(".");
+  private ensureRelationAlias(path: string): string {
+    const parts = path.split(".").filter(Boolean);
     let parentAlias = this.tableName;
+    let currentPath = "";
 
-    for (let i = 0; i < parts.length - 1; i++) {
-      const relation = parts[i];
+    for (const relation of parts) {
+      currentPath = currentPath ? `${currentPath}.${relation}` : relation;
+      let alias = this.relationAliases.get(currentPath);
 
-      // Create alias that is globally unique:
-      const alias = `${parentAlias}_${relation}_${this.joinedRelations.size}`;
-
-      if (!this.joinedRelations.has(alias)) {
-        this.query.leftJoinAndSelect(`${parentAlias}.${relation}`, alias);
+      if (!alias) {
+        alias = `${this.tableName}__${currentPath.replace(/\./g, "__")}`;
+        this.query.leftJoin(`${parentAlias}.${relation}`, alias);
+        this.relationAliases.set(currentPath, alias);
         this.joinedRelations.add(alias);
       }
 
       parentAlias = alias;
     }
 
+    return parentAlias;
+  }
+
+  private resolveNestedRelation(path: string): string {
+    const parts = path.split(".");
     const finalField = parts[parts.length - 1];
+    const relationPath = parts.slice(0, -1).join(".");
+    const parentAlias = relationPath ? this.ensureRelationAlias(relationPath) : this.tableName;
+
     return `${parentAlias}.${finalField}`;
   }
 
@@ -190,39 +201,26 @@ export class APIFeatures {
     const fields = this.queryParams?.fields.split(',').map((field: string) => field.trim());
     const selectFields: string[] = [];
     const relations: string[] = [];
-    const relationOverride: Set<string> = new Set(); // Track relations like 'user.*' that override all other selections
+    const relationOverride: Set<string> = new Set(); // Track relation aliases like 'user.*' that override all other selections
 
     fields.forEach((field: string) => { 
       if (field.includes('.')) {
-        const [relation, fieldName] = field.split('.');
-        // console.log([fieldName])
-        if(fieldName === '') throw new BadRequestException(`Relations field name at ${relation} cannot be empty`)
-        const limitMatch = fieldName.match(/^\*(\d+)$/);
-        let limit: number | undefined;
+        const parts = field.split('.');
+        const fieldName = parts.pop();
+        const relationPath = parts.join('.');
 
-        if (limitMatch) limit = parseInt(limitMatch[1], 10);
+        if (!fieldName) {
+          throw new BadRequestException(`Relations field name at ${relationPath} cannot be empty`);
+        }
+
+        const relationAlias = this.ensureRelationAlias(relationPath);
 
         if (fieldName === '*') {
-          // If it's a '*' for a relation, we need to select all fields from that relation
-          if (!this.joinedRelations.has(relation)) {
-            this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
-            this.joinedRelations.add(relation);
-          }
-          // Mark this relation to be overridden (select all fields)
-          relationOverride.add(relation);
-          
-          // Push the relation into relations array
-          selectFields.push(relation);
+          relationOverride.add(relationAlias);
+          this.selectedRelationAliases.add(relationAlias);
         } else {
-          // If it's not '*', then select the specific field for the relation
-          if (!this.joinedRelations.has(relation)) {
-            this.query.leftJoinAndSelect(`${this.tableName}.${relation}`, relation);
-            this.joinedRelations.add(relation);
-          }
-
-          // Only select specific fields if the relation hasn't been overridden by '*'
-          if (!relationOverride.has(relation)) {
-            selectFields.push(`${relation}.${fieldName}`);
+          if (!relationOverride.has(relationAlias)) {
+            selectFields.push(`${relationAlias}.${fieldName}`);
           }
         }
       } else {
@@ -249,13 +247,8 @@ export class APIFeatures {
       }
     }
 
-    // Select the fields and add relations dynamically
-    this.query.select(selectFields);
-    // merge selectFields with joined relation aliases
     const finalSelections = new Set(selectFields);
-
-    // ALWAYS preserve relations needed for filters
-    this.joinedRelations.forEach(rel => {
+    this.selectedRelationAliases.forEach(rel => {
       finalSelections.add(rel);
     });
 
