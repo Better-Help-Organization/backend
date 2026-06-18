@@ -313,6 +313,7 @@ export class APIFeatures {
   alias: string,
   visited = new Set<string>()
 ): SelectQueryBuilder<T> {
+  return query;
   const metadata = getMetadataArgsStorage();
 
   const relations = metadata.relations.filter(
