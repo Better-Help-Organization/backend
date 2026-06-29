@@ -8,6 +8,7 @@ import { Language } from 'src/common/entities/language.entity';
 import { License } from 'src/common/entities/license.entity';
 import { Preference } from 'src/common/entities/preference.entity';
 import { Session } from 'src/common/entities/session.entity';
+import { TherapistBank } from 'src/common/entities/therapist-bank.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { APIFeatures } from 'src/common/middlewares/api-features';
 import { FindAllQueryParams, FindOneQueryParams } from 'src/common/middlewares/api-features.dto';
@@ -31,6 +32,8 @@ export class TherapistService {
     private readonly languageRepo: Repository<Language>,
     @InjectRepository(Preference)
     private readonly preferenceRepo:Repository<Preference>,
+    @InjectRepository(TherapistBank)
+    private readonly therapistBankRepo: Repository<TherapistBank>,
     private readonly firebaseService: FirebaseService,
     @Inject(forwardRef(() => PresenceService))
     private readonly presenceService: PresenceService
@@ -136,17 +139,35 @@ export class TherapistService {
 
   async update(id: string, updateDto: UpdateTherapistDto) {
     const therapist = await this.findOne(id);
-    Object.assign(therapist, updateDto);
-      if (updateDto.language) {
-    therapist.language = await this.languageRepo.findBy({
-      id: In(updateDto.language),
-    });
-  }
+    const { language, therapistBank, ...rest } = updateDto;
+    Object.assign(therapist, rest);
+
+    if (language) {
+      therapist.language = await this.languageRepo.findBy({
+        id: In(language),
+      });
+    }
+
+    if (therapistBank) {
+      const existing = await this.therapistBankRepo.find({
+        where: { therapist: { id } },
+        relations: ['bank'],
+      });
+
+      therapist.therapistBank = therapistBank.map(tb => {
+        const match = existing.find(e => e.bank?.id === tb.bankId);
+        return {
+          ...(match ? { id: match.id } : {}),
+          bank: { id: tb.bankId },
+          accountNumber: tb.accountNumber,
+          branch: tb.branch,
+        } as TherapistBank;
+      });
+    }
 
     try {
       const updated = await this.therapistRepo.save(therapist);
       this.logger.log(`Updated therapist with ID: ${id}`);
-      console.log({updated})
       return updated;
     } catch (error) {
       this.logger.error(`Error updating therapist: ${error.message}`);

@@ -6,6 +6,7 @@ import { ClientSubscription } from 'src/common/entities/client-subscription.enti
 import { License } from 'src/common/entities/license.entity';
 import { Preference } from 'src/common/entities/preference.entity';
 import { Session } from 'src/common/entities/session.entity';
+import { TherapistBank } from 'src/common/entities/therapist-bank.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { LoggerModule } from 'src/logger/logger.module';
@@ -24,12 +25,13 @@ import { Language } from 'src/common/entities/language.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Therapist, 
+      Therapist,
       License,
       Session,
       ClientSubscription,
       Preference,
-      Language
+      Language,
+      TherapistBank
     ]),
     forwardRef(() => PresenceModule),
     forwardRef(() => ChatModule),
