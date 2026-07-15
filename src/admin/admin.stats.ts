@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { SubscriptionStatus } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
@@ -90,17 +91,19 @@ export class AdminStatisticsService {
 
   /** 💰 Revenue stats */
   async getRevenueStats(start?: string, end?: string) {
-    const qb = this.clientSubscriptionRepo.createQueryBuilder('sub');
+    const qb = this.clientSubscriptionRepo
+      .createQueryBuilder('sub')
+      .where('sub.status = :status', { status: SubscriptionStatus.ACTIVE });
 
     if (start || end) {
-      qb.where('sub.start_date BETWEEN :start AND :end', {
+      qb.andWhere('sub.start_date BETWEEN :start AND :end', {
         start: start ? new Date(start) : new Date('2000-01-01'),
         end: end ? new Date(end) : new Date(),
       });
     }
 
     return qb
-      .select('SUM(sub.price)', 'totalRevenue')
+      .select('COALESCE(SUM(sub.price), 0)', 'totalRevenue')
       .addSelect('COUNT(sub.id)', 'totalSubscriptions')
       .getRawOne();
   }

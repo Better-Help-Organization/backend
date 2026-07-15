@@ -65,11 +65,15 @@ export class FirebaseService {
 
       this.logger.log(`Preparing push notification: ${title} -> ${message}`);
 
+      const uniqueClientTokens = [...new Set(tokens.client || [])].filter(Boolean);
+      const uniqueTherapistTokens = [...new Set(tokens.therapist || [])].filter(Boolean);
+      const uniqueAdminTokens = [...new Set(tokens.admin || [])].filter(Boolean);
+
       // 1️⃣ Flatten all tokens
       const allTokens: string[] = [
-        ...(tokens.client || []),
-        ...(tokens.therapist || []),
-        ...(tokens.admin || []),
+        ...uniqueClientTokens,
+        ...uniqueTherapistTokens,
+        ...uniqueAdminTokens,
       ];
       console.log({allTokens})
 
@@ -81,8 +85,8 @@ export class FirebaseService {
             message,
             code,
             profile,
-            clientTokens: tokens.client,
-            therapistTokens: tokens.therapist,
+            clientTokens: uniqueClientTokens,
+            therapistTokens: uniqueTherapistTokens,
           }).catch(err => this.logger.error('saveNotification failed:', err.message));
       }
 

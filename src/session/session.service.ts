@@ -19,7 +19,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
 import { ReminderService } from 'src/reminder/reminder.service';
 import { TherapistService } from 'src/therapist/therapist.service';
-import { Between, DataSource, In, MoreThan, Not, Repository } from 'typeorm';
+import { Between, DataSource, EntityManager, In, MoreThan, Not, Repository } from 'typeorm';
 import { v4 as uuid, v4 as uuidv4 } from 'uuid';
 import { AddToSessionDto } from './dto/add-session.dto';
 import { BatchUpdateSessionDto } from './dto/batch-update-session.dto';
@@ -54,6 +54,21 @@ function getDateForWeekday(baseMonday: Date, weekday: DayOfWeek): Date {
   return result;
 }
 
+function formatAddisDateTime(date: Date | string): string {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Addis_Ababa',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(value);
+}
+
 @Injectable()
 export class SessionService {
 
@@ -73,13 +88,22 @@ export class SessionService {
     private readonly reminderService: ReminderService,
   ) {}
 
+  private getSessionRepository(manager?: EntityManager): Repository<Session> {
+    return manager ? manager.getRepository(Session) : this.sessionRepo;
+  }
+
+  private getChatRepository(manager?: EntityManager): Repository<Chat> {
+    return manager ? manager.getRepository(Chat) : this.chatRepo;
+  }
+
   private async isChatSharedByOtherSessions(
     sessionId: string,
     chatId?: string | null,
+    manager?: EntityManager,
   ): Promise<boolean> {
     if (!chatId) return false;
 
-    const linkedSessions = await this.sessionRepo.find({
+    const linkedSessions = await this.getSessionRepository(manager).find({
       where: { chat: { id: chatId } as Chat },
     });
 
@@ -89,11 +113,13 @@ export class SessionService {
   private async cloneChatForTherapist(
     sourceChat: Chat,
     therapist: Therapist,
+    manager?: EntityManager,
   ): Promise<Chat> {
     const groupName = this.getReassignedGroupChatName(sourceChat, therapist);
+    const chatRepo = this.getChatRepository(manager);
 
-    return await this.chatRepo.save(
-      this.chatRepo.create({
+    return await chatRepo.save(
+      chatRepo.create({
         client: sourceChat.client ?? null,
         therapist,
         group: sourceChat.group ?? null,
@@ -101,6 +127,13 @@ export class SessionService {
         closed: sourceChat.closed ?? false,
       }),
     );
+  }
+
+  private async loadChatWithParticipants(chatId: string, manager?: EntityManager): Promise<Chat | null> {
+    return await this.getChatRepository(manager).findOne({
+      where: { id: chatId },
+      relations: ['client', 'group'],
+    });
   }
 
   private getReassignedGroupChatName(
@@ -116,33 +149,191 @@ export class SessionService {
     return `${baseName} (with ${therapistLabel})`;
   }
 
+  private getCanonicalSeriesChatName(chat: Chat): string | null {
+    const isGroupChat = !!chat.groupName || !chat.client;
+    if (!isGroupChat) return chat.groupName ?? null;
+
+    return (chat.groupName ?? 'Group Chat')
+      .replace(/\s*\(with .*?\)\s*$/i, '')
+      .trim();
+  }
+
+  private getSessionClientTokens(session: Session): string[] {
+    const tokens: string[] = [];
+
+    if (session.client?.firebaseToken) {
+      tokens.push(session.client.firebaseToken);
+    }
+
+    if (session.group?.length) {
+      session.group.forEach((client) => {
+        if (client.firebaseToken) tokens.push(client.firebaseToken);
+      });
+    }
+
+    return tokens;
+  }
+
+  private getSessionClientName(session: Session): string {
+    return session.client
+      ? `${session.client.firstName} ${session.client.lastName}`
+      : 'a group session';
+  }
+
+  private async resolveForwardSeriesChat(
+    sessions: Session[],
+    commonId: string,
+    currentChat: Chat | null | undefined,
+    newTherapist: Therapist,
+    manager: EntityManager,
+  ): Promise<Chat | null> {
+    const chatRepo = this.getChatRepository(manager);
+
+    const existingChat = sessions.find(
+      (seriesSession) =>
+        seriesSession.chat?.id &&
+        seriesSession.chat?.therapist?.id === newTherapist.id,
+    )?.chat;
+
+    if (existingChat?.id) {
+      const hydratedExistingChat = await chatRepo.findOne({
+        where: { id: existingChat.id },
+        relations: ['client', 'group'],
+      });
+
+      if (hydratedExistingChat) {
+        return hydratedExistingChat;
+      }
+    }
+
+    const existingSeriesChat = await manager.getRepository(Session)
+      .createQueryBuilder('session')
+      .leftJoinAndSelect('session.chat', 'chat')
+      .leftJoinAndSelect('chat.therapist', 'chatTherapist')
+      .where('session.commonId = :commonId', { commonId })
+      .andWhere('chat.id IS NOT NULL')
+      .andWhere('chatTherapist.id = :therapistId', { therapistId: newTherapist.id })
+      .orderBy('session.schedule', 'ASC')
+      .getOne();
+
+    if (existingSeriesChat?.chat?.id) {
+      const hydratedSeriesChat = await chatRepo.findOne({
+        where: { id: existingSeriesChat.chat.id },
+        relations: ['client', 'group'],
+      });
+
+      if (hydratedSeriesChat) {
+        return hydratedSeriesChat;
+      }
+    }
+
+    if (!currentChat?.id) {
+      return null;
+    }
+
+    const hydratedCurrentChat = await chatRepo.findOne({
+      where: { id: currentChat.id },
+      relations: ['client', 'group'],
+    });
+
+    if (!hydratedCurrentChat) {
+      return null;
+    }
+
+    await chatRepo.update(hydratedCurrentChat.id, {
+      therapist: newTherapist,
+      groupName: this.getCanonicalSeriesChatName(hydratedCurrentChat),
+    });
+
+    return {
+      ...hydratedCurrentChat,
+      therapist: newTherapist,
+      groupName: this.getCanonicalSeriesChatName(hydratedCurrentChat),
+    } as Chat;
+  }
+
+  private async findExistingGroupReassignmentChat(
+    sourceChat: Chat,
+    newTherapist: Therapist,
+    manager?: EntityManager,
+  ): Promise<Chat | null> {
+    const sourceMemberIds = (sourceChat.group ?? [])
+      .map((client) => client.id)
+      .filter(Boolean)
+      .sort();
+
+    if (!sourceMemberIds.length) return null;
+
+    const candidateChats = await this.getChatRepository(manager).find({
+      where: {
+        therapist: { id: newTherapist.id },
+        client: null,
+      },
+      relations: ['client', 'group', 'therapist'],
+    });
+
+    return (
+      candidateChats.find((chat) => {
+        if (!chat.id || chat.id === sourceChat.id) return false;
+        if (chat.client) return false;
+
+        const candidateMemberIds = (chat.group ?? [])
+          .map((client) => client.id)
+          .filter(Boolean)
+          .sort();
+
+        return (
+          candidateMemberIds.length === sourceMemberIds.length &&
+          candidateMemberIds.every((id, index) => id === sourceMemberIds[index])
+        );
+      }) ?? null
+    );
+  }
+
   private async resolveReassignedChat(
     session: Session,
     newTherapist: Therapist,
+    manager?: EntityManager,
   ): Promise<Chat | null> {
     if (!session.client?.id) {
       if (session.chat?.id) {
-        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
-        if (isShared) {
-          return await this.cloneChatForTherapist(session.chat, newTherapist);
+        const chatRepo = this.getChatRepository(manager);
+        const hydratedChat = await this.loadChatWithParticipants(session.chat.id, manager);
+        if (!hydratedChat) {
+          return null;
         }
 
-        await this.chatRepo.update(session.chat.id, {
+        const existingSeriesChat = await this.findExistingGroupReassignmentChat(
+          hydratedChat,
+          newTherapist,
+          manager,
+        );
+        if (existingSeriesChat) {
+          return existingSeriesChat;
+        }
+
+        const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id, manager);
+        if (isShared) {
+          return await this.cloneChatForTherapist(hydratedChat, newTherapist, manager);
+        }
+
+        await chatRepo.update(hydratedChat.id, {
           therapist: newTherapist,
-          groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
+          groupName: this.getReassignedGroupChatName(hydratedChat, newTherapist),
         });
+
+        return {
+          ...hydratedChat,
+          therapist: newTherapist,
+          groupName: this.getReassignedGroupChatName(hydratedChat, newTherapist),
+        } as Chat;
       }
 
-      return session.chat
-        ? ({
-            ...session.chat,
-            therapist: newTherapist,
-            groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
-          } as Chat)
-        : null;
+      return null;
     }
 
-    const existingChat = await this.chatRepo.findOne({
+    const chatRepo = this.getChatRepository(manager);
+    const existingChat = await chatRepo.findOne({
       where: {
         client: { id: session.client.id },
         therapist: { id: newTherapist.id },
@@ -155,12 +346,12 @@ export class SessionService {
     }
 
     if (session.chat?.id) {
-      const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id);
+      const isShared = await this.isChatSharedByOtherSessions(session.id, session.chat.id, manager);
       if (isShared) {
-        return await this.cloneChatForTherapist(session.chat, newTherapist);
+        return await this.cloneChatForTherapist(session.chat, newTherapist, manager);
       }
 
-      await this.chatRepo.update(session.chat.id, {
+      await chatRepo.update(session.chat.id, {
         therapist: newTherapist,
         groupName: this.getReassignedGroupChatName(session.chat, newTherapist),
       });
@@ -172,8 +363,8 @@ export class SessionService {
       } as Chat;
     }
 
-    return await this.chatRepo.save(
-      this.chatRepo.create({
+    return await chatRepo.save(
+      chatRepo.create({
         client: session.client,
         therapist: newTherapist,
         group: null,
@@ -635,7 +826,7 @@ export class SessionService {
       const session = await this.sessionRepo.findOne(
         {
           where: {id},
-          relations: ['client', 'therapist', 'chat', 'group','groupSubscription'],
+          relations: ['client', 'therapist', 'chat', 'group','groupSubscription', 'subscription'],
         }
       );
 
@@ -673,50 +864,120 @@ export class SessionService {
         ? `${session.client.firstName} ${session.client.lastName}`
         : 'a group session';
       const clientIdForPayload = session.client?.id ?? session.commonId;
+      let reassignmentTargets: Session[] = [];
+      let notificationPreviousTherapist: Therapist | null = previousTherapist ?? null;
 
       // ✅ Check for therapist reassignment
       if ('therapist' in sanitizedDto && sanitizedDto.therapist && session.therapist?.id !== sanitizedDto.therapist) {
         const newTherapist = await this.therapistService.findOne(sanitizedDto.therapist);
         if (!newTherapist) throw new NotFoundException('New therapist not found');
 
-        session.therapist = newTherapist;
-        // TODO: Keep reassignment chat resolution centralized here so partial reassignments
-        // can split shared chats without affecting other sessions on the old therapist.
-        // session.chat = await this.resolveReassignedChat(session, newTherapist);
+        if (session.commonId) {
+          const reassignmentResult = await this.dataSource.transaction(async (manager) => {
+            await manager.getRepository(Session)
+              .createQueryBuilder('seriesSession')
+              .setLock('pessimistic_write')
+              .where('seriesSession.commonId = :commonId', { commonId: session.commonId })
+              .getMany();
+
+            const seriesSessions = await manager.getRepository(Session)
+              .createQueryBuilder('session')
+              .leftJoinAndSelect('session.client', 'client')
+              .leftJoinAndSelect('session.therapist', 'therapist')
+              .leftJoinAndSelect('session.chat', 'chat')
+              .leftJoinAndSelect('chat.therapist', 'chatTherapist')
+              .leftJoinAndSelect('session.group', 'group')
+              .leftJoinAndSelect('session.groupSubscription', 'groupSubscription')
+              .leftJoinAndSelect('session.subscription', 'subscription')
+              .setLock('pessimistic_write')
+              .where('session.commonId = :commonId', { commonId: session.commonId })
+              .orderBy('session.schedule', 'ASC')
+              .getMany();
+
+            const selectedSession = seriesSessions.find((seriesSession) => seriesSession.id === id);
+            if (!selectedSession) {
+              throw new NotFoundException('Session not found');
+            }
+
+            const futureSessions = seriesSessions.filter((seriesSession) => (
+              new Date(seriesSession.schedule).getTime() >= new Date(selectedSession.schedule).getTime()
+            ));
+
+            const reassignableSessions = futureSessions.filter((seriesSession) => (
+              !seriesSession.hasTherapistAttended &&
+              seriesSession.therapist?.id !== newTherapist.id
+            ));
+
+            const canonicalChat = await this.resolveForwardSeriesChat(
+              futureSessions,
+              session.commonId,
+              selectedSession.chat,
+              newTherapist,
+              manager,
+            );
+
+            for (const seriesSession of reassignableSessions) {
+              seriesSession.therapist = newTherapist;
+              if (canonicalChat) {
+                seriesSession.chat = canonicalChat;
+              }
+            }
+
+            await manager.getRepository(Session).save(reassignableSessions);
+
+            return {
+              selectedSession: reassignableSessions.find((seriesSession) => seriesSession.id === id) ?? selectedSession,
+              affectedSessions: reassignableSessions,
+            };
+          });
+
+          session.therapist = reassignmentResult.selectedSession.therapist;
+          session.chat = reassignmentResult.selectedSession.chat;
+          reassignmentTargets = reassignmentResult.affectedSessions;
+        } else {
+          session.therapist = newTherapist;
+          // TODO: Keep reassignment chat resolution centralized here so partial reassignments
+          // can split shared chats without affecting other sessions on the old therapist.
+          session.chat = await this.resolveReassignedChat(session, newTherapist);
+          reassignmentTargets = [session];
+        }
 
         // --- Send push notifications ---
 
-        const prevTherapistToken = previousTherapist?.firebaseToken;
-        const newTherapistToken = newTherapist?.firebaseToken;
+        for (const affectedSession of reassignmentTargets) {
+          const affectedClientTokens = this.getSessionClientTokens(affectedSession);
+          const affectedClientName = this.getSessionClientName(affectedSession);
+          const affectedClientIdForPayload = affectedSession.client?.id ?? affectedSession.commonId;
+          const prevTherapistToken = notificationPreviousTherapist?.firebaseToken;
+          const newTherapistToken = newTherapist?.firebaseToken;
+          const sessionDateTime = formatAddisDateTime(affectedSession.schedule);
 
-        // 🟢 Notify client(s)
-        if (clientTokens.length) {
-          await this.firebaseService.sendPushNotification(
-            { client: clientTokens, therapist: [], admin: [] },
-            JSON.stringify({ therapistId: newTherapist.id }),
-            SessionNotif.TH_REASSIGNED_CLIENT,
-            `Your therapist has been changed to ${newTherapist.firstName}.`
-          );
-        }
+          if (affectedClientTokens.length) {
+            await this.firebaseService.sendPushNotification(
+              { client: affectedClientTokens, therapist: [], admin: [] },
+              JSON.stringify({ therapistId: newTherapist.id }),
+              SessionNotif.TH_REASSIGNED_CLIENT,
+              `Your therapist has been changed to ${newTherapist.firstName} for your session on ${sessionDateTime}.`
+            );
+          }
 
-        // 🟠 Notify previous therapist
-        if (prevTherapistToken) {
-          await this.firebaseService.sendPushNotification(
-            { client: [], therapist: [prevTherapistToken], admin: [] },
-            JSON.stringify({ clientId: clientIdForPayload }),
-            SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-            `Client ${clientName} has been reassigned from you.`
-          );
-        }
+          if (prevTherapistToken) {
+            await this.firebaseService.sendPushNotification(
+              { client: [], therapist: [prevTherapistToken], admin: [] },
+              JSON.stringify({ clientId: affectedClientIdForPayload }),
+              SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
+              `Client ${affectedClientName} has been reassigned from your session on ${sessionDateTime}.`
+            );
+          }
 
-        // 🔵 Notify new therapist
-        if (newTherapistToken) {
-          await this.firebaseService.sendPushNotification(
-            { client: [], therapist: [newTherapistToken], admin: [] },
-            JSON.stringify({ clientId: clientIdForPayload }),
-            SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-            `You have been assigned to ${clientName}.`
-          );
+          if (newTherapistToken) {
+            await this.firebaseService.sendPushNotification(
+              { client: [], therapist: [newTherapistToken], admin: [] },
+              JSON.stringify({ clientId: affectedClientIdForPayload }),
+              SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
+              `You have been assigned to ${affectedClientName} for the session on ${sessionDateTime}.`
+            );
+          }
         }
       }
 
@@ -1610,7 +1871,7 @@ export class SessionService {
         session.therapist = newTherapist;
         // TODO: Route batch therapist reassignments through the shared helper so reused chats
         // stay attached to untouched sessions while reassigned sessions can fork safely.
-        // session.chat = await this.resolveReassignedChat(session, newTherapist);
+        session.chat = await this.resolveReassignedChat(session, newTherapist);
 
         if (prevTherapist?.firebaseToken) {
           prevTherapistTokens.push(prevTherapist.firebaseToken);
@@ -1675,6 +1936,18 @@ export class SessionService {
     const uniquePrevTherapistTokens = [...new Set(prevTherapistTokens)].filter(Boolean);
 
     const count = sessionsToUpdate.length;
+    const sortedSchedules = sessionsToUpdate
+      .map((session) => session.schedule)
+      .sort((a, b) => a.getTime() - b.getTime());
+    const firstSessionTime = sortedSchedules[0] ? formatAddisDateTime(sortedSchedules[0]) : null;
+    const lastSessionTime = sortedSchedules[sortedSchedules.length - 1]
+      ? formatAddisDateTime(sortedSchedules[sortedSchedules.length - 1])
+      : null;
+    const scheduleSuffix = firstSessionTime
+      ? count === 1 || firstSessionTime === lastSessionTime
+        ? ` at ${firstSessionTime}`
+        : ` between ${firstSessionTime} and ${lastSessionTime}`
+      : '';
 
     // 🔔 ONE notification block
 
@@ -1685,7 +1958,7 @@ export class SessionService {
           { client: uniqueClientTokens, therapist: [], admin: [] },
           JSON.stringify({ therapistId: therapist }),
           SessionNotif.TH_REASSIGNED_CLIENT,
-          `Your therapist has been updated for ${count} session(s).`
+          `Your therapist has been updated for ${count} session(s)${scheduleSuffix}.`
         );
       }
 
@@ -1694,7 +1967,7 @@ export class SessionService {
           { client: [], therapist: uniquePrevTherapistTokens, admin: [] },
           JSON.stringify({ commonId }),
           SessionNotif.TH_REASSIGNED_OLD_THERAPIST,
-          `${count} session(s) have been reassigned from you.`
+          `${count} session(s)${scheduleSuffix} have been reassigned from you.`
         );
       }
 
@@ -1703,7 +1976,7 @@ export class SessionService {
           { client: [], therapist: uniqueTherapistTokens, admin: [] },
           JSON.stringify({ commonId }),
           SessionNotif.TH_REASSIGNED_NEW_THERAPIST,
-          `You have been assigned to ${count} session(s).`
+          `You have been assigned to ${count} session(s)${scheduleSuffix}.`
         );
       }
     }
