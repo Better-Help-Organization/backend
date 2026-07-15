@@ -68,6 +68,20 @@ export class APIFeatures {
     return parentAlias;
   }
 
+  private includeRelationChain(path: string, selectFields: string[]) {
+    const parts = path.split('.').filter(Boolean);
+    let currentPath = '';
+
+    for (const relation of parts) {
+      currentPath = currentPath ? `${currentPath}.${relation}` : relation;
+      const alias = this.ensureRelationAlias(currentPath);
+
+      if (!this.selectedRelationAliases.has(alias)) {
+        selectFields.push(`${alias}.id`);
+      }
+    }
+  }
+
   private resolveNestedRelation(path: string): string {
     const parts = path.split(".");
     const finalField = parts[parts.length - 1];
@@ -214,6 +228,7 @@ export class APIFeatures {
         }
 
         const relationAlias = this.ensureRelationAlias(relationPath);
+        this.includeRelationChain(relationPath, selectFields);
 
         if (fieldName === '*') {
           relationOverride.add(relationAlias);

@@ -21,8 +21,10 @@ import { Availability } from 'src/common/entities/availability.entity';
 import { Chat } from 'src/common/entities/chat.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
+import { Expertise } from 'src/common/entities/expertise.entity';
 import { Level } from 'src/common/entities/level.entity';
 import { Modal } from 'src/common/entities/modal.entity';
+import { Notification } from 'src/common/entities/notification.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Subscription } from 'src/common/entities/subscription.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
@@ -67,6 +69,8 @@ function createRepositories(dataSource: DataSource) {
     modal: dataSource.getRepository(Modal),
     level: dataSource.getRepository(Level),
     availability: dataSource.getRepository(Availability),
+    expertise: dataSource.getRepository(Expertise),
+    notification: dataSource.getRepository(Notification),
   };
 }
 
