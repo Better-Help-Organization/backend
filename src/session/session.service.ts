@@ -1023,9 +1023,13 @@ export class SessionService {
         console.log('Schedule changed, sending notification - session.service.ts:551',session.schedule);
         const etTime = toEthiopianTime(session.schedule);
 
-        this.firebaseService.sendPushNotification(
+        await this.firebaseService.sendPushNotification(
           { client: clientTokens, therapist: [session.therapist?.firebaseToken], admin: [] },
-          JSON.stringify(savedSession),
+          JSON.stringify({
+            sessionId: savedSession.id,
+            commonId: savedSession.commonId,
+            schedule: savedSession.schedule,
+          }),
           SessionNotif.RE_SCHEDULED,
           `Your session has been updated for ${etTime}`
         );
@@ -1040,7 +1044,11 @@ export class SessionService {
       if ('status' in sanitizedDto) {
         this.firebaseService.sendPushNotification(
           { client: clientTokens, therapist: [session.therapist?.firebaseToken], admin: [] },
-          JSON.stringify(savedSession),
+          JSON.stringify({
+            sessionId: savedSession.id,
+            commonId: savedSession.commonId,
+            schedule: savedSession.schedule,
+          }),
           SessionNotif.STATUS_CHANGED,
           `Your session status is now ${session.latestStatus}`
         );

@@ -9,7 +9,7 @@ proxy-down:
 
 proxy-logs:
 	@echo "📜 Fetching proxy logs..."
-	@docker logs -f --tail 100 haproxy
+	@docker logs -f --tail 100 traefik
 
 proxy-build:
 	@echo "🔨 Building proxy..."

@@ -28,6 +28,10 @@ export class FirebaseService {
   ){}
 
 
+  private maskToken (token: string) {
+    console.log({token})
+    return token.length > 12 ? `${token.slice(0, 8)}...${token.slice(-4)}` : token;
+  }
   async markAsRead(queryParams: FindAllQueryParams) {
 
     // const ids = queryParams?.ids ? queryParams.ids.split(',').map((id) => id.trim()) : [];
@@ -288,10 +292,24 @@ export class FirebaseService {
     };
 
     console.log({firebasePayload})
-      this.firebaseAdmin
+      const response = await this.firebaseAdmin
         .messaging()
         .sendEachForMulticast(firebasePayload)
-        .catch(err => this.logger.error("Firebase error:", err));
+
+      this.logger.log(
+        `Push notification processed: success=${response?.successCount}, failure=${response?.failureCount}`
+      );
+
+      if (response.failureCount > 0) {
+        response.responses.forEach((r, index) => {
+          if (!r.success) {
+          this.logger.error(
+            `FCM failure for token[${index}] ${this.maskToken(allTokens[index])}: ${r.error?.code} - ${r.error?.message}`
+          );          }
+        });
+      }
+
+
 
       this.logger.log("Push notification processed successfully");
     } catch (err) {
