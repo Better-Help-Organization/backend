@@ -29,7 +29,6 @@ export class FirebaseService {
 
 
   private maskToken (token: string) {
-    console.log({token})
     return token.length > 12 ? `${token.slice(0, 8)}...${token.slice(-4)}` : token;
   }
   async markAsRead(queryParams: FindAllQueryParams) {
@@ -64,7 +63,6 @@ export class FirebaseService {
     try {
       const { code, title, showNotification } = notificationType;
 
-      console.log({code, title, showNotification})
       if (!body) body = "You have a new notification.";
 
       this.logger.log(`Preparing push notification: ${title} -> ${message}`);
@@ -79,7 +77,6 @@ export class FirebaseService {
         ...uniqueTherapistTokens,
         ...uniqueAdminTokens,
       ];
-      console.log({allTokens})
 
       // 2️⃣ Save notification ONCE (only when allowed)
       if (showNotification) {
@@ -130,7 +127,6 @@ export class FirebaseService {
             provider.send(note, voip.tokens).then(result => {
               this.logger.log(`VoIP Sent: ${result.sent.length}`);
               if (result.failed.length) {
-                console.log('VoIP Failures:', JSON.stringify(result.failed));
               }
             });
           }
@@ -291,7 +287,6 @@ export class FirebaseService {
       },
     };
 
-    console.log({firebasePayload})
       const response = await this.firebaseAdmin
         .messaging()
         .sendEachForMulticast(firebasePayload)

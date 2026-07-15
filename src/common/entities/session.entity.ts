@@ -70,13 +70,6 @@ export class Session extends CommonEntity {
   })
   therapist: Therapist;
 
-    @ApiProperty({type : () => Client})
-  @ManyToOne(() => Client, { 
-    nullable: true,
-    // cascade: true
-  })
-  Client: Client;
-
   @ApiProperty({ default: false })
   @Column({default: false })
   hasclientAttended: boolean;
