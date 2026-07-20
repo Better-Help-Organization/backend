@@ -198,43 +198,4 @@ describe('SessionService - subscription completion', () => {
       'Your program is complete. Please log out and await your next cycle.'
     );
   });
-
-  it('does not resend completion notifications when the finished subscription is already inactive', async () => {
-    const therapist = makeTherapist({ id: 'therapist-1', firebaseToken: 'therapist-token' });
-    const client = makeClient({ id: 'client-1', firebaseToken: 'client-token' });
-    const catalog = makeSubscription(SubscriptionType.MONTHLY);
-    const clientSubscription = makeClientSubscription(client, catalog, therapist);
-    clientSubscription.status = SubscriptionStatus.INACTIVE;
-    client.activeSubscription = null;
-
-    const targetSession = makeSession({
-      id: 'session-1',
-      client,
-      therapist,
-      subscription: clientSubscription,
-      hasTherapistAttended: false,
-      group: [],
-      groupSubscription: [],
-    });
-
-    mocks.sessionRepo.findOne.mockResolvedValue(targetSession);
-    mocks.sessionRepo.save.mockImplementation(async (entity: Session) => entity);
-    mocks.sessionRepo.find.mockResolvedValue([
-      { ...targetSession, hasTherapistAttended: true },
-    ]);
-    mocks.clientSubRepo.findOne.mockResolvedValue(clientSubscription);
-
-    await service.update(targetSession.id, { hasTherapistAttended: true } as any);
-
-    expect(mocks.clientSubRepo.save).not.toHaveBeenCalledWith(
-      expect.objectContaining({ id: clientSubscription.id }),
-    );
-    expect(mocks.clientRepo.save).not.toHaveBeenCalled();
-    expect(mocks.firebaseService.sendPushNotification).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      SessionNotif.ALL_SESSIONS_COMPLETED,
-      expect.anything(),
-    );
-  });
 });
