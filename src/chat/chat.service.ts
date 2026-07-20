@@ -260,7 +260,6 @@ export class ChatService {
     if (sender.type === UserTypes.THERAPIST) therapist = sender.id;
 
     const chat = await this.findOne(chatId, { fields: "client.*,therapist.*,group.*" });
-    console.log({chat})
     const { content } = createMessageDto;
     let msg = await chat.addMessage(this.msgRepo, content, therapist, client, this.chatRepo);
 
@@ -419,7 +418,6 @@ export class ChatService {
 
   async findOne(id: string, queryParams?: FindOneQueryParams): Promise<Chat> {
   try {
-    console.log({id, queryParams})
       const chat = await new APIFeatures(this.chatRepo, queryParams).getOne(id);
       if (!chat) throw new NotFoundException('Chat not found');
       return chat
@@ -489,7 +487,6 @@ export class ChatService {
       isVideoCall: createCallDto.isVideoCall,
       isGroupCall: false,
     };
-    console.log({payload})
     // Send token only to the callee
     await this.firebaseService.sendPushNotification(
       {
@@ -667,7 +664,6 @@ export class ChatService {
     };
 
     isCallerClient ? tokens.therapist = [chat.therapist?.firebaseToken] : tokens.client = [chat.client?.firebaseToken];
-    console.log("reject notif sent to: ",{tokens, isCallerClient})
     
     const callerData = isCallerClient ? chat.client : chat.therapist;
     await this.firebaseService.sendPushNotification(
@@ -702,7 +698,6 @@ export class ChatService {
       }
   
       chat.group = [...chat.group, ...newClients];
-      console.log(chat.group)
       return await this.chatRepo.save(chat);
   }
 }

@@ -52,7 +52,6 @@ export class SubscriptionService {
 
     const typeValue = String(SubscriptionType[dto.type]); // '0', '1'
 
-    console.log(dto.type)
     const existing = await this.subscriptionRepo
       .createQueryBuilder('subscription')
       .where('subscription.level = :level', { level: dto.level })
@@ -131,7 +130,6 @@ export class SubscriptionService {
       const csub = await this.clientSubscriptionRepo.save(clientSub);
       client.activeSubscription = csub
       await this.clientRepository.save(client)
-      console.log({client})
 
       return clientSub;
     } catch (err) {
@@ -192,7 +190,7 @@ export class SubscriptionService {
   async update(token: TokenPayload, id: string, dto: UpdateSubscriptionDto) {
   const subscription = await this.clientSubscriptionRepo.findOne({
     where: { id },
-    relations: ['client'], // ✅ make sure we get the client relation
+    relations: ['client', 'client.activeSubscription'], // load the active link once up front
   });
 
   if (!subscription) {
@@ -257,11 +255,9 @@ export class SubscriptionService {
         await this.clientRepository.save(client);
       }
     } else {
-      // ✅ LOGIC for deactivation
       const client = subscription.client;
 
-      // If this subscription is currently the client's active one, remove it
-      if (client.activeSubscription?.id === subscription.id) {
+      if (client?.activeSubscription?.id === subscription.id) {
         client.activeSubscription = null;
         await this.clientRepository.save(client);
       }

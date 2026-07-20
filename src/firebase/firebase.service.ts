@@ -29,8 +29,83 @@ export class FirebaseService {
 
 
   private maskToken (token: string) {
-    console.log({token})
     return token.length > 12 ? `${token.slice(0, 8)}...${token.slice(-4)}` : token;
+  }
+
+  private buildNotificationData(
+    message: string,
+    code: string,
+    profile?: string,
+    type?: string,
+  ) {
+    const baseData: Record<string, string> = {
+      code,
+      timestamp: Date.now().toString(),
+      profile: profile ?? "",
+    };
+
+    if (type) {
+      baseData.type = type;
+    }
+
+    const withMessage = {
+      id: message,
+      ...baseData,
+    };
+
+    if (Buffer.byteLength(JSON.stringify(withMessage), 'utf8') <= 4096) {
+      return withMessage;
+    }
+
+    let reducedMessage = message;
+
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed && typeof parsed === 'object') {
+        const keysToKeep = [
+          'id',
+          'sessionId',
+          'chatId',
+          'clientId',
+          'therapistId',
+          'subscriptionId',
+          'commonId',
+          'schedule',
+        ] as const;
+
+        const compactPayload = keysToKeep.reduce<Record<string, unknown>>((acc, key) => {
+          if (parsed[key] != null) acc[key] = parsed[key];
+          return acc;
+        }, {});
+
+        if (Object.keys(compactPayload).length > 0) {
+          reducedMessage = JSON.stringify(compactPayload);
+        }
+      }
+    } catch {
+      reducedMessage = message.slice(0, 512);
+    }
+
+    const reduced = {
+      id: reducedMessage,
+      ...baseData,
+    };
+
+    if (Buffer.byteLength(JSON.stringify(reduced), 'utf8') <= 4096) {
+      return reduced;
+    }
+
+    return {
+      id: '',
+      ...baseData,
+    };
+  }
+
+  private async clearInvalidToken(token: string) {
+    await Promise.all([
+      this.clientRepo.update({ firebaseToken: token }, { firebaseToken: null }),
+      this.therapistRepo.update({ firebaseToken: token }, { firebaseToken: null }),
+    ]);
   }
   async markAsRead(queryParams: FindAllQueryParams) {
 
@@ -64,7 +139,6 @@ export class FirebaseService {
     try {
       const { code, title, showNotification } = notificationType;
 
-      console.log({code, title, showNotification})
       if (!body) body = "You have a new notification.";
 
       this.logger.log(`Preparing push notification: ${title} -> ${message}`);
@@ -74,12 +148,11 @@ export class FirebaseService {
       const uniqueAdminTokens = [...new Set(tokens.admin || [])].filter(Boolean);
 
       // 1️⃣ Flatten all tokens
-      const allTokens: string[] = [
+      const allTokens: string[] = [...new Set([
         ...uniqueClientTokens,
         ...uniqueTherapistTokens,
         ...uniqueAdminTokens,
-      ];
-      console.log({allTokens})
+      ])];
 
       // 2️⃣ Save notification ONCE (only when allowed)
       if (showNotification) {
@@ -130,7 +203,6 @@ export class FirebaseService {
             provider.send(note, voip.tokens).then(result => {
               this.logger.log(`VoIP Sent: ${result.sent.length}`);
               if (result.failed.length) {
-                console.log('VoIP Failures:', JSON.stringify(result.failed));
               }
             });
           }
@@ -161,13 +233,7 @@ export class FirebaseService {
         if (allTokens.length > 0) {
            const callPayload: admin.messaging.MulticastMessage = {
              tokens: allTokens,
-             data: {
-               id: message,
-               code: code.toString(),
-               timestamp: Date.now().toString(),
-               profile: profile ?? "",
-               type: "call"
-             },
+             data: this.buildNotificationData(message, code.toString(), profile, 'call'),
              android: {
                priority: "high",
                ttl: 0,
@@ -235,6 +301,7 @@ export class FirebaseService {
       //   },
       // };
       const isAlert = showNotification === true;
+      const notificationData = this.buildNotificationData(message, code, profile);
       const firebasePayload: admin.messaging.MulticastMessage = {
       tokens: allTokens,
 
@@ -243,12 +310,7 @@ export class FirebaseService {
       }),
 
       ...(isAlert && {
-        data: {
-          id: message,
-          code,
-          timestamp: Date.now().toString(),
-          profile: profile ?? "",
-        },
+        data: notificationData,
       }),
 
       apns: {
@@ -281,17 +343,11 @@ export class FirebaseService {
               },
             }
           : {
-              data: {
-                id: message,
-                code,
-                timestamp: Date.now().toString(),
-                profile: profile ?? "",
-              },
+              data: notificationData,
             }),
       },
     };
 
-    console.log({firebasePayload})
       const response = await this.firebaseAdmin
         .messaging()
         .sendEachForMulticast(firebasePayload)
@@ -303,9 +359,23 @@ export class FirebaseService {
       if (response.failureCount > 0) {
         response.responses.forEach((r, index) => {
           if (!r.success) {
-          this.logger.error(
-            `FCM failure for token[${index}] ${this.maskToken(allTokens[index])}: ${r.error?.code} - ${r.error?.message}`
-          );          }
+            const failedToken = allTokens[index];
+            this.logger.error(
+              `FCM failure for token[${index}] ${this.maskToken(failedToken)}: ${r.error?.code} - ${r.error?.message}`
+            );
+
+            if (
+              failedToken &&
+              (
+                r.error?.code === 'messaging/registration-token-not-registered' ||
+                r.error?.code === 'messaging/invalid-registration-token'
+              )
+            ) {
+              this.clearInvalidToken(failedToken).catch((cleanupErr) =>
+                this.logger.error(`Failed to clear invalid token ${this.maskToken(failedToken)}: ${cleanupErr.message}`)
+              );
+            }
+          }
         });
       }
 

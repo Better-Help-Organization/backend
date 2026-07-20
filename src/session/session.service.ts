@@ -516,7 +516,6 @@ export class SessionService {
             );
           }
 
-          console.log({createSessionDto})
           delete createSessionDto.id
 
           const newSession = manager.create(Session, {
@@ -553,7 +552,6 @@ export class SessionService {
         );
 
       this.logger.log(`Created ${sessions.length} session(s) successfully`);
-      console.log({sessions})
       return sessions;
     });
   }
@@ -684,7 +682,6 @@ export class SessionService {
       const {subscription} = cs
       if (subscription) {
         const weeks = subscription.type * 4;
-        console.log(subscription.type)
   
         const createdSchedules: Date[] = [new Date(selected.schedule)]; // copy of original
 
@@ -709,8 +706,6 @@ export class SessionService {
           schedule.setDate(schedule.getDate() + i * 7);
 
           try {
-            console.log("Creating schedule for iteration - session.service.ts:355", i, schedule.toISOString());
-            console.log("Trying to create recurring session at: - session.service.ts:356", schedule.toISOString());
             
             // const chat = manager.create(Chat, {
             //   client: selected.client,
@@ -736,7 +731,6 @@ export class SessionService {
             delete newSession.id; // ensure no leftover ID from cache
             selected.chat = savedChat;
             const saved = await manager.save(newSession);
-            console.log("Saved recurring session: - session.service.ts:373", saved.id);
         
             allSessions.push(saved);
         
@@ -1020,7 +1014,6 @@ export class SessionService {
 
       // ✅ Notify schedule change
       if ('schedule' in sanitizedDto) {
-        console.log('Schedule changed, sending notification - session.service.ts:551',session.schedule);
         const etTime = toEthiopianTime(session.schedule);
 
         await this.firebaseService.sendPushNotification(
@@ -1085,7 +1078,6 @@ export class SessionService {
       // 1️⃣ Validate therapist
       const therapist = await manager.findOne(Therapist, { where: { id: dto.therapist } });
       if (!therapist) throw new NotFoundException('Therapist not found');
-      console.log({therapist})
       // 2️⃣ Validate clients
       // const clients = await manager.findBy(Client, { id: In(dto.groupClients) });
 
@@ -1104,7 +1096,6 @@ export class SessionService {
       const [hours, minutes] = dto.date.startTime.split(':').map(Number);
       targetDate.setHours(hours, minutes, 0, 0);
 
-      console.log({clients})
       // 4️⃣ Fetch subscriptions for all clients
       const clientSubs = await manager.find(ClientSubscription, {
         where: {
@@ -1114,7 +1105,6 @@ export class SessionService {
         relations: ['client', 'subscription'],
         order: { start_date: 'ASC' },
       });
-      console.log({clientSubs})
       if (!clientSubs.length) throw new BadRequestException('No active subscriptions found');
 
       const activeSubscriptionsByClient = new Map<string, ClientSubscription>();
@@ -1139,7 +1129,6 @@ export class SessionService {
 
       // if atleast one doesn't have an active subscription return error
       for (const client of clients) {
-        console.log({client})
         const activeSubscription =
           client.activeSubscription ?? activeSubscriptionsByClient.get(client.id);
 
@@ -1156,7 +1145,6 @@ export class SessionService {
         const weeks = typeValue === SubscriptionType.TRIAL ? 1 : typeValue * 4;
 
         // const weeks = client.activeSubscription.subscription.type * 4; // type = months, 1 month = 4 weeks
-        console.log({weeks})
         clientWeeksMap.set(client.id, weeks);
         if (weeks > maxWeeks) maxWeeks = weeks;
       }
@@ -1167,7 +1155,6 @@ export class SessionService {
       const allSessions: Session[] = [];
       const scheduleDates: Date[] = []; // store created schedule dates
 
-      console.log({maxWeeks})
       const chat = manager.create(Chat, {
           client: null,
           therapist,
@@ -1181,13 +1168,11 @@ export class SessionService {
       for (let i = 0; i < maxWeeks; i++) {
         const schedule = new Date(targetDate); // base schedule for first session
         schedule.setDate(targetDate.getDate() + i * 7); // next week offset
-        console.log({schedule})
         // Attach clients according to their subscription length
         const clientsForThisSession = clients.filter(c => {
           const weeks = clientWeeksMap.get(c.id) ?? 0;
           return weeks > i; // attach only if this client has remaining sessions
         });
-        console.log({clientsForThisSession})
         if (!clientsForThisSession.length) continue; // skip if no clients for this week
 
         // const clientsForThisSessionRefs = clientsForThisSession.map(c => {
@@ -1221,7 +1206,6 @@ export class SessionService {
           subscription: null,             // Ensure single subscription field is null
           chat: savedChat  // add this
         });
-        console.log({session})
 
         const subs: ClientSubscription[] = [];
         for (const client of clientsForThisSession) {
@@ -1238,7 +1222,6 @@ export class SessionService {
         // ✅ Update isInGroup for clients
         for (const client of clientsForThisSession) {
           if (!client.activeSubscription) throw new BadRequestException('Client missing active subscription') ;
-          console.log({clientSubscription: client.activeSubscription})
           const clientSub = await manager.findOne(ClientSubscription, {
             where: { id: client.activeSubscription.id },
             relations: ['groupSessions'],
@@ -1262,9 +1245,7 @@ export class SessionService {
             await manager.save(clientSub);
           }
           if (!client.isInGroup) {
-            console.log({client})
             await manager.update(Client, { id: client.id }, { isInGroup: true });
-            console.log({client})
           }
         }
       }
@@ -2343,7 +2324,6 @@ export class SessionService {
 
   private async handleSingleSubscriptionCompletion(subscriptionId: string) {
     // 1. Fetch all sessions tied to this subscription
-    console.log({subscriptionId})
     const sessions = await this.sessionRepo.find({
       where: [
         { subscription: { id: subscriptionId } },
@@ -2356,7 +2336,6 @@ export class SessionService {
 
     // 2. Check completion ONLY for this subscription
     const allAttended = sessions.every(s => s.hasTherapistAttended);
-    console.log({allAttended})
     if (!allAttended) return;
 
     // 3. Fetch subscription
@@ -2364,7 +2343,6 @@ export class SessionService {
       where: { id: subscriptionId },
       relations: ['client'],
     });
-    console.log({clientSub})
     if (!clientSub) return;
 
     if (clientSub.status === SubscriptionStatus.INACTIVE) return;
@@ -2382,7 +2360,6 @@ export class SessionService {
 
     // 6. Notify ONLY this client
     const token = clientSub.client?.firebaseToken;
-    console.log({token})
     if (token) {
       await this.firebaseService.sendPushNotification(
         { client: [token], therapist: [], admin: [] },

@@ -72,7 +72,7 @@ export class Client extends User {
   subscription: ClientSubscription[];
 
   @ApiProperty({ type: () => ClientSubscription })
-  @OneToOne(() => ClientSubscription, { nullable: true, eager: true })
+  @OneToOne(() => ClientSubscription, { nullable: true, eager: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'active_subscription_id' })
   activeSubscription?: ClientSubscription;
 
