@@ -136,7 +136,7 @@ export function createSessionServiceMocks() {
   const sessionRepo = createMockSessionRepo(manager);
   const chatRepo = createMockRepo();
   const clientRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
-  const clientSubRepo = { findOne: jest.fn(), find: jest.fn() };
+  const clientSubRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
   const availabilityRepo = {};
   const dataSource = createMockDataSource(manager);
   const firebaseService = createMockFirebaseService();

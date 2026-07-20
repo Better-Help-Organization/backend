@@ -406,7 +406,7 @@ export class SessionService {
     // Load full session with group and attendance relations
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
-      relations: ['group', 'groupAttendance']
+      relations: ['group', 'groupAttendance', 'groupSubscription']
     });
 
     if (!session) throw new Error('Session not found');
@@ -419,14 +419,19 @@ export class SessionService {
 
     // Check if already marked
     const alreadyMarked = session.groupAttendance.some(c => c.id === clientId);
-    if (alreadyMarked) {
-      return session; // ignore duplicates
+    if (!alreadyMarked) {
+      session.groupAttendance.push({ id: clientId } as any);
     }
 
-    // Add them to attendance list
-    session.groupAttendance.push({ id: clientId } as any);
+    session.hasTherapistAttended = true;
 
-    return await this.sessionRepo.save(session);
+    const savedSession = await this.sessionRepo.save(session);
+
+    for (const sub of savedSession.groupSubscription || []) {
+      await this.handleSingleSubscriptionCompletion(sub.id);
+    }
+
+    return savedSession;
 
   }
 
