@@ -322,7 +322,7 @@ describe('SessionService integration', () => {
       groupSubscription: [existingSub],
       commonId,
       groupName: 'Process Group',
-      schedule: new Date('2026-08-01T10:00:00.000Z'),
+      schedule: new Date('2026-09-01T10:00:00.000Z'),
     });
     await createSessionRecord(repositories, {
       therapist,
@@ -332,7 +332,7 @@ describe('SessionService integration', () => {
       groupSubscription: [existingSub],
       commonId,
       groupName: 'Process Group',
-      schedule: new Date('2026-08-08T10:00:00.000Z'),
+      schedule: new Date('2026-09-08T10:00:00.000Z'),
     });
     const referenceSession = await repositories.session.find({
       where: { commonId },
@@ -425,7 +425,7 @@ describe('SessionService integration', () => {
       groupSubscription: [clientSub],
       commonId,
       groupName: 'Removal Group',
-      schedule: new Date('2026-08-01T10:00:00.000Z'),
+      schedule: new Date('2026-09-01T10:00:00.000Z'),
     });
     await createSessionRecord(repositories, {
       therapist,
@@ -435,7 +435,7 @@ describe('SessionService integration', () => {
       groupSubscription: [clientSub],
       commonId,
       groupName: 'Removal Group',
-      schedule: new Date('2026-08-08T10:00:00.000Z'),
+      schedule: new Date('2026-09-08T10:00:00.000Z'),
     });
 
     const result = await service.removeFromSession(futureSessionA.id, {
