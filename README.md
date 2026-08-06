@@ -58,6 +58,43 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+## Telebirr live sandbox check
+
+Use the live Telebirr sandbox check only from a machine whose IP is registered with Telebirr.
+
+```bash
+# requires Telebirr credentials in .env
+$ pnpm run test:telebirr-live
+```
+
+Notes:
+
+- This is a real sandbox smoke test, not a mock.
+- It calls Telebirr `applyFabricToken`, `createOrder`, and `queryOrder`.
+- It does not write to the application database because it uses `TelebirrService` directly.
+- It expects a pending order status such as `WAIT_PAY`.
+- By default it downloads the Telebirr CA cert to a temp file for the current run and deletes it when the script exits.
+- If needed, override the CA bundle path with `TELEBIRR_CA_BUNDLE_PATH=/absolute/path/to/ca.pem`.
+- If GlobalSign changes the source URL, override it with `TELEBIRR_CA_CERT_URL=http://.../your-cert.crt`.
+
+## Telebirr live end-to-end check
+
+Use the end-to-end check when you want a real sandbox order plus local database verification of the backend reconciliation path.
+
+```bash
+# opens a real checkout order, waits for sandbox payment completion, then verifies DB state
+$ pnpm run test:telebirr-live-e2e
+```
+
+Notes:
+
+- This spins up an isolated temporary MySQL container, so it does not touch your main database.
+- It creates a real Telebirr sandbox order and persists the local `payment` and `client_subscription` rows in that temporary database.
+- The API now returns a local navigation-wrapper URL (`/public/index.html?url=...`) instead of the raw Telebirr paygate URL so mobile/webview flows can hand off more reliably.
+- It opens that wrapper URL in your default browser on macOS unless `TELEBIRR_OPEN_BROWSER=false`.
+- After you complete the payment in the sandbox UI, the script polls `queryOrder`, runs the backend callback reconciliation locally, and prints the final DB state.
+- For a non-blocking dry run, use `TELEBIRR_SKIP_WAIT=true pnpm run test:telebirr-live-e2e`.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

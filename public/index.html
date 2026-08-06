@@ -1,90 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Redirecting...</title>
-</head>
-<body>
-    <p>Redirecting to payment page...</p>
-    
+    <title>Redirecting to Telebirr</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: sans-serif;
+        background: #f6f8fb;
+        color: #172033;
+      }
+
+      main {
+        width: min(28rem, calc(100vw - 2rem));
+        padding: 1.5rem;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 18px 48px rgba(23, 32, 51, 0.12);
+        text-align: center;
+      }
+
+      p {
+        margin: 0 0 1rem;
+        line-height: 1.5;
+      }
+
+      a {
+        display: none;
+        padding: 0.9rem 1.2rem;
+        border-radius: 0.8rem;
+        background: #0a7cff;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      a.is-visible {
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p id="status">Preparing Telebirr checkout...</p>
+      <a id="open-payment" href="#">Open payment page</a>
+    </main>
+
     <script>
-        // Get URL parameter from Flutter app
-        function getUrlParameter(name) {
-            name = name.replace(/[\[\]]/g, '\\$&');
-            const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
-            const results = regex.exec(window.location.href);
-            if (!results) return null;
-            if (!results[2]) return '';
-            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+      (function () {
+        function getPaymentUrl() {
+          const params = new URLSearchParams(window.location.search);
+          return params.get("url") || params.get("link");
         }
 
-        // Check if URL parameter exists
-        const paymentUrl = getUrlParameter('url');
-        
-        if (paymentUrl) {
-            // Redirect immediately
+        function showManualLink(url, message) {
+          statusEl.textContent = message;
+          openPaymentLink.href = url;
+          openPaymentLink.classList.add("is-visible");
+        }
+
+        function openWithAnchor(url) {
+          const anchor = document.createElement("a");
+          anchor.href = url;
+          anchor.target = "_self";
+          anchor.style.display = "none";
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+        }
+
+        const statusEl = document.getElementById("status");
+        const openPaymentLink = document.getElementById("open-payment");
+        const paymentUrl = getPaymentUrl();
+
+        if (!paymentUrl) {
+          statusEl.textContent = "Missing Telebirr payment link.";
+          return;
+        }
+
+        showManualLink(paymentUrl, "Opening Telebirr checkout...");
+
+        window.addEventListener("load", function () {
+          openWithAnchor(paymentUrl);
+
+          setTimeout(function () {
             window.location.replace(paymentUrl);
-        } else {
-            // Optionally handle missing URL
-            document.body.innerHTML = '<p>Error: No payment URL provided</p>';
-        }
+          }, 150);
+
+          setTimeout(function () {
+            showManualLink(paymentUrl, "If nothing opened, tap below.");
+          }, 1200);
+        });
+      })();
     </script>
-</body>
+  </body>
 </html>
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Redirecr to telebirr payment</title>
-      <link
-      rel="stylesheet"
-      href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css"
-    />
-        <link
-      rel="stylesheet"
-      href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css"
-    />
-    <script
-      type="text/javascript"
-      src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.3/weui.min.js"
-    ></script>
-</head>
-<body>
-  <script defer>
-
-  function getQueryParam(param) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
-  }
-
-     
-    function useAnchorOpen(link) {
-    
-    if (!link) {
-      document.getElementById("status").innerHTML = "No link provided";
-      console.error("No payment link has been provided");
-      return;
-    }
-
-        console.log(link)
-        let anchorEle = document.createElement("a");
-        anchorEle.setAttribute("href", (link));
-        // anchorEle.setAttribute("target", "_self");
-        anchorEle.setAttribute("target", "_blank"); // open in new tab
-        anchorEle.removeAttribute("rel");           // remove external
-
-        anchorEle.style.display = "none";
-        anchorEle.click();
-      } 
-
-      document.addEventListener("DOMContentLoaded", function () {
-        const linkFromQuery = getQueryParam("link");
-        useAnchorOpen(linkFromQuery);
-  });
-
-</script>
-
-  <p id="status">Redirecting</p>
-</body>
-</html> -->

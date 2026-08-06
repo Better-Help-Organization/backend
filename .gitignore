@@ -60,3 +60,4 @@ src/config/*.p8
 caddy_data
 uploads
 *.sql
+certs/telebirr/

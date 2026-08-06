@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { PaymentMethod, PaymentStatus } from '../constants';
 import { ClientSubscription } from './client-subscription.entity';
 import { CommonEntity } from './common.entity';
@@ -19,8 +19,28 @@ export class Payment extends CommonEntity {
   method: PaymentMethod;
 
   @ApiProperty({ example: 'https://payments.example.com/receipt/12345', description: 'Receipt URL or reference' })
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'text', nullable: true })
   receipt: string;
+
+  @ApiProperty({ example: '1705460512562', required: false, description: 'Gateway-side merchant order id' })
+  @Column({ type: 'varchar', nullable: true })
+  providerOrderId: string;
+
+  @ApiProperty({ example: '080075a4e3213924de2b3b84ad3cac0a6a6001', required: false, description: 'Gateway prepay reference' })
+  @Column({ type: 'varchar', nullable: true })
+  providerPrepayId: string;
+
+  @ApiProperty({ example: '11801107AD19191408215009', required: false, description: 'Gateway transaction id' })
+  @Column({ type: 'varchar', nullable: true })
+  providerTransactionId: string;
+
+  @ApiProperty({ example: 'c2a5ec85-79e1-4439-b149-e763bd4c32f8', required: false, description: 'Associated ClientSubscription id' })
+  @Column({ type: 'varchar', nullable: true })
+  subscriptionId: string;
+
+  @ApiProperty({ required: false, description: 'Latest raw gateway payload kept for reconciliation/debugging' })
+  @Column({ type: 'simple-json', nullable: true })
+  providerPayload: Record<string, any>;
 
   @ApiProperty({
     example: '123_456_789.pdf',
@@ -35,6 +55,7 @@ export class Payment extends CommonEntity {
   status: PaymentStatus;
 
   @ApiProperty({ type: () => ClientSubscription, description: 'Associated ClientSubscription for this payment' })
+  @JoinColumn({ name: 'subscriptionId' })
   @ManyToOne(() => ClientSubscription, (sub) => sub.payment, { onDelete: 'CASCADE' })
   subscription: ClientSubscription;
 }
