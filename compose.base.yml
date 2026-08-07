@@ -5,6 +5,7 @@ services:
       dockerfile: ${DOCKERFILE}
     image: bh-${NODE_ENV}
     restart: unless-stopped
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     volumes:
       - .:/app
     depends_on:
@@ -154,4 +155,3 @@ services:
   #     - "5349:5349/udp"  # TURN TLS UDP (optional, if used)
   #   volumes:
   #     - ./livekit/turnserver.conf:/etc/turnserver.conf
-
