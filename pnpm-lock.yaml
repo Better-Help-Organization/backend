@@ -2696,7 +2696,7 @@ packages:
     engines: {node: '>= 6'}
 
   http2@https://github.com/node-apn/node-http2/archive/apn-2.1.4.tar.gz:
-    resolution: {tarball: https://github.com/node-apn/node-http2/archive/apn-2.1.4.tar.gz}
+    resolution: {tarball: https://github.com/node-apn/node-http2/archive/apn-2.1.4.tar.gz, integrity: sha512-ad4u4I88X9AcUgxCRW3RLnbh7xHWQ1f5HbrXa7gEy2x4Xgq+rq+auGx5I+nUDE2YYuqteGIlbxrwQXkIaYTfnQ==}
     version: 3.3.6
     engines: {node: '>=0.12.0'}
 
