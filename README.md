@@ -74,6 +74,8 @@ Notes:
 - It does not write to the application database because it uses `TelebirrService` directly.
 - It expects a pending order status such as `WAIT_PAY`.
 - By default it downloads the Telebirr CA cert to a temp file for the current run and deletes it when the script exits.
+- By default the live scripts use the system trust store.
+- To force a custom CA locally, set `TELEBIRR_USE_CUSTOM_CA=true`.
 - If needed, override the CA bundle path with `TELEBIRR_CA_BUNDLE_PATH=/absolute/path/to/ca.pem`.
 - If GlobalSign changes the source URL, override it with `TELEBIRR_CA_CERT_URL=http://.../your-cert.crt`.
 

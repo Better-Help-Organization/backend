@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import * as dotenv from 'dotenv';
 import { TelebirrService } from 'src/telebirr/telebirr.service';
-import { prepareTelebirrCaBundle } from './telebirr-ca';
+import { prepareTelebirrCaBundle, shouldUseCustomTelebirrCa } from './telebirr-ca';
 
 const axios = require(require.resolve('axios', { paths: [require.resolve('@nestjs/axios')] }));
 
@@ -45,7 +45,11 @@ async function main() {
   assertRequiredEnv();
 
   const caBundle = await prepareTelebirrCaBundle();
-  console.log(`Using Telebirr CA bundle: ${caBundle.caBundlePath ?? 'system trust store'}`);
+  console.log(
+    shouldUseCustomTelebirrCa()
+      ? `Using Telebirr CA bundle: ${caBundle.caBundlePath ?? 'custom trust store'}`
+      : 'Using Telebirr system trust store',
+  );
 
   try {
     const config = new ConfigService(process.env as Record<string, string>);

@@ -53,7 +53,7 @@ ssh -v -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << EOF
         app_uid=\${app_uid:-1000}
         app_gid=\${app_gid:-1000}
 
-        docker run --rm -v "\$PWD:/app" alpine sh -c "mkdir -p /app/logs /app/uploads && chown -R \$app_uid:\$app_gid /app/logs /app/uploads"
+        docker run --rm -v "\$PWD:/app" alpine sh -c "mkdir -p /app/logs /app/uploads /app/dist && chown -R \$app_uid:\$app_gid /app/logs /app/uploads /app/dist"
     }
 
     # Change to the correct directory

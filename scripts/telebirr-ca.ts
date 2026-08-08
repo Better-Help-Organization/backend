@@ -16,6 +16,14 @@ export type TelebirrCaBundle = {
   cleanup: () => Promise<void>;
 };
 
+function isTruthy(value: string | undefined): boolean {
+  return ['1', 'true', 'yes', 'on'].includes((value || '').trim().toLowerCase());
+}
+
+export function shouldUseCustomTelebirrCa(): boolean {
+  return isTruthy(process.env.TELEBIRR_USE_CUSTOM_CA);
+}
+
 function normalizePem(contents: Buffer): string {
   const text = contents.toString('utf8').trim();
   if (text.startsWith('-----BEGIN CERTIFICATE-----')) {
@@ -31,6 +39,13 @@ function normalizePem(contents: Buffer): string {
 }
 
 export async function prepareTelebirrCaBundle(): Promise<TelebirrCaBundle> {
+  if (!shouldUseCustomTelebirrCa()) {
+    return {
+      caBundlePath: null,
+      cleanup: async () => undefined,
+    };
+  }
+
   const explicitPath = process.env.TELEBIRR_CA_BUNDLE_PATH;
   if (explicitPath) {
     const caBundlePath = path.resolve(explicitPath);
