@@ -61,3 +61,4 @@ caddy_data
 uploads
 *.sql
 certs/telebirr/
+*.pem

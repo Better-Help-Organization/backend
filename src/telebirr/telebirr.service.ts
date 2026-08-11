@@ -268,6 +268,21 @@ export class TelebirrService {
       return;
     }
 
-    this.logger.error(`${message}: ${error?.message ?? error}`);
+    const errorDetails = {
+      name: error?.name,
+      code: error?.code,
+      message: error?.message ?? error,
+      responseStatus: error?.response?.status,
+      responseStatusText: error?.response?.statusText,
+      cause: error?.cause
+        ? {
+            name: error.cause?.name,
+            code: error.cause?.code,
+            message: error.cause?.message,
+          }
+        : undefined,
+    };
+
+    this.logger.error(`${message}: ${JSON.stringify(errorDetails)}`);
   }
 }

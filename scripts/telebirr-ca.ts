@@ -20,6 +20,10 @@ function isTruthy(value: string | undefined): boolean {
   return ['1', 'true', 'yes', 'on'].includes((value || '').trim().toLowerCase());
 }
 
+export function shouldAllowInsecureTelebirrTls(): boolean {
+  return isTruthy(process.env.TELEBIRR_ALLOW_INSECURE_TLS);
+}
+
 export function shouldUseCustomTelebirrCa(): boolean {
   return isTruthy(process.env.TELEBIRR_USE_CUSTOM_CA);
 }
@@ -39,6 +43,16 @@ function normalizePem(contents: Buffer): string {
 }
 
 export async function prepareTelebirrCaBundle(): Promise<TelebirrCaBundle> {
+  if (shouldAllowInsecureTelebirrTls()) {
+    return {
+      caBundlePath: null,
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false,
+      }),
+      cleanup: async () => undefined,
+    };
+  }
+
   if (!shouldUseCustomTelebirrCa()) {
     return {
       caBundlePath: null,

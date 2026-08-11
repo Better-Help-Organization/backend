@@ -2,12 +2,23 @@ import 'reflect-metadata';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 import { TelebirrService } from 'src/telebirr/telebirr.service';
-import { prepareTelebirrCaBundle, shouldUseCustomTelebirrCa } from './telebirr-ca';
+import {
+  prepareTelebirrCaBundle,
+  shouldAllowInsecureTelebirrTls,
+  shouldUseCustomTelebirrCa,
+} from './telebirr-ca';
 
 const axios = require(require.resolve('axios', { paths: [require.resolve('@nestjs/axios')] }));
 
+const runtimeEnv = process.env.TELEBIRR_APP_ENV || process.env.NODE_ENV || 'test';
+process.env.NODE_ENV = runtimeEnv;
 dotenv.config({ path: '.env' });
+const scopedEnvPath = `.env.${runtimeEnv}`;
+if (fs.existsSync(scopedEnvPath)) {
+  dotenv.config({ path: scopedEnvPath, override: true });
+}
 
 const pendingStatuses = new Set(['WAIT_PAY', 'PAYING', 'Pending', 'Paying']);
 const requiredEnv = [
@@ -46,7 +57,9 @@ async function main() {
 
   const caBundle = await prepareTelebirrCaBundle();
   console.log(
-    shouldUseCustomTelebirrCa()
+    shouldAllowInsecureTelebirrTls()
+      ? 'Using Telebirr insecure TLS mode'
+      : shouldUseCustomTelebirrCa()
       ? `Using Telebirr CA bundle: ${caBundle.caBundlePath ?? 'custom trust store'}`
       : 'Using Telebirr system trust store',
   );

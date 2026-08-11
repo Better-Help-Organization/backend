@@ -26,7 +26,12 @@ import { TelebirrController } from 'src/telebirr/telebirr.controller';
 import { TelebirrService } from 'src/telebirr/telebirr.service';
 import { ALL_TEST_ENTITIES } from 'test/integration/all-test-entities';
 import { IntegrationNamingStrategy } from 'test/integration/integration-naming.strategy';
-import { prepareTelebirrCaBundle, shouldUseCustomTelebirrCa, TelebirrCaBundle } from './telebirr-ca';
+import {
+  prepareTelebirrCaBundle,
+  shouldAllowInsecureTelebirrTls,
+  shouldUseCustomTelebirrCa,
+  TelebirrCaBundle,
+} from './telebirr-ca';
 
 const axios = require(require.resolve('axios', { paths: [require.resolve('@nestjs/axios')] }));
 
@@ -374,7 +379,9 @@ async function main() {
   try {
     caBundle = await prepareTelebirrCaBundle();
     console.log(
-      shouldUseCustomTelebirrCa()
+      shouldAllowInsecureTelebirrTls()
+        ? 'Using Telebirr insecure TLS mode'
+        : shouldUseCustomTelebirrCa()
         ? `Using Telebirr CA bundle: ${caBundle.caBundlePath ?? 'custom trust store'}`
         : 'Using Telebirr system trust store',
     );
