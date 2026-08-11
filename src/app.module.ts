@@ -62,10 +62,9 @@ class CustomExpressAdapter extends ExpressAdapter {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        `.env`,
-        `.env${process.env.NODE_ENV || ''}`, // Load environment-specific variables
-      ]
+      envFilePath: process.env.NODE_ENV
+        ? [`.env.${process.env.NODE_ENV}`, `.env`]
+        : ['.env'],
     }),
     JwtModule.register({
         global: true,   // make JwtService available app-wide
@@ -124,5 +123,4 @@ export class AppModule implements NestModule {
     consumer.apply(AuthServiceMiddleware).forRoutes('*');
   }
 }
-
 
