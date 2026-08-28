@@ -1,11 +1,10 @@
 import {
-    ExceptionFilter,
-    Catch,
-    ArgumentsHost,
-    ExecutionContext,
-    Next,
-  } from '@nestjs/common';
-  import { Request, Response } from 'express';
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  ExecutionContext
+} from '@nestjs/common';
+import { Request, Response } from 'express';
 import { LoggerService } from 'src/logger/logger.service';
   
   @Catch()
@@ -25,24 +24,5 @@ import { LoggerService } from 'src/logger/logger.service';
       );
 
       return;
-
-      // const status =
-      //   exception instanceof HttpException
-      //     ? exception.getStatus()
-      //     : HttpStatus.INTERNAL_SERVER_ERROR;
-  
-      // const message =
-      //   exception instanceof HttpException
-      //     ? exception.getResponse()
-      //     : 'Internal server error';
-  
-      // response.status(status).json({
-      //   error: true,
-      //   statusCode: status,
-      //   timestamp: new Date().toISOString(),
-      //   path: request.url,
-      //   method: request.method,
-      //   message,
-      // });
     }
   }

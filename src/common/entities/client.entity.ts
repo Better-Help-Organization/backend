@@ -11,9 +11,9 @@ import { Mood } from './mood.entity';
 import { Notification } from './notification.entity';
 import { Preference } from './preference.entity';
 import { Rating } from './rating.entity';
+import { SessionClientNotes } from './session-client-notes.entity';
 import { Session } from './session.entity';
 import { User } from './user.entity';
-import { SessionClientNotes } from './session-client-notes.entity';
 
 
 @Entity()
@@ -97,9 +97,4 @@ export class Client extends User {
   @OneToMany(() => SessionClientNotes, (n) => n.client)
   sessionNotes: SessionClientNotes[];
   
-
-    // @Expose()
-    // get type() {
-    //   return this.activeSubscription?.subscription ?? null;
-    // }
 }

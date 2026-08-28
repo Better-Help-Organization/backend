@@ -46,8 +46,6 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullBoardModule } from '@bull-board/nestjs';
 
-// const bullBoardAdapter = new ExpressAdapter();
-// bullBoardAdapter.setBasePath('/dev/api/queues');
 
 class CustomExpressAdapter extends ExpressAdapter {
   constructor() {
@@ -79,9 +77,6 @@ class CustomExpressAdapter extends ExpressAdapter {
     BullBoardModule.forRoot({
       route: '/queues',
       adapter: CustomExpressAdapter,
-      // adapterOptions: {
-      //   basePath: process.env.BULL_BOARD_BASE_PATH ?? '/api/queues',
-      // },
     }),
     BullBoardModule.forFeature({
           name: 'session-reminders',

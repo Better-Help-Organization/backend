@@ -1,19 +1,19 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { ChatService } from '../../chat/chat.service';
+import { ClientService } from '../../client/client.service';
+import { FirebaseService } from '../../firebase/firebase.service';
+import { LivekitService } from '../../livekit/livekit.service';
+import { LoggerService } from '../../logger/logger.service';
+import { ParameterService } from '../../parameter/parameter.service';
+import { ReminderService } from '../../reminder/reminder.service';
+import { TherapistService } from '../../therapist/therapist.service';
 import { Availability } from '../entities/availability.entity';
 import { Chat } from '../entities/chat.entity';
-import { Client } from '../entities/client.entity';
 import { ClientSubscription } from '../entities/client-subscription.entity';
+import { Client } from '../entities/client.entity';
 import { Message } from '../entities/message.entity';
 import { Session } from '../entities/session.entity';
-import { LoggerService } from '../../logger/logger.service';
-import { FirebaseService } from '../../firebase/firebase.service';
-import { ClientService } from '../../client/client.service';
-import { ChatService } from '../../chat/chat.service';
-import { TherapistService } from '../../therapist/therapist.service';
-import { ParameterService } from '../../parameter/parameter.service';
-import { LivekitService } from '../../livekit/livekit.service';
-import { ReminderService } from '../../reminder/reminder.service';
 
 export interface MockManager {
   findOne: jest.Mock;
@@ -107,16 +107,6 @@ export function createMockLogger() {
   };
 }
 
-/**
- * Returns all providers needed for SessionService with mocks.
- * Access individual mocks via the returned object.
- *
- * Usage:
- *   const mocks = createSessionServiceMocks();
- *   const module = await Test.createTestingModule({
- *     providers: [SessionService, ...mocks.providers],
- *   }).compile();
- */
 export function createMockChatService() {
   return {
     create: jest.fn().mockResolvedValue({ id: 'mock-chat-id' }),
@@ -201,15 +191,6 @@ export function createMockRepo() {
   };
 }
 
-/**
- * Returns all providers needed for ChatService with mocks.
- *
- * Usage:
- *   const mocks = createChatServiceMocks();
- *   const module = await Test.createTestingModule({
- *     providers: [ChatService, ...mocks.providers],
- *   }).compile();
- */
 export function createChatServiceMocks() {
   const chatRepo = createMockRepo();
   const msgRepo = createMockRepo();

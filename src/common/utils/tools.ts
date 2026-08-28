@@ -1,5 +1,3 @@
-// const pmlib = require("./sign-util-lib");
-// import pmlib from "./sign-util-lib"
 import * as pmlib from './sign-util-lib';
 
 
@@ -47,13 +45,6 @@ export function signRequestObject(requestObject, privateKey) {
   return signString(signOriginStr, privateKey);
 }
 
-// export function signString(str, privateKey) {
-//     // return test2();
-//     const sign = crypto.createSign('RSA-SHA256');
-//     sign.update(str);
-//     sign.end();
-//     return sign.sign(privateKey).toString("base64");
-// }
 
 let signString = (text, privateKey) => {
   const sha256withrsa = new pmlib.rs.KJUR.crypto.Signature({

@@ -1,6 +1,6 @@
+import { faker } from '@faker-js/faker';
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityMetadata, ObjectLiteral } from 'typeorm';
-import { faker } from '@faker-js/faker';
 
 @Injectable()
 export class SeedService {
@@ -175,10 +175,6 @@ private getRelatedEntity(column: any) {
     if (isNullable && faker.datatype.boolean() && !isUnique) return null;
 
     const typeName = typeof type === 'function' ? type.name : type;
-
-    // if (isUnique) {
-    //   return this.generateUniqueValue(typeName, entityName, columnMetadata.propertyName);
-    // }
 
     if (columnMetadata?.propertyName === 'email') {
       return faker.internet.email();

@@ -27,10 +27,6 @@ export class UpdateAdminDto extends UpdateUserDto {
     })
     @IsOptional()
     @ValidPassword()
-    // @Transform(async ({ value }) => {
-    // if (!value) return value;
-    // return await hash(value, 10);
-    // })
     password?: string;
 
 }

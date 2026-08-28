@@ -43,14 +43,4 @@ export class MoodController {
     @Param('id') id: string) {
     return this.moodService.findOne(id, queryParams);
   }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateMoodDto: UpdateMoodDto) {
-  //   return this.moodService.update(+id, updateMoodDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.moodService.remove(+id);
-  // }
 }

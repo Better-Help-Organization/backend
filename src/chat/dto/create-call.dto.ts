@@ -18,13 +18,6 @@ export class CreateCallDto {
   @IsNotEmpty()
   isVideoCall: boolean;
 
-  // @ApiProperty({
-  //   description: 'Indicates if the call is a group call',
-  //   example: true,
-  // })
-  // @IsBoolean()
-  // @IsNotEmpty()
-  // isGroupCall: boolean;  
   
   @ApiProperty({
       description: 'Array of Language UUIDs',

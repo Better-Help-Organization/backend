@@ -1,8 +1,8 @@
 import {
-    CanActivate,
-    ExecutionContext,
-    ForbiddenException,
-    Injectable
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { OWNERSHIP_ALLOWED_TYPES, OWNERSHIP_ENTITY } from 'src/common/decorators/ownership-check.decorator';
@@ -30,8 +30,6 @@ export class OwnershipGuard implements CanActivate {
 
     // extract the :id param
     const id = req.params?.id;
-    // if (!id) 
-    //     throw new BadRequestException('Route must include :id');
 
     // permission: user type must be allowed
     if (!allowedUserTypes.includes(user.type)) {
