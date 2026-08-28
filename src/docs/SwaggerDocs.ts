@@ -112,7 +112,6 @@ export class SwaggerDocs {
         ApiOperation({ summary: this.operationSummary }),
         this.bearerAuth? ApiBearerAuth():null,
           // Apply ProtectedEndpoint shorthand if guards are present
-        // this.bearerAuth ? ProtectedEndpoint() : null,  // Add ProtectedEndpoint decorator here
         ...this.responses.map(({ status, description, examples }) =>
           ApiResponse({
             status,

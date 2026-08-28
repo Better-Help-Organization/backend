@@ -19,10 +19,6 @@ export class AdminController {
     private readonly stats: AdminStatisticsService
   ) {}
 
-  // @Post()
-  // create(@Body() createAdminDto: CreateAdminDto) {
-  //   return this.adminService.create(createAdminDto);
-  // }
 
   @Get('me')
   @ApiFindOneQueryParams()

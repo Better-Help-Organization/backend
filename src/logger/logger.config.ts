@@ -1,12 +1,5 @@
 import * as winston from 'winston';
-// import 'winston-daily-rotate-file';
-import LogstashTransport from 'winston-logstash/lib/winston-logstash-latest'
 import DailyRotateFile from 'winston-daily-rotate-file';
-
-// const logstashTransport = new LogstashTransport({
-//   host: 'logstash', // name of the logstash service in docker
-//   port: 5000
-// })
 
 // File Transport
 const fileTransport = new DailyRotateFile({
@@ -44,12 +37,6 @@ const logger = winston.createLogger({
     fileTransport, 
     consoleTransport],
 });
-
-
-// // Logstash Error Handling
-// logstashTransport.on('error', (err) => {
-//   logger.error('Logstash transport error:', { error: err.message });
-// });
 
 // File Transport Error Handling
 fileTransport.on('error', (err) => {

@@ -50,12 +50,6 @@ export class MatchService {
       relations: ['client', 'accepted'],
     });
 
-    // if (existingMatch) {
-    //   throw new ConflictException(
-    //     'You already have a pending match request. Please wait patiently while you are being matched.'
-    //   );
-    // }
-
     const preference = await this.preferenceRepository.findOne({
       where: { id: createMatchDto.preferenceId },
       relations: {
@@ -99,11 +93,8 @@ export class MatchService {
       .filter(id => id);
 
     const therapists = await this.therapistService.findMatchingTherapists({
-      // gender: preference.gender,
-      // level: preference.level?.id,
       modal: preference.modal?.id,
     });
-    // const {data:therapists} = await this.therapistService.findAll({take:'0'});
 
     if (therapists?.length === 0) {
       throw new NotFoundException('No therapists match your preferences');
@@ -139,7 +130,6 @@ export class MatchService {
       .map(t => t.firebaseToken)
       .filter(token => token);
 
-    // if (tokens?.length > 0) {
       const client: Pick<Client, 'firstName' | 'lastName' | 'gender' | 'dob'> = await this.clientService.findOne(token.id);
 
       await this.firebaseService.sendPushNotification(
@@ -154,7 +144,6 @@ export class MatchService {
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
       );
-    // }
 
     this.logger.log(`Sent match request to ${tokens.therapist.length} therapists`);
 
@@ -187,7 +176,6 @@ export class MatchService {
   ];
 
   protected maskValue(value: any) {
-      // return "***"; // If you prefer masking
       return undefined; // remove key entirely
   }
 
@@ -382,16 +370,6 @@ export class MatchService {
           const prevTherapistToken = accepted?.firebaseToken;
           const newTherapistToken = newTherapist?.firebaseToken;
     
-            // // 🟢 Notify client
-            // if (clientToken) {
-            //   await this.firebaseService.sendPushNotification(
-            //     { client: [clientToken], therapist: [], admin: [] },
-            //     JSON.stringify({ therapistId: newTherapist.id }),
-            //     SessionNotif.TH_REASSIGNED_CLIENT,
-            //     `Your therapist has been changed to ${newTherapist.fullName}.`
-            //   );
-            // }
-    
             // 🟠 Notify previous therapist
             if (prevTherapistToken) {
               await this.firebaseService.sendPushNotification(
@@ -433,9 +411,6 @@ export class MatchService {
       });
 
       if (!match) throw new NotFoundException(`Match with ID ${id} not found`);
-      // if (match.client.id !== token.id) {
-      //   throw new ForbiddenException('You are not authorized to delete this match');
-      // }
 
       await this.matchRepository.remove(match);
     } catch (err) {

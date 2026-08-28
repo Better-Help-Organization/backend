@@ -8,9 +8,6 @@ interface StandardErrorResponse {
   timestamp: string;
   path: string;
   statusCode: number;
-  // items?: string[];               // optional, for conflicts
-  // link?: string;                  // optional, for reference
-  // [key: string]: any;             // allow extra fields dynamically
 }
 
 

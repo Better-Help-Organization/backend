@@ -118,7 +118,6 @@ export class FindOneQueryParams<T=any> {
   page?: string;
 
   ids?: string;
-  // options: FindOneOptions<T>
 }
 
 export class FindOnePathParams {

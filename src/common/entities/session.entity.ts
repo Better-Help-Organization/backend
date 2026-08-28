@@ -37,10 +37,6 @@ export class Session extends CommonEntity {
   @ApiProperty({ type : () => [Client] })
   @ManyToMany(() => Client, {
     nullable: true,
-    // cascade: true
-    // eager: true, // Automatically load group clients when fetching the session
-    // onDelete: 'CASCADE', // If a client is deleted, remove them from the session group
-    // onUpdate: 'CASCADE' // Optional, if you want to update client references automatically
   })
   @JoinTable({
     name: 'session_group_clients',
@@ -156,7 +152,6 @@ export class Session extends CommonEntity {
   @ApiProperty({ type: () => [SessionClientNotes] })
   @OneToMany(() => SessionClientNotes, (n) => n.session, {
     cascade: true,
-    // eager:true
   })
   clientNotes: SessionClientNotes[];
 

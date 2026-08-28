@@ -15,7 +15,6 @@ import { Session } from './session.entity';
 import { TherapistBank } from './therapist-bank.entity';
 import { User } from './user.entity';
 
-// @Unique('UQ_therapist_bank', ['therapist', 'bank']) // composite unique constraint
 @Entity()
 export class Therapist extends User {
 

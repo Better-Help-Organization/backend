@@ -6,7 +6,6 @@ import { AdminRoles, BaseStatus, UserTypes } from '../constants';
 // TODO: add this to the guards
 type IArgs = {
   role?: AdminRoles[]
-  // status?: BaseStatus[]
 }
 
 export function createJwtAuthGuard(strategy: string) {
@@ -25,19 +24,6 @@ export function createJwtAuthGuard(strategy: string) {
       if (!isAuthenticated)  return false;
 
       const user  = context.switchToHttp().getRequest().user;
-      // TokenPayload → Admin data
-      // if (this.args?.role && this.args?.role.length > 0) {
-      //   if (!this.args.role.includes(user?.kind)) return false;
-      // }
-
-      // if (this.args?.status && this.args?.status.length > 0) {
-      //   if (!this.args.status.includes(user?.status)) return false;
-      // }
-
-
-      // const request = context.switchToHttp().getRequest();
-      // const user = request.user as TokenPayload;
-      // // ✅ Always allow ADMIN users to pass any guard
       
       if (user?.type === UserTypes.ADMIN) {
         if (user.role === AdminRoles.SUPER) return true   

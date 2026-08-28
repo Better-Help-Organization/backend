@@ -86,7 +86,6 @@ export class MatchController {
   }
 
   @Delete(':id')
-  // @UseGuards(ClientJwtAuthGuard)
   @UseGuards(AdminJwtAuthGuard)  
   remove(@CurrentUser() token: TokenPayload, @Param('id') id: string) {
     return this.matchService.remove(token, id);

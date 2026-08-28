@@ -62,10 +62,6 @@ export class ClientSubscription extends CommonEntity {
   @Column('int', { nullable: true })
   price: number;
 
-  // @Expose()
-  // get type() {
-  //   return this.subscription?.type ?? null;
-  // }
 
   
 }

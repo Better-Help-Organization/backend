@@ -119,10 +119,6 @@ export class LicenseService {
         throw new NotFoundException(`License with ID ${id} not found`);
       }
 
-      // if (license.therapist.id !== token.id) {
-      //   throw new ForbiddenException('You are not authorized to update this license');
-      // }
-
       if (dto.filename) {
         const filenameParts = dto.filename.split('_');
         if (filenameParts.length < 3) {

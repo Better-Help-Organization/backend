@@ -6,14 +6,6 @@ import { ValidPassword } from "src/common/decorators/valid-password";
 
 export class LoginDto {
 
-  // @ApiProperty({
-  //   description: 'email',
-  //   example: 'tibesolomon7@gmail.com',
-  // })
-  // @IsEmail()
-  // @IsNotEmpty()
-  // email: string;
-
   @ApiProperty({
       description: 'phone number',
       example: '923621874',
