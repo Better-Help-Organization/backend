@@ -45,16 +45,16 @@ import { TherapistModule } from './therapist/therapist.module';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullBoardModule } from '@bull-board/nestjs';
+import {
+  SESSION_LIFECYCLE_QUEUE,
+  SESSION_REMINDERS_QUEUE,
+} from './reminder/reminder.constants';
 
-// const bullBoardAdapter = new ExpressAdapter();
-// bullBoardAdapter.setBasePath('/dev/api/queues');
-
-class CustomExpressAdapter extends ExpressAdapter {
+class BullBoardExpressAdapter extends ExpressAdapter {
   constructor() {
     super();
-    const basePath = `/dev/api/queues`;
-    console.error('Bull Board basePath:', basePath); // use console.error so it shows even with console.log suppressed
-    this.setBasePath(basePath);
+    const tag = process.env.TAG ? `/${process.env.TAG}` : '';
+    this.setBasePath(`${tag}/api/bullmq`);
   }
 }
 
@@ -74,17 +74,21 @@ class CustomExpressAdapter extends ExpressAdapter {
       connection: {
         host: process.env.REDIS_HOST ?? 'redis',
         port: parseInt(process.env.REDIS_PORT ?? '6379'),
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: parseInt(process.env.REDIS_DB ?? '0'),
       },
+      prefix: process.env.BULLMQ_PREFIX ?? (process.env.NODE_ENV || 'dev'),
     }),
     BullBoardModule.forRoot({
-      route: '/queues',
-      adapter: CustomExpressAdapter,
-      // adapterOptions: {
-      //   basePath: process.env.BULL_BOARD_BASE_PATH ?? '/api/queues',
-      // },
+      route: '/bullmq',
+      adapter: BullBoardExpressAdapter,
     }),
     BullBoardModule.forFeature({
-          name: 'session-reminders',
+          name: SESSION_REMINDERS_QUEUE,
+          adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+          name: SESSION_LIFECYCLE_QUEUE,
           adapter: BullMQAdapter,
     }),
     ScheduleModule.forRoot(),
@@ -124,5 +128,3 @@ export class AppModule implements NestModule {
     consumer.apply(AuthServiceMiddleware).forRoutes('*');
   }
 }
-
-

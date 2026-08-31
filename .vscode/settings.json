@@ -4,7 +4,7 @@
     "source.organizeImports": "explicit"
   },
 
-"explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
     "*.entity.ts": "${capture}.entity.*.ts",
@@ -15,5 +15,7 @@
   },
   "[typescript]": {
     "editor.defaultFoldLevel": 2
-  }
+  },
+  "files.eol": "\n",
+  "eslint.enable": false
 }

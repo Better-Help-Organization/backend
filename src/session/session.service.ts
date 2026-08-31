@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { ChatService } from 'src/chat/chat.service';
 import { ClientService } from 'src/client/client.service';
-import { ApprovalStatus, DayOfWeek, DefaultParameters, SessionNotif, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
+import { ApprovalStatus, DayOfWeek, DefaultParameters, SessionNotif, SessionStatus, SubscriptionStatus, SubscriptionType, TokenPayload, Tokens } from 'src/common/constants';
 import { Availability } from 'src/common/entities/availability.entity';
 import { Chat } from 'src/common/entities/chat.entity';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
@@ -431,7 +431,7 @@ export class SessionService {
   }
 
   async create(id:string, createSessionDto: any) {
-    return await this.sessionRepo.manager.transaction(async (manager) => {
+    const sessions = await this.sessionRepo.manager.transaction(async (manager) => {
       this.logger.log('Creating new session(s)');
       let clientEntity = null;
       let groupEntities = null;
@@ -554,6 +554,10 @@ export class SessionService {
       this.logger.log(`Created ${sessions.length} session(s) successfully`);
       return sessions;
     });
+
+    await this.reminderService.schedulePendingSessionExpiry(sessions);
+
+    return sessions;
   }
 
   async selectSession(token: TokenPayload, dto: SelectSessionDto) {
@@ -806,6 +810,7 @@ export class SessionService {
         //   { id: In(allSessions.map(s => s.id)) }, 
         //   { chat: { id: chat.id } }
         // );
+        await this.reminderService.cancelPendingSessionExpiry(groupSessions);
         await Promise.all(allSessions.map(s => this.reminderService.scheduleReminders(s)));
 
       return allSessions;
@@ -1045,6 +1050,10 @@ export class SessionService {
           SessionNotif.STATUS_CHANGED,
           `Your session status is now ${session.latestStatus}`
         );
+
+        if (session.latestStatus === SessionStatus.CANCELED) {
+          await this.reminderService.cancelReminders(session.id);
+        }
       }
 
       if ('hasTherapistAttended' in sanitizedDto) {
@@ -1911,14 +1920,6 @@ export class SessionService {
     // 💾 Save first
     await this.sessionRepo.save(sessionsToUpdate);
 
-    // // 🔁 Handle reminders AFTER save (important!)
-    // if (schedule) {
-    //   for (const session of sessionsToUpdate) {
-    //     await this.reminderService.cancelReminders(session.id);
-    //     await this.reminderService.scheduleReminders(session);
-    //   }
-    // }
-
     // 🧼 Deduplicate tokens
     const uniqueClientTokens = [...new Set(clientTokens)].filter(Boolean);
     const uniqueTherapistTokens = [...new Set(therapistTokens)].filter(Boolean);
@@ -2215,6 +2216,9 @@ export class SessionService {
           schedule: session.schedule,
         });
       }
+
+      await this.reminderService.cancelReminders(session.id);
+      await this.reminderService.cancelPendingSessionExpiry([session]);
 
       // Remove the session itself
       await this.sessionRepo.remove(session);

@@ -2,13 +2,14 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
+import { ApprovalStatus, SessionNotif, SessionStatus } from 'src/common/constants';
 import { Session } from 'src/common/entities/session.entity';
 import { toEthiopianTime } from 'src/common/utils/toEthiopianTime';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { Repository } from 'typeorm';
-import { SessionNotif } from '../common/constants';
+import { SESSION_REMINDER_JOB, SESSION_REMINDERS_QUEUE } from './reminder.constants';
 
-@Processor('session-reminders')
+@Processor(SESSION_REMINDERS_QUEUE)
 export class ReminderProcessor extends WorkerHost {
   private readonly logger = new Logger(ReminderProcessor.name);
 
@@ -21,6 +22,11 @@ export class ReminderProcessor extends WorkerHost {
   }
 
   async process(job: Job) {
+    if (job.name !== SESSION_REMINDER_JOB) {
+      this.logger.warn(`Unknown reminder job ${job.name}`);
+      return;
+    }
+
     const { sessionId } = job.data;
 
     const session = await this.sessionRepo.findOne({
@@ -29,13 +35,29 @@ export class ReminderProcessor extends WorkerHost {
       select: {
         id: true,
         schedule: true,
+        approvalStatus: true,
+        latestStatus: true,
         client: { id: true, firstName: true, firebaseToken: true },
         therapist: { id: true, firstName: true, firebaseToken: true },
+        group: { id: true, firstName: true, firebaseToken: true },
       },
     });
 
     if (!session) {
       this.logger.warn(`Session ${sessionId} not found, skipping reminder`);
+      return;
+    }
+
+    if (session.approvalStatus !== ApprovalStatus.CONFIRMED) {
+      this.logger.log(`Session ${sessionId} is not confirmed, skipping reminder`);
+      return;
+    }
+
+    if (
+      session.latestStatus === SessionStatus.CANCELED ||
+      session.latestStatus === SessionStatus.COMPLETED
+    ) {
+      this.logger.log(`Session ${sessionId} is ${session.latestStatus}, skipping reminder`);
       return;
     }
 

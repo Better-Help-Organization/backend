@@ -9,6 +9,11 @@ services:
       file: ./compose.base.yml
       service: db
 
+  redis:
+    extends:
+      file: ./compose.base.yml
+      service: redis
+
 volumes:
   prod_db_data:
   prod_redis_data:

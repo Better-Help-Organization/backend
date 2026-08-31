@@ -1,29 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ApprovalStatus, DefaultParameters, SessionNotif, SubscriptionStatus } from 'src/common/constants';
+import { SessionNotif, SubscriptionStatus } from 'src/common/constants';
 import { ClientSubscription } from 'src/common/entities/client-subscription.entity';
 import { Client } from 'src/common/entities/client.entity';
 import { Diary } from 'src/common/entities/diary.entity';
 import { Mood } from 'src/common/entities/mood.entity';
 import { Note } from 'src/common/entities/note.entity';
-import { Session } from 'src/common/entities/session.entity';
-import { Therapist } from 'src/common/entities/therapist.entity';
-import { toEthiopianTime } from 'src/common/utils/toEthiopianTime';
 import { LoggerService } from 'src/logger/logger.service';
-import { ParameterService } from 'src/parameter/parameter.service';
-import { Between, LessThan, Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
 export class NotificationScheduler {
   constructor(
     private readonly firebaseService: FirebaseService,
-    private readonly parameterService: ParameterService,
     private readonly logger: LoggerService,
     @InjectRepository(Client) private readonly clientRepo: Repository<Client>,
-    @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
-    @InjectRepository(Therapist) private readonly therapistRepo: Repository<Therapist>,
     @InjectRepository(ClientSubscription) private readonly clientSubscriptionRepo: Repository<ClientSubscription>,
     @InjectRepository(Mood) private readonly moodRepo: Repository<Mood>,
     @InjectRepository(Note) private readonly noteRepo: Repository<Note>,
@@ -86,60 +79,6 @@ export class NotificationScheduler {
         }
     }
 
-    // 2. Session reminders (24h, 2h, 15m before start)
-    @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
-    async sendSessionReminders() {
-        this.logger.log('Checking upcoming sessions for reminders...');
-        const now = new Date();
-
-        // Map target minutes to specific future timestamps
-        const targets = [1440, 120, 15]; // 24h, 2h, 15m
-        
-        for (const minutes of targets) {
-            // Look for sessions scheduled EXACTLY X minutes from now (plus a small 59s window)
-            const targetTimeStart = new Date(now.getTime() + minutes * 60000);
-            const targetTimeEnd = new Date(targetTimeStart.getTime() + 59000);
-
-            const sessions = await this.sessionRepo.find({
-                where: { 
-                    schedule: Between(targetTimeStart, targetTimeEnd) 
-                },
-                relations: ['client', 'therapist'],
-                // Only select the fields you need to save memory
-                select: {
-                    id: true,
-                    schedule: true,
-                    client: { id: true, firstName: true, firebaseToken: true },
-                    therapist: { id: true, firstName: true, firebaseToken: true }
-                }
-            });
-
-            for (const session of sessions) {
-                const etTime = toEthiopianTime(session.schedule);
-                
-                // Client Notification
-                if (session.client?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                        { client: [session.client.firebaseToken], therapist: [], admin: [] },
-                        'SESSION',
-                        SessionNotif.SESSION_REMINDER_CLIENT,
-                        `Reminder: You have a session with ${session.therapist?.firstName ?? 'your therapist'} at ${etTime}`,
-                    );
-                }
-
-                // Therapist Notification
-                if (session.therapist?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                        { client: [], therapist: [session.therapist.firebaseToken], admin: [] },
-                        'SESSION',
-                        SessionNotif.SESSION_REMINDER_THERAPIST,
-                        `Reminder: You have a session with ${session.client?.firstName ?? 'a client'} at ${etTime}`,
-                    );
-                }
-            }
-        }
-    }
-
     // // 3. Therapist note reminder (30 minutes after session ends)
     // @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
     // async sendNoteReminders() {
@@ -168,6 +107,7 @@ export class NotificationScheduler {
     // }
 
     // 4. Inactivity re-engagement (subscription expired 2 weeks ago)
+    // TODO: REMOVE
     @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
     async sendInactivityReminders() {
         this.logger.log('Checking for inactive clients...');
@@ -269,63 +209,4 @@ export class NotificationScheduler {
         this.logger.log(`Sent expiry notifications for ${expiringToday.length} subscription(s).`);
     }
 
-  // 7. Pending session cleanup
-    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' })
-    async PendingSessionCleanup(): Promise<void> {
-        this.logger.log('Starting expired pending sessions cleanup...');
-
-        try {
-            // Fetch expiry time from default parameters
-            const expiryInMinutes = await this.parameterService.getDefaultByName(
-                DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES,
-            );
-
-            // Compute expiry threshold
-            const now = new Date();
-            const expiryThreshold = new Date(now.getTime() - Number(expiryInMinutes) * 60 * 1000);
-
-            this.logger.log(`Removing pending sessions created before: ${expiryThreshold.toISOString()}`);
-
-            // Find sessions older than expiry time and still pending
-            const expiredSessions = await this.sessionRepo.find({
-                where: {
-                approvalStatus: ApprovalStatus.PENDING,
-                createdAt: LessThan(expiryThreshold)
-                },
-                relations: ['client'], // make sure you can access client info
-            });
-
-            if (expiredSessions.length === 0) {
-                this.logger.log('No expired pending sessions found.');
-                return;
-            }
-
-            // Delete or update them (depending on your use case)
-            await this.sessionRepo.remove(expiredSessions);
-
-            // Extract unique client IDs
-            const clientIds = [...new Set(expiredSessions.map(s => s.client.id))];
-
-            // Update hasNotification to null for affected clients
-            await Promise.all(clientIds.map(id => this.clientRepo.update(id, { hasNotification: null })));
-
-            // Send notification to each client
-            for (const session of expiredSessions) {
-                const client = session.client;
-
-                if (client?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                    { client: [client.firebaseToken], therapist: [], admin: [] },
-                    'Pending session removed',
-                    SessionNotif.PENDING_SESSION_DELETED,
-                    `Your pending session scheduled on ${session.schedule.toDateString()} was automatically removed due to inactivity.`,
-                    );
-                }
-            }
-
-            this.logger.log(`Removed ${expiredSessions.length} expired pending session(s).`);
-        } catch (error) {
-        this.logger.error('Error while cleaning expired pending sessions:', error);
-        }
-    }
 }

@@ -1,20 +1,27 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { DefaultParameters } from 'src/common/constants';
 import { Session } from 'src/common/entities/session.entity';
-
-export const REMINDER_DELAYS = [
-  { minutes: 1440, jobSuffix: '24h' },
-  { minutes: 120,  jobSuffix: '2h'  },
-  { minutes: 15,   jobSuffix: '15m' },
-];
+import { ParameterService } from 'src/parameter/parameter.service';
+import {
+  PENDING_SESSION_EXPIRY_JOB,
+  REMINDER_DELAYS,
+  SESSION_LIFECYCLE_QUEUE,
+  SESSION_REMINDER_JOB,
+  SESSION_REMINDERS_QUEUE,
+  pendingExpiryJobId,
+  reminderJobId,
+} from './reminder.constants';
 
 @Injectable()
 export class ReminderService {
   private readonly logger = new Logger(ReminderService.name);
 
   constructor(
-    @InjectQueue('session-reminders') private readonly reminderQueue: Queue,
+    @InjectQueue(SESSION_REMINDERS_QUEUE) private readonly reminderQueue: Queue,
+    @InjectQueue(SESSION_LIFECYCLE_QUEUE) private readonly lifecycleQueue: Queue,
+    private readonly paramService: ParameterService,
   ) {}
 
   async scheduleReminders(session: Session) {
@@ -26,10 +33,10 @@ export class ReminderService {
 
       if (delay <= 0) continue; // already past, skip
 
-      const jobId = `reminder:${session.id}:${jobSuffix}`;
+      const jobId = reminderJobId(session.id, jobSuffix);
 
       await this.reminderQueue.add(
-        'send-reminder',
+        SESSION_REMINDER_JOB,
         {
           sessionId: session.id,
           minutesBefore: minutes,
@@ -50,9 +57,52 @@ export class ReminderService {
 
   async cancelReminders(sessionId: string) {
     for (const { jobSuffix } of REMINDER_DELAYS) {
-      const job = await this.reminderQueue.getJob(`reminder:${sessionId}:${jobSuffix}`);
+      const job = await this.reminderQueue.getJob(reminderJobId(sessionId, jobSuffix));
       if (job) await job.remove();
     }
     this.logger.log(`Cancelled all reminders for session ${sessionId}`);
+  }
+
+  async schedulePendingSessionExpiry(sessions: Session[]) {
+    if (!sessions.length) return;
+
+    const expiryInMinutes = await this.paramService.getDefaultByName(
+      DefaultParameters.PENDING_SESSION_EXPIRY_IN_MINUTES,
+    );
+    const baseSession = sessions[0];
+    const baseTime = baseSession.createdAt ? new Date(baseSession.createdAt).getTime() : Date.now();
+    const fireAt = baseTime + Number(expiryInMinutes) * 60_000;
+    const delay = fireAt - Date.now();
+
+    if (delay <= 0) return;
+
+    const jobId = pendingExpiryJobId(sessions);
+    if (!jobId) return;
+
+    await this.lifecycleQueue.add(
+      PENDING_SESSION_EXPIRY_JOB,
+      {
+        sessionIds: sessions.map((session) => session.id),
+      },
+      {
+        jobId,
+        delay,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+
+    this.logger.log(`Scheduled pending expiry batch for ${sessions.length} session(s)`);
+  }
+
+  async cancelPendingSessionExpiry(sessions: Session[]) {
+    const jobId = pendingExpiryJobId(sessions);
+    if (!jobId) return;
+
+    const job = await this.lifecycleQueue.getJob(jobId);
+    if (job) await job.remove();
+    this.logger.log(`Cancelled pending expiry job ${jobId}`);
   }
 }
