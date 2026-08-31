@@ -10,6 +10,8 @@ import {
   SESSION_LIFECYCLE_QUEUE,
   SESSION_REMINDER_JOB,
   SESSION_REMINDERS_QUEUE,
+  pendingExpiryJobId,
+  reminderJobId,
 } from './reminder.constants';
 
 @Injectable()
@@ -31,7 +33,7 @@ export class ReminderService {
 
       if (delay <= 0) continue; // already past, skip
 
-      const jobId = `reminder--${session.id}--${jobSuffix}`;
+      const jobId = reminderJobId(session.id, jobSuffix);
 
       await this.reminderQueue.add(
         SESSION_REMINDER_JOB,
@@ -55,7 +57,7 @@ export class ReminderService {
 
   async cancelReminders(sessionId: string) {
     for (const { jobSuffix } of REMINDER_DELAYS) {
-      const job = await this.reminderQueue.getJob(`reminder--${sessionId}--${jobSuffix}`);
+      const job = await this.reminderQueue.getJob(reminderJobId(sessionId, jobSuffix));
       if (job) await job.remove();
     }
     this.logger.log(`Cancelled all reminders for session ${sessionId}`);
@@ -74,14 +76,16 @@ export class ReminderService {
 
     if (delay <= 0) return;
 
-    const batchId = baseSession.commonId ?? sessions.map((session) => session.id).sort().join('--');
+    const jobId = pendingExpiryJobId(sessions);
+    if (!jobId) return;
+
     await this.lifecycleQueue.add(
       PENDING_SESSION_EXPIRY_JOB,
       {
         sessionIds: sessions.map((session) => session.id),
       },
       {
-        jobId: `pending-expiry-batch--${batchId}`,
+        jobId,
         delay,
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
@@ -91,5 +95,14 @@ export class ReminderService {
     );
 
     this.logger.log(`Scheduled pending expiry batch for ${sessions.length} session(s)`);
+  }
+
+  async cancelPendingSessionExpiry(sessions: Session[]) {
+    const jobId = pendingExpiryJobId(sessions);
+    if (!jobId) return;
+
+    const job = await this.lifecycleQueue.getJob(jobId);
+    if (job) await job.remove();
+    this.logger.log(`Cancelled pending expiry job ${jobId}`);
   }
 }

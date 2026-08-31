@@ -31,6 +31,7 @@ export interface MockSessionRepo {
   findOne: jest.Mock;
   find: jest.Mock;
   save: jest.Mock;
+  remove: jest.Mock;
 }
 
 export function createMockManager(): MockManager {
@@ -64,6 +65,7 @@ export function createMockSessionRepo(manager?: MockManager): MockSessionRepo {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
+    remove: jest.fn(),
   };
 }
 
@@ -128,6 +130,8 @@ export function createMockReminderService() {
   return {
     scheduleReminders: jest.fn(),
     cancelReminders: jest.fn(),
+    schedulePendingSessionExpiry: jest.fn(),
+    cancelPendingSessionExpiry: jest.fn(),
   };
 }
 
@@ -141,7 +145,7 @@ export function createSessionServiceMocks() {
     find: jest.fn(),
     save: jest.fn(async (entity: any) => entity),
   };
-  const availabilityRepo = {};
+  const availabilityRepo = { delete: jest.fn() };
   const dataSource = createMockDataSource(manager);
   const firebaseService = createMockFirebaseService();
   const clientService = createMockClientService();
@@ -174,6 +178,7 @@ export function createSessionServiceMocks() {
     chatRepo,
     clientRepo,
     clientSubRepo,
+    availabilityRepo,
     dataSource,
     firebaseService,
     clientService,
