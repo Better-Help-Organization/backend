@@ -9,7 +9,6 @@ import { Mood } from 'src/common/entities/mood.entity';
 import { Note } from 'src/common/entities/note.entity';
 import { Session } from 'src/common/entities/session.entity';
 import { Therapist } from 'src/common/entities/therapist.entity';
-import { toEthiopianTime } from 'src/common/utils/toEthiopianTime';
 import { LoggerService } from 'src/logger/logger.service';
 import { ParameterService } from 'src/parameter/parameter.service';
 import { Between, LessThan, Repository } from 'typeorm';
@@ -87,58 +86,58 @@ export class NotificationScheduler {
     }
 
     // 2. Session reminders (24h, 2h, 15m before start)
-    @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
-    async sendSessionReminders() {
-        this.logger.log('Checking upcoming sessions for reminders...');
-        const now = new Date();
+    // @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
+    // async sendSessionReminders() {
+    //     this.logger.log('Checking upcoming sessions for reminders...');
+    //     const now = new Date();
 
-        // Map target minutes to specific future timestamps
-        const targets = [1440, 120, 15]; // 24h, 2h, 15m
+    //     // Map target minutes to specific future timestamps
+    //     const targets = [1440, 120, 15]; // 24h, 2h, 15m
         
-        for (const minutes of targets) {
-            // Look for sessions scheduled EXACTLY X minutes from now (plus a small 59s window)
-            const targetTimeStart = new Date(now.getTime() + minutes * 60000);
-            const targetTimeEnd = new Date(targetTimeStart.getTime() + 59000);
+    //     for (const minutes of targets) {
+    //         // Look for sessions scheduled EXACTLY X minutes from now (plus a small 59s window)
+    //         const targetTimeStart = new Date(now.getTime() + minutes * 60000);
+    //         const targetTimeEnd = new Date(targetTimeStart.getTime() + 59000);
 
-            const sessions = await this.sessionRepo.find({
-                where: { 
-                    schedule: Between(targetTimeStart, targetTimeEnd) 
-                },
-                relations: ['client', 'therapist'],
-                // Only select the fields you need to save memory
-                select: {
-                    id: true,
-                    schedule: true,
-                    client: { id: true, firstName: true, firebaseToken: true },
-                    therapist: { id: true, firstName: true, firebaseToken: true }
-                }
-            });
+    //         const sessions = await this.sessionRepo.find({
+    //             where: { 
+    //                 schedule: Between(targetTimeStart, targetTimeEnd) 
+    //             },
+    //             relations: ['client', 'therapist'],
+    //             // Only select the fields you need to save memory
+    //             select: {
+    //                 id: true,
+    //                 schedule: true,
+    //                 client: { id: true, firstName: true, firebaseToken: true },
+    //                 therapist: { id: true, firstName: true, firebaseToken: true }
+    //             }
+    //         });
 
-            for (const session of sessions) {
-                const etTime = toEthiopianTime(session.schedule);
+    //         for (const session of sessions) {
+    //             const etTime = toEthiopianTime(session.schedule);
                 
-                // Client Notification
-                if (session.client?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                        { client: [session.client.firebaseToken], therapist: [], admin: [] },
-                        'SESSION',
-                        SessionNotif.SESSION_REMINDER_CLIENT,
-                        `Reminder: You have a session with ${session.therapist?.firstName ?? 'your therapist'} at ${etTime}`,
-                    );
-                }
+    //             // Client Notification
+    //             if (session.client?.firebaseToken) {
+    //                 await this.firebaseService.sendPushNotification(
+    //                     { client: [session.client.firebaseToken], therapist: [], admin: [] },
+    //                     'SESSION',
+    //                     SessionNotif.SESSION_REMINDER_CLIENT,
+    //                     `Reminder: You have a session with ${session.therapist?.firstName ?? 'your therapist'} at ${etTime}`,
+    //                 );
+    //             }
 
-                // Therapist Notification
-                if (session.therapist?.firebaseToken) {
-                    await this.firebaseService.sendPushNotification(
-                        { client: [], therapist: [session.therapist.firebaseToken], admin: [] },
-                        'SESSION',
-                        SessionNotif.SESSION_REMINDER_THERAPIST,
-                        `Reminder: You have a session with ${session.client?.firstName ?? 'a client'} at ${etTime}`,
-                    );
-                }
-            }
-        }
-    }
+    //             // Therapist Notification
+    //             if (session.therapist?.firebaseToken) {
+    //                 await this.firebaseService.sendPushNotification(
+    //                     { client: [], therapist: [session.therapist.firebaseToken], admin: [] },
+    //                     'SESSION',
+    //                     SessionNotif.SESSION_REMINDER_THERAPIST,
+    //                     `Reminder: You have a session with ${session.client?.firstName ?? 'a client'} at ${etTime}`,
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
 
     // // 3. Therapist note reminder (30 minutes after session ends)
     // @Cron('0 * * * * *', { timeZone: 'Africa/Addis_Ababa' })
@@ -168,106 +167,106 @@ export class NotificationScheduler {
     // }
 
     // 4. Inactivity re-engagement (subscription expired 2 weeks ago)
-    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
-    async sendInactivityReminders() {
-        this.logger.log('Checking for inactive clients...');
-        const todayUTC = new Date();
-        todayUTC.setUTCHours(0, 0, 0, 0); // start of today UTC
+    // @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
+    // async sendInactivityReminders() {
+    //     this.logger.log('Checking for inactive clients...');
+    //     const todayUTC = new Date();
+    //     todayUTC.setUTCHours(0, 0, 0, 0); // start of today UTC
 
-        const targetDate = new Date(todayUTC);
-        targetDate.setDate(targetDate.getDate() - 14); // 14 days ago (UTC)
+    //     const targetDate = new Date(todayUTC);
+    //     targetDate.setDate(targetDate.getDate() - 14); // 14 days ago (UTC)
 
-        const nextDay = new Date(targetDate);
-        nextDay.setDate(nextDay.getDate() + 1);
+    //     const nextDay = new Date(targetDate);
+    //     nextDay.setDate(nextDay.getDate() + 1);
 
-        const expiredSubs = await this.clientSubscriptionRepo.find({
-            where: {
-                status: SubscriptionStatus.INACTIVE,
-                end_date: Between(targetDate, nextDay),
-            },
-            relations: ['client'],
-        });
+    //     const expiredSubs = await this.clientSubscriptionRepo.find({
+    //         where: {
+    //             status: SubscriptionStatus.INACTIVE,
+    //             end_date: Between(targetDate, nextDay),
+    //         },
+    //         relations: ['client'],
+    //     });
 
-        for (const cs of expiredSubs) {
-            const client = cs.client;
-            if (client?.firebaseToken) {
-                await this.firebaseService.sendPushNotification(
-                    { client: [client.firebaseToken], therapist: [], admin: [] },
-                    'REMINDER',
-                    SessionNotif.INACTIVITY,
-                    'It’s been a while since your last session. Come back and continue your journey.',
-                );
-            }
-        }
-    }
+    //     for (const cs of expiredSubs) {
+    //         const client = cs.client;
+    //         if (client?.firebaseToken) {
+    //             await this.firebaseService.sendPushNotification(
+    //                 { client: [client.firebaseToken], therapist: [], admin: [] },
+    //                 'REMINDER',
+    //                 SessionNotif.INACTIVITY,
+    //                 'It’s been a while since your last session. Come back and continue your journey.',
+    //             );
+    //         }
+    //     }
+    // }
 
     // 5. Subscription expiry reminder (7 days before)
-    @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
-    async sendSubscriptionExpiryReminders() {
-        this.logger.log('Sending subscription expiry reminders...');
+    // @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' }) // every day at 00:00
+    // async sendSubscriptionExpiryReminders() {
+    //     this.logger.log('Sending subscription expiry reminders...');
 
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
+    //     const today = new Date();
+    //     today.setUTCHours(0, 0, 0, 0);
 
-        const targetStart = new Date(today);
-        targetStart.setDate(targetStart.getDate() + 7);
+    //     const targetStart = new Date(today);
+    //     targetStart.setDate(targetStart.getDate() + 7);
 
-        const targetEnd = new Date(targetStart);
-        targetEnd.setUTCHours(23, 59, 59, 999);
+    //     const targetEnd = new Date(targetStart);
+    //     targetEnd.setUTCHours(23, 59, 59, 999);
 
-        const subs = await this.clientSubscriptionRepo.find({
-            where: {
-                status: SubscriptionStatus.ACTIVE,
-                end_date: Between(targetStart, targetEnd),
-            },
-            relations: ['client', 'subscription'],
-        });
+    //     const subs = await this.clientSubscriptionRepo.find({
+    //         where: {
+    //             status: SubscriptionStatus.ACTIVE,
+    //             end_date: Between(targetStart, targetEnd),
+    //         },
+    //         relations: ['client', 'subscription'],
+    //     });
 
-        for (const cs of subs) {
-            const client = cs.client;
-            if (client?.firebaseToken) {
-                await this.firebaseService.sendPushNotification(
-                    { client: [client.firebaseToken], therapist: [], admin: [] },
-                    'EXPIRY',
-                    SessionNotif.SUBSCRIPTION_EXPIRY,
-                    `Your subscription will expire on ${cs.end_date}.`,
-                );
-            }
-        }
-    }
+    //     for (const cs of subs) {
+    //         const client = cs.client;
+    //         if (client?.firebaseToken) {
+    //             await this.firebaseService.sendPushNotification(
+    //                 { client: [client.firebaseToken], therapist: [], admin: [] },
+    //                 'EXPIRY',
+    //                 SessionNotif.SUBSCRIPTION_EXPIRY,
+    //                 `Your subscription will expire on ${cs.end_date}.`,
+    //             );
+    //         }
+    //     }
+    // }
 
     // 6. Subscription expiration day notification
-    @Cron('0 59 23 * * *', { timeZone: 'Africa/Addis_Ababa' })
-    async sendSubscriptionExpiryDayNotification() {
-        this.logger.log('Checking for subscriptions expiring today...');
+    // @Cron('0 59 23 * * *', { timeZone: 'Africa/Addis_Ababa' })
+    // async sendSubscriptionExpiryDayNotification() {
+    //     this.logger.log('Checking for subscriptions expiring today...');
 
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setUTCHours(23, 59, 59, 999);
+    //     const today = new Date();
+    //     today.setUTCHours(0, 0, 0, 0);
+    //     const tomorrow = new Date(today);
+    //     tomorrow.setUTCHours(23, 59, 59, 999);
 
-        const expiringToday = await this.clientSubscriptionRepo.find({
-        where: {
-            status: SubscriptionStatus.ACTIVE,
-            end_date: Between(today, tomorrow),
-        },
-        relations: ['client'],
-        });
+    //     const expiringToday = await this.clientSubscriptionRepo.find({
+    //     where: {
+    //         status: SubscriptionStatus.ACTIVE,
+    //         end_date: Between(today, tomorrow),
+    //     },
+    //     relations: ['client'],
+    //     });
 
-        for (const cs of expiringToday) {
-        const client = cs.client;
-        if (client?.firebaseToken) {
-            await this.firebaseService.sendPushNotification(
-            { client: [client.firebaseToken], therapist: [], admin: [] },
-            'SUBSCRIPTION EXPIRED',
-            SessionNotif.SUBSCRIPTION_EXPIRED,
-            `Your subscription has expired today. Renew now to continue your sessions.`,
-            );
-        }
-        }
+    //     for (const cs of expiringToday) {
+    //     const client = cs.client;
+    //     if (client?.firebaseToken) {
+    //         await this.firebaseService.sendPushNotification(
+    //         { client: [client.firebaseToken], therapist: [], admin: [] },
+    //         'SUBSCRIPTION EXPIRED',
+    //         SessionNotif.SUBSCRIPTION_EXPIRED,
+    //         `Your subscription has expired today. Renew now to continue your sessions.`,
+    //         );
+    //     }
+    //     }
 
-        this.logger.log(`Sent expiry notifications for ${expiringToday.length} subscription(s).`);
-    }
+    //     this.logger.log(`Sent expiry notifications for ${expiringToday.length} subscription(s).`);
+    // }
 
   // 7. Pending session cleanup
     @Cron('0 0 0 * * *', { timeZone: 'Africa/Addis_Ababa' })
