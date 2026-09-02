@@ -141,7 +141,7 @@ export class FirebaseService {
 
       if (!body) body = "You have a new notification.";
 
-      this.logger.log(`Preparing push notification: ${title} -> ${message}`);
+      this.logger.log(`Preparing push notification: ${title} (code=${code})`);
 
       const uniqueClientTokens = [...new Set(tokens.client || [])].filter(Boolean);
       const uniqueTherapistTokens = [...new Set(tokens.therapist || [])].filter(Boolean);

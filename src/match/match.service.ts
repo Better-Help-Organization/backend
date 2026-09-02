@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
 import { DefaultParameters, ModalName, SessionNotif, TokenPayload, Tokens } from 'src/common/constants';
 import { Answer } from 'src/common/entities/answer.entity';
-import { Client } from 'src/common/entities/client.entity';
 import { MatchTherapist } from 'src/common/entities/match-therapist.entity';
 import { Match } from 'src/common/entities/match.entity';
 import { Preference } from 'src/common/entities/preference.entity';
@@ -140,17 +139,41 @@ export class MatchService {
       .filter(token => token);
 
     // if (tokens?.length > 0) {
-      const client: Pick<Client, 'firstName' | 'lastName' | 'gender' | 'dob'> = await this.clientService.findOne(token.id);
+      const client = await this.clientService.findOne(token.id);
+      // Keep notification data small and exclude account credentials and tokens.
+      const matchPayload = {
+        answerData: answerIds,
+        matchData: {
+          id: match.id,
+          accepted: match.accepted ? { id: match.accepted.id } : null,
+          expiresAt: match.expiresAt,
+        },
+        clientData: {
+          id: client.id,
+          firstName: client.firstName,
+          lastName: client.lastName,
+          avatar: client.avatar,
+          profile: client.profile,
+          gender: client.gender,
+          dob: client.dob,
+        },
+        modal: {
+          id: preference.modal.id,
+          name: preference.modal.name,
+          code: preference.modal.code,
+        },
+        availability: preference.availability.map(({ id, day, day_period, schedule, duration }) => ({
+          id,
+          day,
+          day_period,
+          schedule,
+          duration,
+        })),
+      };
 
       await this.firebaseService.sendPushNotification(
         tokens,
-        JSON.stringify({
-          answerData: answerIds,
-          matchData: match,
-          clientData: client,
-          modal: preference.modal,
-          availability: preference.availability,
-        }),
+        JSON.stringify(matchPayload),
         SessionNotif.MATCH_REQUEST,
         'New match request! Tap to accept.'
       );
