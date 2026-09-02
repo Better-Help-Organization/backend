@@ -68,12 +68,18 @@ export class APIFeatures {
     return parentAlias;
   }
 
-  private includeRelationChain(path: string, selectFields: string[]) {
+  private includeRelationChain(
+    path: string,
+    selectFields: string[],
+    includeLeaf = true,
+  ) {
     const parts = path.split('.').filter(Boolean);
     let currentPath = '';
 
-    for (const relation of parts) {
+    for (const [index, relation] of parts.entries()) {
       currentPath = currentPath ? `${currentPath}.${relation}` : relation;
+      if (!includeLeaf && index === parts.length - 1) break;
+
       const alias = this.ensureRelationAlias(currentPath);
 
       if (!this.selectedRelationAliases.has(alias)) {
@@ -228,9 +234,16 @@ export class APIFeatures {
         }
 
         const relationAlias = this.ensureRelationAlias(relationPath);
-        this.includeRelationChain(relationPath, selectFields);
+        this.includeRelationChain(relationPath, selectFields, fieldName !== '*');
 
         if (fieldName === '*') {
+          // A relation alias already selects its primary key. Remove any earlier
+          // explicit selection to avoid duplicate SQL aliases in MySQL.
+          for (let index = selectFields.length - 1; index >= 0; index--) {
+            if (selectFields[index].startsWith(`${relationAlias}.`)) {
+              selectFields.splice(index, 1);
+            }
+          }
           relationOverride.add(relationAlias);
           this.selectedRelationAliases.add(relationAlias);
         } else {

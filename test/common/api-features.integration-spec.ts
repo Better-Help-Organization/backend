@@ -77,6 +77,44 @@ describe('APIFeatures integration', () => {
     );
   });
 
+  it('supports parent and nested relation wildcards without duplicate MySQL columns', async () => {
+    const { repositories } = context;
+    const { modal } = await seedCatalog(repositories, SubscriptionType.MONTHLY);
+    const therapist = await createTherapist(repositories, {
+      firstName: 'Wildcard',
+      email: 'wildcard-therapist@test.local',
+    });
+    const client = await createClient(repositories, {
+      email: 'wildcard-client@test.local',
+    });
+
+    await repositories.expertise.save(
+      repositories.expertise.create({
+        therapist,
+        expertise: ExpertiseValues.Anxiety,
+      }),
+    );
+
+    const session = await createSessionRecord(repositories, {
+      therapist,
+      client,
+      modal,
+      schedule: new Date('2026-08-01T10:00:00.000Z'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/session/${session.id}`)
+      .query({ fields: 'id,therapist.expertise.*,therapist.*' })
+      .expect(200);
+
+    expect(response.body.therapist).toEqual(
+      expect.objectContaining({
+        id: therapist.id,
+        expertise: [expect.objectContaining({ expertise: ExpertiseValues.Anxiety })],
+      }),
+    );
+  });
+
   it('does not auto-apply eager relations when fields are not explicitly requested', async () => {
     const { repositories } = context;
     const { modal } = await seedCatalog(repositories, SubscriptionType.MONTHLY);
